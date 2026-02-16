@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Súper Marian - Menú Principal</title>
+    <style>
+        /* --- ESTILOS GENERALES --- */
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        header { background: #1a73e8; color: white; width: 100%; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .welcome { margin-top: 20px; text-align: center; color: #333; }
+        
+        /* --- PARTE A: EL ESTILO DEL AVISO --- */
+        .alerta-stock {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            width: 90%;
+            max-width: 800px;
+            display: none; /* Se oculta hasta que haga falta */
+            text-align: center;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.01); }
+            100% { transform: scale(1); }
+        }
+
+        .grid-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 800px; padding: 20px; }
+        .menu-card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; cursor: pointer; transition: 0.3s; position: relative; }
+        .menu-card:hover { transform: translateY(-5px); border-color: #1a73e8; }
+        .menu-card span { font-size: 40px; display: block; margin-bottom: 10px; }
+        .locked { opacity: 0.4; cursor: not-allowed !important; filter: grayscale(1); }
+        .btn-salir { margin: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<header>🛒 Súper Marian - Panel Principal</header>
+
+<div class="welcome">
+    <h2 id="saludo">Cargando...</h2>
+    <p id="rolText"></p>
+</div>
+
+<div id="avisoStock" class="alerta-stock">
+    <strong>⚠️ PRODUCTOS AGOTÁNDOSE:</strong> <span id="listaBajos"></span>
+</div>
+
+<div class="grid-menu">
+    <div class="menu-card" id="btnAlmacen" onclick="navegar('Almacen.html', 'Administrador')">
+        <span>📦</span> <h3>Almacén</h3> <p>Stock y Precios</p>
+    </div>
+    <div class="menu-card" id="btnFacturacion" onclick="navegar('facturacion.html', 'Cajero')">
+        <span>🧾</span> <h3>Facturación</h3> <p>Ventas rápidas</p>
+    </div>
+    <div class="menu-card" id="btnReportes" onclick="navegar('reportes.html', 'Administrador')">
+        <span>📈</span> <h3>Reportes</h3> <p>Ganancias</p>
+    </div>
+    <div class="menu-card" id="btnPersonal" onclick="navegar('personal.html', 'Administrador')">
+        <span>👥</span> <h3>Personal</h3> <p>Usuarios</p>
+    </div>
+    <div class="menu-card" id="btnFiado" onclick="navegar('creditos.html', 'Administrador')">
+    <span>📓</span>
+    <h3>Créditos</h3>
+    <p>Control de fiado y abonos.</p>
+</div>
+</div>
+
+<button class="btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
+        authDomain: "supermercado-marian.firebaseapp.com",
+        projectId: "supermercado-marian",
+        storageBucket: "supermercado-marian.firebasestorage.app",
+        messagingSenderId: "627337795444",
+        appId: "1:627337795444:web:e9a4cb48ff164b78477e21"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const userRol = localStorage.getItem("userRol");
+    const userName = localStorage.getItem("userName");
+
+    if (!userRol) window.location.href = "index.html";
+
+    document.getElementById('saludo').innerText = `¡Hola, ${userName}!`;
+    document.getElementById('rolText').innerText = `Rango: ${userRol}`;
+
+    // REVISAR STOCK BAJO
+    onSnapshot(collection(db, "productos"), (snapshot) => {
+        let bajos = [];
+        snapshot.forEach(doc => {
+            const p = doc.data();
+            if (p.stock <= 5) { bajos.push(p.nombre); }
+        });
+
+        const box = document.getElementById('avisoStock');
+        if (bajos.length > 0) {
+            box.style.display = 'block';
+            document.getElementById('listaBajos').innerText = bajos.join(", ");
+        } else {
+            box.style.display = 'none';
+        }
+    });
+
+    // BLOQUEO PARA CAJEROS
+    if (userRol === "Cajero") {
+        ["btnAlmacen", "btnReportes", "btnPersonal"].forEach(id => {
+            document.getElementById(id).classList.add("locked");
+        });
+    }
+
+    window.navegar = (pagina, nivel) => {
+        if (userRol === "Administrador" || (userRol === "Cajero" && nivel === "Cajero")) {
+            window.location.href = pagina;
+        } else {
+            alert("Acceso denegado");
+        }
+    };
+
+    window.cerrarSesion = () => { localStorage.clear(); window.location.href = "index.html"; };
+</script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Súper Marian - Gestión de Personal (Pro)</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f0f2f5; }
+        header { background: #343a40; color: white; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; }
+        .container { padding: 20px; max-width: 1000px; margin: auto; }
+        .grid { display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        label { display: block; margin-top: 10px; font-weight: bold; color: #555; font-size: 0.9rem; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        
+        button { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; width: 100%; }
+        .btn-save { background: #1b5e20; color: white; }
+        .btn-save:hover { background: #154d1a; }
+        .btn-update { background: #007bff; color: white; display: none; }
+        .btn-cancel { background: #6c757d; color: white; margin-top: 10px; display: none; }
+        
+        .btn-delete { background: #dc3545; color: white; width: auto; padding: 6px 12px; font-size: 12px; margin-left: 5px; }
+        .btn-edit { background: #ffc107; color: #212529; width: auto; padding: 6px 12px; font-size: 12px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        th { background: #f8f9fa; color: #333; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        
+        .btn-volver { background: #666; color: white; width: auto; padding: 10px 20px; margin-bottom: 20px; }
+        
+        /* ESTILOS DE ROLES */
+        .badge-admin { background: #fff3cd; color: #856404; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        .badge-cajero { background: #d1ecf1; color: #0c5460; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        .badge-contador { background: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        
+        .pin-style { font-family: monospace; color: #28a745; font-weight: bold; background: #e8f5e9; padding: 2px 6px; border-radius: 4px; }
+        .editando { border: 2px solid #007bff !important; background: #f0f7ff; }
+    </style>
+</head>
+<body>
+
+<header>👥 Gestión de Personal - Súper Marian</header>
+
+<div class="container">
+    <button class="btn-volver" onclick="location.href='menu.html'">⬅ Volver al Menú</button>
+
+    <div class="grid">
+        <div class="card" id="formCard">
+            <h3 id="formTitle">+ Nuevo Usuario</h3>
+            
+            <input type="hidden" id="idEditando"> 
+            
+            <label>Nombre Completo:</label>
+            <input type="text" id="nombreEmp" placeholder="Ej: Juan Pérez">
+            
+            <label>Correo electrónico:</label>
+            <input type="email" id="emailEmp" placeholder="ejemplo@gmail.com">
+            
+            <label>PIN de Acceso:</label>
+            <input type="text" id="pinEmp" placeholder="Clave numérica" maxlength="6">
+            
+            <label>Rol en el sistema:</label>
+            <select id="rolEmp">
+                <option value="Cajero">Cajero (Solo Factura)</option>
+                <option value="Contador">Contador (Reportes/Ventas)</option>
+                <option value="Administrador">Administrador (Todo)</option>
+            </select>
+            
+            <button class="btn-save" id="btnGuardar">Registrar Empleado</button>
+            <button class="btn-update" id="btnActualizar">Actualizar Cambios</button>
+            <button class="btn-cancel" id="btnCancelar" onclick="cancelarEdicion()">Cancelar Edición</button>
+        </div>
+
+        <div class="card">
+            <h3>👥 Personal Activo</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Empleado / PIN</th>
+                        <th>Rol</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="listaPersonal"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
+        authDomain: "supermercado-marian.firebaseapp.com",
+        projectId: "supermercado-marian",
+        storageBucket: "supermercado-marian.firebasestorage.app",
+        messagingSenderId: "627337795444",
+        appId: "1:627337795444:web:e9a4cb48ff164b78477e21"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let usuariosData = {}; 
+
+    // 1. ESCUCHAR CAMBIOS Y MOSTRAR TABLA
+    onSnapshot(collection(db, "usuarios"), (snapshot) => {
+        const tabla = document.getElementById('listaPersonal');
+        tabla.innerHTML = '';
+        usuariosData = {}; 
+
+        snapshot.forEach((docSnap) => {
+            const u = docSnap.data();
+            const id = docSnap.id;
+            usuariosData[id] = u; 
+
+            // Lógica para asignar el color del badge según el Rol
+            let badgeClass = 'badge-cajero';
+            if (u.rol === 'Administrador') badgeClass = 'badge-admin';
+            if (u.rol === 'Contador') badgeClass = 'badge-contador';
+            
+            tabla.innerHTML += `
+                <tr>
+                    <td>
+                        <strong>${u.nombre}</strong><br>
+                        <small>PIN: <span class="pin-style">${u.pin}</span></small>
+                    </td>
+                    <td><span class="${badgeClass}">${u.rol}</span></td>
+                    <td>
+                        <button class="btn-edit" onclick="prepararEdicion('${id}')">✏️</button>
+                        <button class="btn-delete" onclick="borrarUsuario('${id}')">🗑️</button>
+                    </td>
+                </tr>`;
+        });
+    });
+
+    // 2. GUARDAR NUEVO
+    document.getElementById('btnGuardar').onclick = async () => {
+        const nom = document.getElementById('nombreEmp').value.trim();
+        const ema = document.getElementById('emailEmp').value.trim();
+        const pin = document.getElementById('pinEmp').value.trim();
+        const rol = document.getElementById('rolEmp').value;
+
+        if(nom && ema && pin) {
+            await addDoc(collection(db, "usuarios"), { nombre: nom, email: ema, pin: pin, rol: rol });
+            limpiarFormulario();
+            alert("Empleado registrado.");
+        } else {
+            alert("Completa todos los campos.");
+        }
+    };
+
+    // 3. PREPARAR EDICIÓN
+    window.prepararEdicion = (id) => {
+        const u = usuariosData[id];
+        document.getElementById('idEditando').value = id;
+        document.getElementById('nombreEmp').value = u.nombre;
+        document.getElementById('emailEmp').value = u.email;
+        document.getElementById('pinEmp').value = u.pin;
+        document.getElementById('rolEmp').value = u.rol;
+
+        document.getElementById('formTitle').innerText = "📝 Editando Usuario";
+        document.getElementById('formCard').classList.add('editando');
+        document.getElementById('btnGuardar').style.display = 'none';
+        document.getElementById('btnActualizar').style.display = 'block';
+        document.getElementById('btnCancelar').style.display = 'block';
+        window.scrollTo(0, 0);
+    };
+
+    // 4. ACTUALIZAR
+    document.getElementById('btnActualizar').onclick = async () => {
+        const id = document.getElementById('idEditando').value;
+        const nom = document.getElementById('nombreEmp').value;
+        const ema = document.getElementById('emailEmp').value;
+        const pin = document.getElementById('pinEmp').value;
+        const rol = document.getElementById('rolEmp').value;
+
+        if(id && nom && ema && pin) {
+            await updateDoc(doc(db, "usuarios", id), {
+                nombre: nom,
+                email: ema,
+                pin: pin,
+                rol: rol
+            });
+            alert("Actualizado.");
+            cancelarEdicion();
+        }
+    };
+
+    // 5. CANCELAR / LIMPIAR
+    window.cancelarEdicion = () => {
+        limpiarFormulario();
+        document.getElementById('formTitle').innerText = "+ Nuevo Usuario";
+        document.getElementById('formCard').classList.remove('editando');
+        document.getElementById('btnGuardar').style.display = 'block';
+        document.getElementById('btnActualizar').style.display = 'none';
+        document.getElementById('btnCancelar').style.display = 'none';
+    };
+
+    function limpiarFormulario() {
+        document.getElementById('idEditando').value = '';
+        document.getElementById('nombreEmp').value = '';
+        document.getElementById('emailEmp').value = '';
+        document.getElementById('pinEmp').value = '';
+        document.getElementById('rolEmp').selectedIndex = 0;
+    }
+
+    // 6. BORRAR
+    window.borrarUsuario = async (id) => {
+        if(confirm("¿Eliminar este usuario?")) {
+            await deleteDoc(doc(db, "usuarios", id));
+        }
+    };
+</script>
+</body>
+</html>

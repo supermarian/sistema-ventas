@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Súper Marian - Acceso Dual</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #1a73e8; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 320px; text-align: center; }
+        h2 { color: #333; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .btn-manual { width: 100%; padding: 12px; background: #34a853; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 15px; }
+        .separador { margin: 20px 0; border-top: 1px solid #eee; position: relative; }
+        .separador span { position: absolute; top: -10px; background: white; padding: 0 10px; left: 50%; transform: translateX(-50%); color: #999; font-size: 12px; }
+        .btn-google { width: 100%; padding: 10px; background: white; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <h2>🛒 Súper Marian</h2>
+    
+    <input type="email" id="email" placeholder="Correo electrónico">
+    <input type="password" id="pass" placeholder="Contraseña">
+    <button class="btn-manual" id="btnManual">Entrar con Clave</button>
+
+    <div class="separador"><span>O TAMBIÉN</span></div>
+
+    <button class="btn-google" id="loginBtn">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18">
+        Entrar con Google
+    </button>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    // Importamos Firestore para verificar el rol
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
+        authDomain: "supermercado-marian.firebaseapp.com",
+        projectId: "supermercado-marian",
+        storageBucket: "supermercado-marian.firebasestorage.app",
+        messagingSenderId: "627337795444",
+        appId: "1:627337795444:web:e9a4cb48ff164b78477e21"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // FUNCIÓN PARA VERIFICAR SI EL USUARIO EXISTE EN TU LISTA DE PERSONAL
+    async function verificarAccesoYRedirigir(email) {
+        const q = query(collection(db, "usuarios"), where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            querySnapshot.forEach((doc) => {
+                const datos = doc.data();
+                // Guardamos en la memoria del navegador para usarlo en el menú
+                localStorage.setItem("userRol", datos.rol);
+                localStorage.setItem("userName", datos.nombre);
+                window.location.href = "menu.html";
+            });
+        } else {
+            alert("Acceso Denegado: Este correo no está registrado como personal de Súper Marian.");
+            auth.signOut(); // Lo desconectamos de Firebase si no está en nuestra lista
+        }
+    }
+
+    // ENTRAR CON CLAVE
+    document.getElementById('btnManual').addEventListener('click', () => {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('pass').value;
+        
+        signInWithEmailAndPassword(auth, email, pass)
+            .then((userCredential) => {
+                verificarAccesoYRedirigir(userCredential.user.email);
+            })
+            .catch((error) => { alert("Error: Usuario o clave incorrectos"); });
+    });
+
+    // ENTRAR CON GOOGLE
+    const provider = new GoogleAuthProvider();
+    document.getElementById('loginBtn').addEventListener('click', () => {
+        signInWithPopup(auth, provider)
+            .then((result) => {
+                verificarAccesoYRedirigir(result.user.email);
+            })
+            .catch((err) => { alert("Error con Google: " + err.message); });
+    });
+</script>
+
+</body>
+</html>

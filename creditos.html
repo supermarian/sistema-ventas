@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Súper Marian - Sistema de Facturación Pro</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f0f2f5; }
+        header { background: #e67e22; color: white; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; }
+        .container { padding: 20px; max-width: 1200px; margin: auto; }
+        .grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h3 { margin-top: 0; color: #d35400; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .btn-fiado { background: #e67e22; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        .deuda { color: #d35400; font-weight: bold; }
+        .deuda-cero { color: #27ae60; font-weight: bold; }
+        
+        .btn-pago { background: #27ae60; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-historial { background: #3498db; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
+        
+        /* Modal e Historial */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { background: white; margin: 5% auto; padding: 20px; border-radius: 12px; width: 65%; max-height: 80vh; overflow-y: auto; }
+        .cerrar { float: right; cursor: pointer; font-size: 24px; font-weight: bold; }
+        .fac-badge { background: #f4f6f7; color: #2c3e50; padding: 4px 8px; border-radius: 4px; font-family: 'Courier New', monospace; font-weight: bold; border: 1px solid #d5dbdb; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<header>📓 Registro de Clientes y Facturas - Súper Marian</header>
+
+<div class="container">
+    <button onclick="location.href='menu.html'" style="margin-bottom:20px; cursor:pointer; padding: 8px 15px; border-radius: 6px; border: none; background: #666; color: white;">⬅ Volver</button>
+
+    <div class="grid">
+        <div class="card">
+            <h3>+ Nuevo Cliente</h3>
+            <input type="text" id="nomCliente" placeholder="Nombre Completo">
+            <input type="text" id="cedCliente" placeholder="Cédula">
+            <input type="text" id="telCliente" placeholder="Teléfono">
+            <input type="number" id="limiteCliente" placeholder="Límite RD$">
+            <button class="btn-fiado" id="btnCrearCliente">Registrar Cliente</button>
+        </div>
+
+        <div class="card">
+            <h3>👥 Cartera de Clientes</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Estado de Cuenta</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="listaFiados"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modalHistorial" class="modal">
+    <div class="modal-content">
+        <span class="cerrar" onclick="cerrarModal()">&times;</span>
+        <h3 id="historialTitulo">Historial de Movimientos</h3>
+        <table id="tablaHistorial">
+            <thead>
+                <tr>
+                    <th>Fecha y Hora</th>
+                    <th>N° Factura / Recibo</th>
+                    <th>Monto</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoHistorial"></tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, increment, getDoc, orderBy, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
+        authDomain: "supermercado-marian.firebaseapp.com",
+        projectId: "supermercado-marian",
+        storageBucket: "supermercado-marian.firebasestorage.app",
+        messagingSenderId: "627337795444",
+        appId: "1:627337795444:web:e9a4cb48ff164b78477e21"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    document.getElementById('btnCrearCliente').onclick = async () => {
+        const nombre = document.getElementById('nomCliente').value;
+        if(!nombre) return alert("Nombre obligatorio");
+        await addDoc(collection(db, "clientes_fiado"), {
+            nombre: nombre,
+            cedula: document.getElementById('cedCliente').value,
+            telefono: document.getElementById('telCliente').value,
+            limite: parseFloat(document.getElementById('limiteCliente').value) || 0,
+            deuda: 0,
+            proximoRecibo: 1
+        });
+        document.querySelectorAll('input').forEach(i => i.value = '');
+    };
+
+    onSnapshot(collection(db, "clientes_fiado"), (snapshot) => {
+        const tabla = document.getElementById('listaFiados');
+        tabla.innerHTML = '';
+        snapshot.forEach(docSnap => {
+            const c = docSnap.data();
+            const id = docSnap.id;
+            const claseDeuda = c.deuda <= 0 ? 'deuda-cero' : 'deuda';
+            tabla.innerHTML += `
+                <tr>
+                    <td><strong>${c.nombre}</strong><br><small>${c.telefono}</small></td>
+                    <td>
+                        <span class="${claseDeuda}">RD$ ${c.deuda.toLocaleString()}</span><br>
+                        <small>Límite: RD$ ${c.limite.toLocaleString()}</small>
+                    </td>
+                    <td>
+                        <button class="btn-pago" onclick="abonar('${id}', '${c.nombre}')">💸 Abonar</button>
+                        <button class="btn-historial" onclick="verHistorial('${id}', '${c.nombre}')">📜 Historial</button>
+                    </td>
+                </tr>`;
+        });
+    });
+
+    window.abonar = async (id, nombre) => {
+        const docRef = doc(db, "clientes_fiado", id);
+        const docSnap = await getDoc(docRef);
+        const data = docSnap.data();
+        const deudaActual = data.deuda;
+
+        if(deudaActual <= 0) return alert("Sin deudas.");
+
+        const monto = parseFloat(prompt(`Pago de ${nombre}. Deuda: RD$ ${deudaActual}`));
+
+        if(!isNaN(monto) && monto > 0 && monto <= deudaActual) {
+            // GENERAR NÚMERO DE 12 DÍGITOS
+            const numRecibo = data.proximoRecibo || 1;
+            const refFactura = numRecibo.toString().padStart(12, '0'); // Formato: 000000000001
+
+            await updateDoc(docRef, { 
+                deuda: increment(-monto),
+                proximoRecibo: increment(1)
+            });
+            
+            await addDoc(collection(db, "clientes_fiado", id, "pagos"), {
+                monto: monto,
+                referencia: refFactura,
+                tipo: "ABONO",
+                fecha: new Date().toLocaleString(),
+                timestamp: serverTimestamp()
+            });
+            
+            alert("Recibo N° " + refFactura + " generado.");
+        } else if (monto > deudaActual) {
+            alert("No puede pagar más de lo que debe.");
+        }
+    };
+
+    window.verHistorial = (id, nombre) => {
+        document.getElementById('historialTitulo').innerText = "Movimientos: " + nombre;
+        const cuerpo = document.getElementById('cuerpoHistorial');
+        cuerpo.innerHTML = 'Cargando...';
+        document.getElementById('modalHistorial').style.display = 'block';
+
+        const q = query(collection(db, "clientes_fiado", id, "pagos"), orderBy("timestamp", "desc"));
+        onSnapshot(q, (snapshot) => {
+            cuerpo.innerHTML = '';
+            snapshot.forEach(docSnap => {
+                const p = docSnap.data();
+                cuerpo.innerHTML += `
+                    <tr>
+                        <td>${p.fecha}</td>
+                        <td><span class="fac-badge">${p.referencia}</span></td>
+                        <td style="color:green; font-weight:bold;">RD$ ${p.monto.toLocaleString()}</td>
+                    </tr>`;
+            });
+        });
+    };
+
+    window.cerrarModal = () => document.getElementById('modalHistorial').style.display = 'none';
+</script>
+</body>
+</html>

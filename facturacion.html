@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Súper Marian - Facturación Profesional</title>
+    <style>
+        /* --- ESTILOS VISUALES --- */
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
+        
+        #bloqueo-caja { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #1b5e20; z-index: 9999; display: flex; align-items: center; justify-content: center; 
+        }
+        .login-card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; width: 320px; }
+
+        header { background: #1b5e20; color: white; padding: 10px 25px; text-align: center; font-size: 1.5rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        
+        .main-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; flex: 1; overflow: hidden; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; }
+        
+        .search-box { padding: 12px; width: 100%; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; font-size: 1rem; }
+        #listaSugerencias { position: absolute; top: 100px; left: 20px; right: 20px; background: white; border: 1px solid #ccc; border-radius: 8px; z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
+        
+        .product-list { flex: 1; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; margin-top: 10px; }
+        .product-item { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; cursor: pointer; transition: 0.2s; }
+        .product-item:hover { background: #e8f5e9; }
+        
+        .cart-table { width: 100%; border-collapse: collapse; }
+        .cart-table th { text-align: left; background: #f8f9fa; padding: 10px; font-size: 0.8rem; color: #666; }
+        .cart-table td { padding: 10px; border-bottom: 1px solid #eee; }
+
+        .total-box { margin-top: auto; padding-top: 10px; text-align: right; border-top: 2px solid #eee; }
+        .total-box h2 { color: #28a745; margin: 5px 0; font-size: 2.5rem; }
+        
+        .btn { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-cobrar { background: #28a745; color: white; width: 100%; font-size: 1.2rem; }
+        .btn-reporte { background: #ffffff; color: #1b5e20; font-size: 0.9rem; }
+        .btn-cancelar { background: #dc3545; color: white; width: 100%; margin-top: 10px; }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
+        .modal-content { background: white; margin: 5% auto; padding: 25px; border-radius: 15px; width: 350px; text-align: center; }
+        .input-cantidad { width: 120px; font-size: 3rem; text-align: center; border: 3px solid #28a745; border-radius: 12px; margin: 15px 0; color: #28a745; }
+
+        .metodos-pago { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+        .metodo-btn { padding: 15px; border: 2px solid #eee; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .metodo-btn.active { border-color: #28a745; background: #e8f5e9; color: #28a745; }
+        .metodo-btn.disabled { background: #f9f9f9; color: #ccc; pointer-events: none; opacity: 0.5; }
+
+        .report-table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+        .report-table th, .report-table td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 0.85rem; }
+        
+        #ticket-print { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="bloqueo-caja">
+    <div class="login-card">
+        <h2 style="color: #1b5e20;">🔓 Apertura de Caja</h2>
+        <p>Ingrese su PIN de empleado y monto inicial.</p>
+        <input type="password" id="pinCajero" class="search-box" style="text-align: center;" placeholder="PIN de Seguridad">
+        <input type="number" id="montoInicio" class="search-box" style="text-align: center;" placeholder="Monto Inicial RD$">
+        <button class="btn btn-cobrar" id="btnAbrirCaja">INICIAR TURNO</button>
+    </div>
+</div>
+
+<header>
+    <span>🧾 Súper Marian</span>
+    <span id="nombreCajeroHeader" style="font-size: 0.9rem; font-weight: normal; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 20px;">Cajero: ---</span>
+    <button class="btn btn-reporte" onclick="abrirReporte()">📊 REPORTE DIARIO</button>
+</header>
+
+<div class="main-container">
+    <div class="card">
+        <div style="background:#333; color:white; padding:10px; border-radius:8px; display:flex; justify-content:space-between;">
+            <span>ORDEN:</span> <span id="nroFacturaActual">---</span>
+        </div>
+        <input type="text" id="buscador" class="search-box" style="margin-top:15px" placeholder="🔎 Buscar producto...">
+        <div class="product-list" id="listaProductos"></div>
+    </div>
+
+    <div class="card">
+        <div id="areaCliente" style="background:#fff3cd; padding:12px; border-radius:8px; margin-bottom:10px; position: relative;">
+            <strong>👤 Cliente / Crédito:</strong>
+            <input type="text" id="buscadorCliente" class="search-box" style="margin-top:5px;" placeholder="Buscar cliente para fiar...">
+            <div id="listaSugerencias"></div>
+            <div id="monitorCredito" style="display:none; margin-top:5px;">
+                <span>Disponible:</span> <b id="m-disponible" style="color:green">RD$ 0</b>
+            </div>
+            <div id="tagConsumidor" style="font-size: 0.8rem; color: #856404; font-weight: bold; margin-top: 5px;">Modo: Consumidor Final</div>
+        </div>
+        
+        <div style="flex:1; overflow-y:auto">
+            <table class="cart-table">
+                <thead><tr><th>#</th><th>Descripción</th><th>Cant.</th><th>Importe</th><th></th></tr></thead>
+                <tbody id="carritoBody"></tbody>
+            </table>
+        </div>
+
+        <div class="total-box">
+            <h4>Total a Pagar:</h4>
+            <h2 id="granTotal">RD$ 0.00</h2>
+            <button class="btn btn-cobrar" onclick="abrirModalCobro()">💵 FINALIZAR VENTA</button>
+            <button class="btn btn-cancelar" onclick="cancelarVentaTotal()">🚫 CANCELAR TODO</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalCantidad" class="modal">
+    <div class="modal-content">
+        <h3 id="nombreProdElegido">Producto</h3>
+        <p id="stockDisponibleMsg" style="color: #28a745; font-weight: bold;"></p>
+        <input type="number" id="cantInput" class="input-cantidad" value="1" min="0.1" step="any">
+        <button class="btn btn-cobrar" onclick="confirmarAgregar()">AÑADIR A LA LISTA</button>
+        <button onclick="cerrarModalCant()" style="margin-top:10px; background:none; border:none; color:gray; cursor:pointer;">Cancelar</button>
+    </div>
+</div>
+
+<div id="modalCobro" class="modal">
+    <div class="modal-content">
+        <h3>Procesar Pago</h3>
+        <h2 id="totalModal" style="color:#28a745; font-size: 2.5rem;">RD$ 0.00</h2>
+        <div class="metodos-pago">
+            <div class="metodo-btn" id="m-efectivo" onclick="setMetodo('EFECTIVO')">💵 Efectivo</div>
+            <div class="metodo-btn" id="m-tarjeta" onclick="setMetodo('TARJETA')">💳 Tarjeta</div>
+            <div class="metodo-btn" id="m-fiado" onclick="setMetodo('FIADO')" style="border-color:#e67e22; color:#e67e22">📓 Fiado</div>
+        </div>
+        <div id="seccionEfectivo" style="margin-top:10px;">
+            <input type="number" id="efectivoRecibido" class="search-box" style="text-align:center" placeholder="Dinero recibido">
+        </div>
+        <button class="btn btn-cobrar" onclick="finalizarVentaFinal()">✅ CONFIRMAR E IMPRIMIR</button>
+        <button onclick="cerrarModalCobro()" style="margin-top:10px; background:none; border:none; color:gray; cursor:pointer;">Regresar</button>
+    </div>
+</div>
+
+<div id="modalReporte" class="modal">
+    <div class="modal-content" style="max-width: 600px; width: 90%;">
+        <h2>Reporte del Día</h2>
+        <div style="display:flex; justify-content: space-around; margin-bottom: 20px;">
+            <div style="background:#e8f5e9; padding:10px; border-radius:8px;">Ventas: <b id="rep-total">0</b></div>
+            <div style="background:#fff3cd; padding:10px; border-radius:8px;">Fiado: <b id="rep-fiado">0</b></div>
+        </div>
+        <div style="max-height: 300px; overflow-y: auto;">
+            <table class="report-table">
+                <thead><tr><th>Hora</th><th>Cajero</th><th>Cliente</th><th>Total</th></tr></thead>
+                <tbody id="reporteBody"></tbody>
+            </table>
+        </div>
+        <button class="btn btn-cancelar" onclick="document.getElementById('modalReporte').style.display='none'">Cerrar</button>
+    </div>
+</div>
+
+<div id="ticket-print">
+    <div style="width: 280px; font-family: 'Courier New', monospace; padding: 10px; color: black; background: white;">
+        <div style="text-align:center; border-bottom: 1px dashed #000; padding-bottom: 10px;">
+            <h2 style="margin:0;">SÚPER MARIAN</h2>
+            <p style="margin:0;">Factura: <span id="t-nro"></span></p>
+            <p id="t-fecha" style="font-size:0.8rem;"></p>
+        </div>
+        <div id="t-items" style="margin:10px 0;"></div>
+        <div style="border-top: 1px dashed #000; padding-top: 10px;">
+            <div style="display:flex; justify-content:space-between;"><b>TOTAL:</b> <b id="t-total"></b></div>
+            <p style="margin:0; font-size:0.8rem;">Cajero: <span id="t-cajero"></span></p>
+            <p style="margin:0; font-size:0.8rem;">Metodo: <span id="t-metodo"></span></p>
+            <p style="margin:0; font-size:0.8rem;">Cliente: <span id="t-cliente"></span></p>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, increment, getDocs, serverTimestamp, query, orderBy, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
+        authDomain: "supermercado-marian.firebaseapp.com",
+        projectId: "supermercado-marian",
+        storageBucket: "supermercado-marian.firebasestorage.app",
+        messagingSenderId: "627337795444",
+        appId: "1:627337795444:web:e9a4cb48ff164b78477e21"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let carrito = [];
+    let todosLosProductos = [];
+    let clienteSeleccionado = null;
+    let proximaFactura = "";
+    let metodoActual = "EFECTIVO";
+    let prodTemporal = null;
+    let nombreCajeroLogueado = "";
+
+    // --- LOGIN DINÁMICO CONECTADO A FIREBASE ---
+    document.getElementById('btnAbrirCaja').onclick = async () => {
+        const pin = document.getElementById('pinCajero').value;
+        const monto = document.getElementById('montoInicio').value;
+
+        if(!pin || !monto) return alert("Complete los datos");
+
+        // Busca en la colección de usuarios si el PIN existe
+        const q = query(collection(db, "usuarios"), where("pin", "==", pin));
+        const snap = await getDocs(q);
+
+        if(!snap.empty) {
+            nombreCajeroLogueado = snap.docs[0].data().nombre;
+            document.getElementById('nombreCajeroHeader').innerText = "👤 Cajero: " + nombreCajeroLogueado;
+            document.getElementById('bloqueo-caja').style.display = 'none';
+            document.getElementById('buscador').focus();
+        } else {
+            alert("PIN de cajero incorrecto");
+        }
+    };
+
+    // --- CARGAS FIREBASE ---
+    onSnapshot(collection(db, "ventas_realizadas"), snap => {
+        proximaFactura = "FAC-" + (snap.size + 1).toString().padStart(8, '0');
+        document.getElementById('nroFacturaActual').innerText = proximaFactura;
+    });
+
+    onSnapshot(collection(db, "productos"), snap => {
+        todosLosProductos = [];
+        snap.forEach(d => todosLosProductos.push({id: d.id, ...d.data()}));
+        mostrarProductos("");
+    });
+
+    // --- LÓGICA VENTA ---
+    window.mostrarProductos = (f) => {
+        const list = document.getElementById('listaProductos');
+        list.innerHTML = "";
+        todosLosProductos.filter(p => p.nombre.toLowerCase().includes(f.toLowerCase())).forEach(p => {
+            list.innerHTML += `<div class="product-item" onclick="abrirModalCantidad('${p.id}')">
+                <span>${p.nombre} (Stock: ${p.stock})</span> <b>RD$ ${p.precio}</b>
+            </div>`;
+        });
+    };
+
+    window.abrirModalCantidad = (id) => {
+        prodTemporal = todosLosProductos.find(p => p.id === id);
+        document.getElementById('nombreProdElegido').innerText = prodTemporal.nombre;
+        document.getElementById('stockDisponibleMsg').innerText = `Stock: ${prodTemporal.stock}`;
+        document.getElementById('cantInput').value = 1;
+        document.getElementById('modalCantidad').style.display = 'block';
+        setTimeout(() => document.getElementById('cantInput').select(), 100);
+    };
+
+    window.confirmarAgregar = () => {
+        const cant = parseFloat(document.getElementById('cantInput').value);
+        if(!cant || cant <= 0 || cant > prodTemporal.stock) return alert("Cantidad inválida o stock insuficiente");
+        carrito.push({
+            id: prodTemporal.id,
+            nombre: prodTemporal.nombre,
+            precio: prodTemporal.precio,
+            cantidad: cant,
+            subtotal: prodTemporal.precio * cant
+        });
+        document.getElementById('modalCantidad').style.display = 'none';
+        renderizarCarrito();
+    };
+
+    function renderizarCarrito() {
+        const body = document.getElementById('carritoBody');
+        body.innerHTML = "";
+        let total = 0;
+        carrito.forEach((p, index) => {
+            total += p.subtotal;
+            body.innerHTML += `<tr><td>${index+1}</td><td>${p.nombre}</td><td>${p.cantidad}</td><td>RD$ ${p.subtotal.toFixed(2)}</td><td><button onclick="remover(${index})" style="color:red; background:none; border:none; cursor:pointer;">✕</button></td></tr>`;
+        });
+        document.getElementById('granTotal').innerText = "RD$ " + total.toLocaleString();
+        actualizarCreditoMonitor();
+    }
+
+    // --- CLIENTES (FIADO) ---
+    const inputCliente = document.getElementById('buscadorCliente');
+    const sugerencias = document.getElementById('listaSugerencias');
+
+    inputCliente.oninput = async (e) => {
+        const val = e.target.value.toLowerCase();
+        sugerencias.innerHTML = "";
+        if(val.length < 2) { sugerencias.style.display = "none"; return; }
+        const snap = await getDocs(collection(db, "clientes_fiado"));
+        const filtrados = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(c => c.nombre.toLowerCase().includes(val));
+        if(filtrados.length > 0) {
+            sugerencias.style.display = "block";
+            filtrados.forEach(c => {
+                const div = document.createElement('div');
+                div.style.padding = "10px"; div.style.cursor = "pointer";
+                div.innerHTML = `<strong>${c.nombre}</strong>`;
+                div.onclick = () => {
+                    clienteSeleccionado = c;
+                    inputCliente.value = c.nombre;
+                    sugerencias.style.display = "none";
+                    document.getElementById('areaCliente').style.background = "#e8f5e9";
+                    document.getElementById('monitorCredito').style.display = "block";
+                    document.getElementById('tagConsumidor').innerText = "✅ Cliente: " + c.nombre;
+                    actualizarCreditoMonitor();
+                };
+                sugerencias.appendChild(div);
+            });
+        }
+    };
+
+    function actualizarCreditoMonitor() {
+        if(!clienteSeleccionado) return;
+        const totalActual = carrito.reduce((a, b) => a + b.subtotal, 0);
+        const disp = clienteSeleccionado.limite - clienteSeleccionado.deuda - totalActual;
+        document.getElementById('m-disponible').innerText = "RD$ " + disp.toLocaleString();
+        document.getElementById('m-disponible').style.color = disp < 0 ? "red" : "green";
+    }
+
+    // --- FINALIZAR ---
+    window.finalizarVentaFinal = async () => {
+        if(carrito.length === 0) return;
+        const total = carrito.reduce((a, b) => a + b.subtotal, 0);
+
+        if(metodoActual === 'FIADO') {
+            const disponible = clienteSeleccionado.limite - clienteSeleccionado.deuda;
+            if(total > disponible) return alert("Crédito insuficiente para este cliente");
+            await updateDoc(doc(db, "clientes_fiado", clienteSeleccionado.id), { deuda: increment(total) });
+        }
+
+        // Se guarda la venta con el nombre del cajero
+        await addDoc(collection(db, "ventas_realizadas"), {
+            nroFactura: proximaFactura,
+            total,
+            metodo: metodoActual,
+            productos: carrito,
+            cajero: nombreCajeroLogueado, // <--- ESTO ES LO IMPORTANTE
+            cliente: clienteSeleccionado ? clienteSeleccionado.nombre : "Consumidor Final",
+            timestamp: serverTimestamp()
+        });
+
+        for(let p of carrito) { 
+            await updateDoc(doc(db, "productos", p.id), { stock: increment(-p.cantidad) }); 
+        }
+
+        imprimirTicket();
+        cancelarVentaTotal(true);
+        document.getElementById('modalCobro').style.display = 'none';
+        alert("¡Venta completada!");
+    };
+
+    window.imprimirTicket = () => {
+        document.getElementById('t-nro').innerText = proximaFactura;
+        document.getElementById('t-fecha').innerText = new Date().toLocaleString();
+        document.getElementById('t-total').innerText = document.getElementById('granTotal').innerText;
+        document.getElementById('t-cajero').innerText = nombreCajeroLogueado;
+        document.getElementById('t-metodo').innerText = metodoActual;
+        document.getElementById('t-cliente').innerText = clienteSeleccionado ? clienteSeleccionado.nombre : "Consumidor Final";
+        
+        let itms = "";
+        carrito.forEach(p => itms += `<div style="display:flex; justify-content:space-between; font-size:0.8rem;"><span>${p.cantidad}x ${p.nombre}</span><span>RD$ ${p.subtotal.toFixed(2)}</span></div>`);
+        document.getElementById('t-items').innerHTML = itms;
+
+        const ventana = window.open('', 'PRINT', 'height=600,width=400');
+        ventana.document.write('<html><body>' + document.getElementById('ticket-print').innerHTML + '</body></html>');
+        ventana.document.close();
+        setTimeout(() => { ventana.print(); ventana.close(); }, 500);
+    };
+
+    // --- AUXILIARES ---
+    window.remover = (i) => { carrito.splice(i, 1); renderizarCarrito(); };
+    window.setMetodo = (m) => {
+        metodoActual = m;
+        document.querySelectorAll('.metodo-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('m-' + m.toLowerCase()).classList.add('active');
+    };
+    window.abrirModalCobro = () => {
+        if(carrito.length === 0) return alert("Carrito vacío");
+        document.getElementById('totalModal').innerText = document.getElementById('granTotal').innerText;
+        document.getElementById('modalCobro').style.display = 'block';
+        if(clienteSeleccionado) {
+            setMetodo('FIADO');
+            document.getElementById('m-fiado').classList.remove('disabled');
+        } else {
+            setMetodo('EFECTIVO');
+            document.getElementById('m-fiado').classList.add('disabled');
+        }
+    };
+    window.cerrarModalCobro = () => document.getElementById('modalCobro').style.display = 'none';
+    window.cerrarModalCant = () => { document.getElementById('modalCantidad').style.display = 'none'; document.getElementById('buscador').focus(); };
+    window.cancelarVentaTotal = (silencioso = false) => {
+        if(!silencioso && !confirm("¿Borrar todo?")) return;
+        carrito = []; clienteSeleccionado = null;
+        document.getElementById('buscadorCliente').value = "";
+        document.getElementById('areaCliente').style.background = "#fff3cd";
+        document.getElementById('monitorCredito').style.display = "none";
+        document.getElementById('tagConsumidor').innerText = "Modo: Consumidor Final";
+        renderizarCarrito();
+        document.getElementById('buscador').focus();
+    };
+
+    // --- REPORTE CON CAJERO ---
+    window.abrirReporte = async () => {
+        document.getElementById('modalReporte').style.display = 'block';
+        const q = query(collection(db, "ventas_realizadas"), orderBy("timestamp", "desc"));
+        const snap = await getDocs(q);
+        const body = document.getElementById('reporteBody');
+        body.innerHTML = "";
+        let tTotal = 0, tFiado = 0;
+        snap.forEach(d => {
+            const v = d.data();
+            tTotal += v.total;
+            if(v.metodo === 'FIADO') tFiado += v.total;
+            const hora = v.timestamp ? v.timestamp.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--';
+            body.innerHTML += `<tr><td>${hora}</td><td>${v.cajero || '---'}</td><td>${v.cliente}</td><td>RD$ ${v.total.toFixed(2)}</td></tr>`;
+        });
+        document.getElementById('rep-total').innerText = "RD$ " + tTotal.toLocaleString();
+        document.getElementById('rep-fiado').innerText = "RD$ " + tFiado.toLocaleString();
+    };
+
+    // Eventos de teclado rápidos
+    document.getElementById('buscador').oninput = (e) => mostrarProductos(e.target.value);
+    document.getElementById('buscador').addEventListener('keypress', (e) => { 
+        if(e.key === 'Enter') { const items = document.querySelectorAll('.product-item'); if(items.length > 0) items[0].click(); } 
+    });
+    document.getElementById('cantInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') confirmarAgregar(); });
+    document.getElementById('pinCajero').addEventListener('keypress', (e) => { if(e.key === 'Enter') document.getElementById('montoInicio').focus(); });
+    document.getElementById('montoInicio').addEventListener('keypress', (e) => { if(e.key === 'Enter') document.getElementById('btnAbrirCaja').click(); });
+</script>
+</body>
+</html>
