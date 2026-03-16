@@ -51,10 +51,10 @@
 </div>
 
 <div class="grid-menu">
-    <div class="menu-card" id="btnAlmacen" onclick="navegar('Almacen.html', 'Administrador')">
+    <div class="menu-card" id="btnAlmacen" onclick="navegar('Almacen/Almacen.html', 'Administrador')">
         <span>📦</span> <h3>Almacén</h3> <p>Stock y Precios</p>
     </div>
-    <div class="menu-card" id="btnFacturacion" onclick="navegar('facturacion.html', 'Cajero')">
+  <div class="menu-card" id="btnFacturacion" onclick="navegar('facturacion/facturacion.html', 'Cajero')">
         <span>🧾</span> <h3>Facturación</h3> <p>Ventas rápidas</p>
     </div>
     <div class="menu-card" id="btnReportes" onclick="navegar('reportes.html', 'Administrador')">
@@ -63,11 +63,17 @@
     <div class="menu-card" id="btnPersonal" onclick="navegar('personal.html', 'Administrador')">
         <span>👥</span> <h3>Personal</h3> <p>Usuarios</p>
     </div>
-    <div class="menu-card" id="btnFiado" onclick="navegar('creditos.html', 'Administrador')">
+    <div class="menu-card" id="btnFiado" onclick="navegar('Creditos/creditos.html', 'Administrador')">
     <span>📓</span>
     <h3>Créditos</h3>
     <p>Control de fiado y abonos.</p>
-</div>
+    </div>
+    <div class="menu-card" id="btnAuditoria" onclick="navegar('auditoria/auditoria.html', 'Administrador')">
+    <span>🕵️</span> 
+    <h3>Auditoría</h3> 
+    <p>Historial de cierres y ventas.</p>  <p>cierre caja</p>
+    </div>
+
 </div>
 
 <button class="btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>

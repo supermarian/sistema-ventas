@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Súper Marian - Auditoría de Cierres</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --azul: #007bff;
+            --verde: #28a745;
+            --rojo: #d9534f;
+            --gris-bg: #f4f7f6;
+            --negro: #2d3436;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--gris-bg);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--azul);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        h1 { margin: 0; color: var(--negro); font-size: 1.5rem; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid var(--azul);
+            text-align: center;
+        }
+
+        .stat-card h3 { margin: 0; font-size: 0.8rem; color: #666; text-transform: uppercase; }
+        .stat-card p { margin: 5px 0 0; font-size: 1.2rem; font-weight: bold; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th {
+            background: var(--azul);
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+
+        tr:hover { background: #f1f1f1; }
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .badge-sobrante { background: #d4edda; color: #155724; }
+        .badge-faltante { background: #f8d7da; color: #721c24; }
+        .badge-cuadrado { background: #e2e3e5; color: #383d41; }
+
+        .btn-regresar {
+            text-decoration: none;
+            background: var(--negro);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1><i class="fas fa-file-invoice-dollar"></i> Panel de Auditoría de Cierres</h1>
+        <a href="factura1.html" class="btn-regresar"><i class="fas fa-arrow-left"></i> Volver al POS</a>
+    </header>
+
+    <div class="stats-grid">
+        <div class="stat-card" style="border-color: var(--azul);">
+            <h3>Total Cierres</h3>
+            <p id="stat-total-cierres">0</p>
+        </div>
+        <div class="stat-card" style="border-color: var(--verde);">
+            <h3>Efectivo Acumulado</h3>
+            <p id="stat-efectivo-total">RD$ 0.00</p>
+        </div>
+        <div class="stat-card" style="border-color: var(--rojo);">
+            <h3>Diferencia Neta</h3>
+            <p id="stat-diferencia-neta">RD$ 0.00</p>
+        </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha/Hora</th>
+                    <th>Cajero</th>
+                    <th>Fondo Inicial</th>
+                    <th>Ventas Efectivo</th>
+                    <th>Esperado</th>
+                    <th>Contado</th>
+                    <th>Diferencia</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-auditoria-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module">
+    // IMPORTACIONES DE FIREBASE
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // TU CONFIGURACIÓN (La misma que usas en el POS)
+    const firebaseConfig = {
+        apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
+        authDomain: "supermercado-marian.firebaseapp.com",
+        projectId: "supermercado-marian",
+        storageBucket: "supermercado-marian.firebasestorage.app",
+        messagingSenderId: "627337795444",
+        appId: "1:627337795444:web:e9a4cb48ff164b78477e21"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // FUNCIÓN PARA CARGAR LOS DATOS
+    const cargarAuditoria = () => {
+        const q = query(collection(db, "auditoria_cierres"), orderBy("fechaCierre", "desc"));
+        
+        onSnapshot(q, (snapshot) => {
+            const tbody = document.getElementById('tabla-auditoria-body');
+            tbody.innerHTML = "";
+            
+            let totalEfectivo = 0;
+            let diferenciaNeta = 0;
+            let contador = 0;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                contador++;
+                
+                // Cálculos para los cuadros de arriba
+                totalEfectivo += data.ventasEfectivo || 0;
+                diferenciaNeta += data.diferencia || 0;
+
+                // Formatear Fecha
+                const fecha = data.fechaCierre ? data.fechaCierre.toDate().toLocaleString() : '---';
+                
+                // Determinar el color del badge de diferencia
+                let badgeClass = "badge-cuadrado";
+                if (data.diferencia > 0) badgeClass = "badge-sobrante";
+                if (data.diferencia < 0) badgeClass = "badge-faltante";
+
+                const fila = `
+                    <tr>
+                        <td>${fecha}</td>
+                        <td><strong>${data.cajeroNombre || 'Sin nombre'}</strong><br><small>${data.cajeroEmail}</small></td>
+                        <td>RD$ ${data.fondoInicial.toLocaleString()}</td>
+                        <td style="color: var(--verde)">RD$ ${data.ventasEfectivo.toLocaleString()}</td>
+                        <td>RD$ ${data.montoEsperadoEnCaja.toLocaleString()}</td>
+                        <td>RD$ ${data.montoRealContado.toLocaleString()}</td>
+                        <td><span class="badge ${badgeClass}">RD$ ${data.diferencia.toLocaleString()}</span></td>
+                        <td><small>${data.estado || 'CERRADO'}</small></td>
+                    </tr>
+                `;
+                tbody.innerHTML += fila;
+            });
+
+            // Actualizar estadísticas superiores
+            document.getElementById('stat-total-cierres').innerText = contador;
+            document.getElementById('stat-efectivo-total').innerText = "RD$ " + totalEfectivo.toLocaleString();
+            document.getElementById('stat-diferencia-neta').innerText = "RD$ " + diferenciaNeta.toLocaleString();
+            document.getElementById('stat-diferencia-neta').style.color = diferenciaNeta < 0 ? 'var(--rojo)' : 'var(--verde)';
+        });
+    };
+
+    cargarAuditoria();
+</script>
+
+</body>
+</html>

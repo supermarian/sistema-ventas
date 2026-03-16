@@ -1,0 +1,35 @@
+   // 1. Creamos la ventana
+const ventana = window.open('', '_blank', 'width=400,height=600');
+
+// 2. Validamos (Esto evita errores en consola)
+if (ventana) {
+    // 3. Escribimos el contenido
+    ventana.document.write(`
+        <html>
+        <head>
+            <title>Impresión de Ticket</title>
+            <style>
+                body { font-family: monospace; padding: 20px; }
+                /* Tus estilos aquí */
+            </style>
+        </head>
+        <body>
+            <h1>CONTENIDO DEL TICKET</h1>
+            <script>
+                // Esto hace que la ventana se imprima sola al cargar
+                window.onload = function() {
+                    window.print();
+                    window.close(); // Se cierra sola después de imprimir
+                };
+            </script>
+        </body>
+        </html>
+    `);
+
+    // 4. EL PASO MÁS IMPORTANTE: Cerramos el documento para que el navegador procese el JS y CSS
+    ventana.document.close();
+}
+}
+
+
+

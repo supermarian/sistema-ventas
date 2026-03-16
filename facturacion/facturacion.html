@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Súper Marian - POS Premium v6.1</title>
+<style>
+  
+:root {
+    --verde-pos: #28a745;
+    --verde-dark: #1b5e20;
+    --rojo: #d9534f;
+    --azul: #007bff;
+    --gris-bg: #f8f9fa;
+    --negro: #2d3436;
+}
+
+/* Color para el producto resaltado con las flechas */
+.res-item.selected {
+    background: #d1e7dd !important;
+    border-left: 5px solid var(--verde-pos) !important;
+    color: #000 !important;
+    font-weight: bold;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system;
+    margin: 0;
+    background: var(--gris-bg);
+    color: var(--negro);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+header {
+    background: var(--verde-dark);
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,.2);
+    z-index: 1000;
+}
+
+.status-pill { padding: 5px 15px; border-radius: 20px; font-weight: 700; }
+.fac-badge { 
+    background: rgba(255,255,255,.12); 
+    padding: 5px 12px; 
+    border-radius: 6px; 
+    font-weight: 700; 
+    font-family: 'Courier New', monospace; /* Fuente de ancho fijo para los números */
+    letter-spacing: 1px;
+}
+.main-container { display: grid; grid-template-columns: 1.2fr .8fr; gap: 20px; padding: 20px; flex: 1; overflow: hidden; }
+.card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 4px 6px rgba(0,0,0,.05); display: flex; flex-direction: column; overflow: hidden; }
+.search-box { padding: 12px; width: 100%; border-radius: 10px; border: 2px solid #eee; outline: none; font-size: 1.05rem; box-sizing: border-box; }
+.search-box:focus { border-color: var(--verde-pos); }
+.resultados-flotantes { position: absolute; top: 100%; left: 0; width: 100%; background: #fff; border-radius: 0 0 10px 10px; box-shadow: 0 10px 20px rgba(0,0,0,.12); max-height: 300px; overflow: auto; display: none; border: 1px solid #ddd; z-index: 2000; }
+.res-item { padding: 12px 14px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.res-item:hover { background: #f0f8f0; }
+.cart-table { width: 100%; border-collapse: collapse; }
+.cart-table th { padding: 8px; border-bottom: 2px solid var(--verde-pos); text-align: left; }
+.cart-table td { padding: 10px; border-bottom: 1px solid #eee; }
+.btn { padding: 10px 16px; border-radius: 10px; border: 0; cursor: pointer; font-weight: 700; }
+.btn-main { background: var(--verde-pos); color: #fff; }
+.btn-method { background: #f7f9fa; border: 1px solid #eee; padding: 12px; border-radius: 10px; margin-top: 8px; width: 100%; }
+.btn-danger { background: var(--rojo); color: #fff; }
+.aviso-credito { background: #fff3cd; color: #856404; padding: 10px; border-radius: 8px; border: 1px solid #ffeeba; text-align: center; font-weight: 700; }
+.modal { display: none; position: fixed; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,.7); z-index: 3000; align-items: center; justify-content: center; }
+.modal-content { background: #fff; border-radius: 14px; padding: 22px; width: 420px; max-height: 85vh; overflow: auto; }
+.small { font-size: .9rem; color: #666; }
+.grid-cols { display: grid; grid-template-columns: 1fr 120px; gap: 8px; align-items: center; }
+@media(max-width:980px){ .main-container { grid-template-columns: 1fr; } }
+
+/* Estilo Premium para el Resumen de Cierre */
+#resumenCierre {
+    background: #fdfdfd;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #eee;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    font-family: 'Segoe UI', sans-serif; /* Más legible que monospace */
+}
+
+#resumenCierre .linea-cierre {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+#resumenCierre .total-linea {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid var(--verde-pos);
+    font-size: 1.2rem;
+    color: var(--negro);
+    font-weight: 800;
+} 
+
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;gap:12px;align-items:center">
+    <div style="font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:10px">🛒 SÚPER MARIAN</div>
+    <div id="nro-factura-display" class="fac-badge">FAC-000000</div>
+    <div id="txt-status" class="status-pill" style="background:var(--rojo); margin-left:8px">SISTEMA CERRADO</div>
+  </div>
+    <div class="reimprimir-container" style="display: flex; gap: 5px; align-items: center;">
+    <input type="text" id="inputReimprimir" placeholder="Buscar Factura (FAC-...)" 
+           style="padding: 5px; border-radius: 4px; border: none; width: 180px;">
+    <button id="btnReimprimir" class="btn-pos" style="background: var(--azul); padding: 5px 10px;">
+        🔍 Reimprimir
+    </button>
+</div>
+
+  <div style="display:flex;gap:10px">
+    
+  
+
+    <button id="btn-cobrar-credito" class="btn" style="background:var(--azul); color:#fff; display:none" onclick="window.abrirModuloCreditos()">💳 COBRAR CRÉDITO</button>
+    <button id="btn-cerrar-turno" class="btn btn-danger" onclick="window.cerrarCaja()" style="display:none">🔒 CERRAR CAJA</button>
+    <button class="btn" style="background:#666;color:#fff" onclick="window.cerrarSesion()">🚪 SALIR</button>
+  </div>
+  
+</header>
+
+<div id="capa-bloqueo" style="position:absolute;left:0;top:60px;width:100%;height:calc(100% - 60px);background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;z-index:900">
+  <div style="background:#fff;padding:36px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.1);text-align:center">
+    <h1 style="margin:0;color:var(--verde-dark)">SISTEMA POS</h1>
+    <p class="small">Caja lista para iniciar operaciones</p>
+    <button class="btn btn-main" onclick="window.abrirModalApertura()">🔓 ABRIR TURNO</button>
+  </div>
+</div>
+
+<div id="modalApertura" class="modal"><div class="modal-content">
+  <h2>🔓 Iniciar Turno</h2>
+  <div style="background:#f0f7f0;padding:12px;border-radius:8px;margin:12px 0">
+    <div id="emailCajeroApertura" class="small">Cargando email...</div>
+    <div id="nombreCajeroApertura" style="font-weight:700;color:var(--verde-pos)">Cargando nombre...</div>
+  </div>
+  <input id="pinApertura" class="search-box" placeholder="Clave de acceso" type="password" style="text-align:center">
+  <input id="montoInicial" class="search-box" placeholder="Monto Inicial RD$" type="number" style="margin-top:8px;text-align:center">
+  <div style="display:flex;gap:10px;margin-top:14px">
+    <button class="btn btn-main" onclick="window.validarPinApertura()">CONFIRMAR</button>
+    <button class="btn" onclick="window.cerrarModal('modalApertura')">CANCELAR</button>
+  </div>
+</div></div>
+
+<div id="modalCantidad" class="modal"><div class="modal-content">
+  <h3 id="nombreProdElegido">PRODUCTO</h3>
+  <p class="small">Ingrese la cantidad y presione ENTER</p>
+  <input id="cantInput" class="search-box" type="number" value="1" style="font-size:1.6rem;text-align:center">
+  <div style="margin-top:12px;display:flex;gap:8px">
+    <button class="btn btn-main" onclick="window.agregarAlCarrito()">AGREGAR</button>
+    <button class="btn" onclick="window.cerrarModal('modalCantidad')">CANCELAR</button>
+  </div>
+</div></div>
+
+<div id="modalPago" class="modal">
+    <div class="modal-content" style="width: 800px; max-width: 95%;">
+        <h2 style="margin-top:0; border-bottom: 2px solid var(--verde-pos); padding-bottom:10px; color: var(--verde-dark);">
+            💵 Detalle de Pago
+        </h2>
+        
+
+        
+        <div style="display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr auto; gap: 10px; margin-bottom: 15px; align-items: end; background: #f0f7f0; padding: 15px; border-radius: 8px;">
+            <div>
+                <label class="small">Tipo de Pago</label>
+                <select id="pagoTipo" class="search-box">
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Tarjeta">Tarjeta</option>
+              
+                    <option value="Solidaridad">Tarjeta Solidaridad</option> 
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Credito" id="optCredito" style="display:none; color: #856404; font-weight: bold;">Crédito</option>
+                </select>
+            </div>
+            <div>
+                <label class="small">Monto Tipo</label>
+                <input type="number" id="pagoMonto" class="search-box" placeholder="0.00" onkeydown="if(event.key==='Enter') window.agregarPagoLine()">
+            </div>
+            <div>
+                <label class="small">No. de Ref.</label>
+                <input type="text" id="pagoRef" class="search-box" placeholder="Ej. 1234">
+            </div>
+            <div>
+                <label class="small">Identificación</label>
+                <input type="text" id="pagoId" class="search-box" placeholder="Cédula/RNC">
+            </div>
+            <div>
+                <button class="btn btn-main" onclick="window.agregarPagoLine()">✔️ Aplicar</button>
+            </div>
+        </div>
+
+        <div id="modalModuloCreditos" class="modal">
+  <div class="modal-content" style="width: 600px; max-width: 90%;">
+    <h2 style="color:var(--azul); border-bottom: 2px solid var(--azul); padding-bottom: 10px;">💳 Cobro de Facturas a Crédito</h2>
+    
+    <div style="margin: 15px 0;">
+      <label class="small">Buscar Cliente por Nombre:</label>
+      <input type="text" id="busquedaCredito" class="search-box" placeholder="Escriba el nombre del cliente..." oninput="window.filtrarDeudas()">
+    </div>
+
+    <div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
+      <table class="cart-table">
+        <thead style="background:#f8f9fa; position: sticky; top:0;">
+          <tr>
+            <th>Cliente</th>
+            <th>Factura</th>
+            <th>Monto</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody id="listaDeudasBody">
+          </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top: 20px; text-align: right;">
+      <button class="btn" style="background:#666; color:#fff" onclick="window.cerrarModal('modalModuloCreditos')">CERRAR</button>
+    </div>
+  </div>
+</div>
+
+        <div style="min-height: 120px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; background: white;">
+            <table class="cart-table" style="margin: 0;">
+                <thead style="background: #e9ecef; position: sticky; top: 0;">
+                    <tr>
+                        <th>Tipo de Pago</th>
+                        <th>Monto</th>
+                        <th>No. Ref.</th>
+                        <th>Identificación</th>
+                        <th style="width: 40px; text-align: center;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaPagosBody">
+                    </tbody>
+            </table>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 30px; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #dee2e6;">
+            <div style="text-align: right;">
+                <span class="small" style="font-weight: bold;">Total Monto:</span>
+                <h3 id="pagoTotalFactura" style="margin: 5px 0 0 0; color: #333;">RD$ 0.00</h3>
+            </div>
+            <div style="text-align: right; background: #fff; padding: 5px 15px; border-radius: 8px; border: 2px solid #ddd;">
+                <span class="small" style="font-weight: bold;" id="lblDevuelta">Devuelta / Faltante:</span>
+                <h2 id="pagoDevuelta" style="margin: 5px 0 0 0; color: var(--rojo);">RD$ 0.00</h2>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+            <div>
+                <label class="small">Nota Factura</label>
+                <input type="text" id="notaFactura" class="search-box">
+            </div>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+                <div>
+                    <label class="small">Nota Delivery</label>
+                    <input type="text" id="notaDelivery" class="search-box">
+                </div>
+                <div>
+                    <label class="small">Orden #</label>
+                    <input type="text" id="notaOrden" class="search-box">
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between;">
+            <button class="btn btn-danger" onclick="window.cerrarModal('modalPago')">❌ Cancelar</button>
+            <button id="btnFacturar" class="btn btn-main" style="padding: 12px 30px; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(40,167,69,0.3);" onclick="window.procesarFacturaMultiPago()" disabled>🖨️ Imprimir / Aplicar Venta</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalCierre" class="modal">
+  <div class="modal-content">
+    <h2 style="color:var(--rojo); border-bottom: 2px solid #eee; padding-bottom: 10px;">🔒 Cierre de Turno</h2>
+    
+    <div style="background:#fff5f5; padding:12px; border-radius:8px; margin:12px 0; border: 1px solid #ffebeb">
+      <div id="emailCajeroCierre" class="small">Cargando...</div>
+      <div style="font-size: 0.8rem; color: #666; margin-top: 4px;">Monto de Apertura:</div>
+      <div id="montoAperturaCierre" style="font-weight:700; color:var(--negro)">RD$ 0.00</div>
+    </div>
+
+    <div id="resumenCierre" style="background:#f9f9f9; padding:15px; border-radius:10px; margin:15px 0; line-height:1.6; border:1px solid #ddd; font-family: monospace; font-size: 0.9rem;">
+      </div>
+
+    <input id="pinCierre" class="search-box" placeholder="PIN para confirmar cierre" type="password" style="text-align:center; margin-bottom: 10px;">
+
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-danger" style="flex:1" onclick="window.validarPinCierre()">FINALIZAR TURNO</button>
+      <button class="btn" style="flex:1" onclick="window.cerrarModal('modalCierre')">VOLVER</button>
+    </div>
+  </div>
+</div>
+
+<div class="main-container">
+  <div class="card">
+    <h3>📦 PRODUCTOS</h3>
+    <div style="position:relative" class="search-container">
+      <input id="buscador" class="search-box" placeholder="🔎 Buscar producto o escanear y Enter..." autocomplete="off">
+      <div id="resultados-flotantes" class="resultados-flotantes"></div>
+    </div>
+    <div style="margin-top:14px;flex:1;overflow:auto">
+      <table class="cart-table">
+        <thead><tr><th>Producto</th><th>Cant.</th><th>Subtotal</th><th></th></tr></thead>
+        <tbody id="carritoBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="background:#e7f3ff;padding:12px;border-radius:10px;margin-bottom:12px">
+      <strong style="color:var(--azul)">👤 GESTIÓN DE CLIENTE</strong>
+      <div style="position:relative;margin-top:8px">
+        <input id="buscadorCliente" class="search-box" placeholder="Buscar por nombre y Enter..." autocomplete="off">
+        <div id="resultados-clientes" class="resultados-flotantes"></div>
+      </div>
+      <div class="grid-cols" style="margin-top:8px">
+        <input id="busc-cli-tel" class="search-box" placeholder="📱 Buscar teléfono" autocomplete="off">
+        <button id="btnBuscarTel" class="btn" style="background:#007bff;color:#fff">Buscar</button>
+      </div>
+      <div class="grid-cols" style="margin-top:8px">
+        <input id="inputCedulaSearch" class="search-box" placeholder="🔎 Buscar cédula" autocomplete="off">
+        <button id="btnBuscarCedula" class="btn" style="background:#0069d9;color:#fff">Buscar</button>
+      </div>
+      <div id="info-cliente-sel" style="display:none;margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:2px solid var(--verde-pos)">
+        <b id="nombre-cliente-ok" style="color:var(--verde-pos)"></b><br>
+        <span id="tel-cliente-ok" class="small"></span>
+        <button style="float:right;background:none;border:none;color:red;cursor:pointer;font-weight:700" onclick="window.deseleccionarCliente()">QUITAR</button>
+      </div>
+    </div>
+    
+    <div style="margin-top:auto">
+      <div id="mensaje-tipo-cobro" class="aviso-credito" style="display:none">⚠️ FACTURA A CRÉDITO</div>
+      <div style="text-align:right;margin-top:10px">
+        <small class="small">TOTAL A COBRAR</small>
+        <h1 id="granTotal" style="font-size:2.5rem;margin:6px 0;color:var(--verde-pos)">RD$ 0.00</h1>
+        <button class="btn btn-main" style="padding:14px;font-size:1.05rem" onclick="window.abrirModalPago()">💵 COBRAR (F12)</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// 1. Importaciones de tus archivos locales
+    import { POSCore } from './pos-core.js';
+    import { POSUI } from './pos-ui.js';
+    import { POSEvents } from './pos-events.js';
+    import { TicketSystem } from './ticket-system.js';
+    import { POSPagos } from './pos-pagos.js';
+    
+
+    // 2. Importaciones de Firebase (Consolidado)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { 
+        getFirestore, collection, onSnapshot, doc, runTransaction, 
+        addDoc, serverTimestamp, updateDoc, getDocs, query, where 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+ 
+    // 3. Configuración ÚNICA
+    const firebaseConfig = {
+        apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
+        authDomain: "supermercado-marian.firebaseapp.com",
+        projectId: "supermercado-marian",
+        storageBucket: "supermercado-marian.firebasestorage.app",
+        messagingSenderId: "627337795444",
+        appId: "1:627337795444:web:e9a4cb48ff164b78477e21"
+    };
+
+    // 4. Inicialización ÚNICA
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+ 
+    // 5. Estado del sistema
+    let state = {
+        pagosRealizados: [], // Agrega esta línea
+        productos: [], 
+        clientes: [],
+        carrito: JSON.parse(localStorage.getItem('marian_pos_cart')) || [],
+        userDB: null,
+        clienteSeleccionado: JSON.parse(localStorage.getItem('marian_pos_client')) || null,
+        nroFactura: "FAC-000000",
+        tempProd: null
+    };
+
+
+
+ // --- ESTO VA SUELTO EN EL SCRIPT ---
+window.procesarFacturaMultiPago = async () => {
+    console.log("Iniciando procesamiento de factura...");
+    
+    // 1. Validar carrito
+    if (!state.carrito || state.carrito.length === 0) {
+        return alert("El carrito está vacío");
+    }
+
+    // 2. Preparar datos para el ticket
+    const datosVenta = {
+        nroFactura: state.nroFactura || "001",
+        cajero: state.userDB ? state.userDB.nombre : "General",
+        total: state.carrito.reduce((acc, i) => acc + (Number(i.subtotal) || 0), 0)
+    };
+
+    // 3. Mandar a imprimir usando el sistema externo
+    // Pasamos el carrito actual (state.carrito)
+    TicketSystem.imprimir(datosVenta, state.carrito, false);
+
+    // 4. Aquí pones tu lógica de Firebase para guardar la venta
+    // await guardarVentaEnFirebase(datosVenta, state.carrito);
+    
+    console.log("Venta procesada e impresa.");
+};
+
+
+
+
+window.procesarFacturaMultiPago = async () => {
+    // 1. Validar que el carrito tenga algo
+    if (!state.carrito || state.carrito.length === 0) return;
+
+    // 2. Preparar los datos para el Ticket
+    const datosVenta = {
+        nroFactura: state.nroFactura || "001",
+        cajero: state.userDB ? state.userDB.nombre : "General",
+        total: state.carrito.reduce((acc, i) => acc + (Number(i.subtotal) || 0), 0)
+    };
+
+    // 3. ENVIAR AL SISTEMA DE TICKETS
+    // Importante: TicketSystem debe estar importado desde ticket-system.js
+    TicketSystem.imprimir(datosVenta, state.carrito, false);
+
+    // 4. Lógica de guardado (Opcional por ahora)
+    console.log("Venta enviada a impresión exitosamente.");
+    
+    // Aquí puedes cerrar el modal y limpiar el carrito después de imprimir
+    // window.cerrarModal('modalPago');
+    // limpiarCarrito();
+};
+
+// --- CONFIGURACIÓN DE TECLADO PARA EL MODAL DE PAGO ---
+const configurarNavegacionPago = () => {
+    const tipo = document.getElementById('pagoTipo');
+    const monto = document.getElementById('pagoMonto');
+    const ref = document.getElementById('pagoRef');
+    const iden = document.getElementById('pagoId');
+
+    if(!tipo) return;
+
+    // Las flechas arriba/abajo ya funcionan por defecto en los <select> de HTML
+    tipo.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') { e.preventDefault(); monto.focus(); monto.select(); }
+    });
+    
+    monto.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') { e.preventDefault(); ref.focus(); }
+    });
+
+    ref.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') { e.preventDefault(); iden.focus(); }
+    });
+
+iden.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') { 
+        e.preventDefault(); 
+        window.agregarPagoLine(); // Agrega el pago a la lista
+        
+        setTimeout(() => {
+            const btn = document.getElementById('btnFacturar');
+            
+            // Si el pago completó el total, el botón se habilita
+            if(btn && !btn.disabled) {
+                btn.focus(); 
+                
+                // --- AQUÍ SE DISPARA TODO ---
+                window.procesarFacturaMultiPago(); 
+                
+            } else {
+                // Si aún falta dinero por pagar, vuelve al campo monto
+                const montoInput = document.getElementById('pagoMonto');
+                if(montoInput) {
+                    montoInput.focus();
+                    montoInput.select();
+                }
+            }
+        }, 150); // 150ms para asegurar que el sistema procesó el pago
+    }
+});
+};
+
+// Llama a la función una vez para que active los detectores de teclas
+configurarNavegacionPago();
+
+
+// Función para abrir el modal y cargar deudas
+window.abrirModuloCreditos = async () => {
+    POSUI.abrirModal('modalModuloCreditos');
+    document.getElementById('listaDeudasBody').innerHTML = "<tr><td colspan='4' style='text-align:center'>Cargando deudas...</td></tr>";
+    git 
+    try {
+        const q = query(collection(db, "deudas_clientes"), where("estado", "==", "PENDIENTE"));
+        const querySnapshot = await getDocs(q);
+        state.deudasPendientes = [];
+        
+        let html = "";
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            state.deudasPendientes.push({ id: doc.id, ...data });
+            html += `
+                <tr>
+                    <td><b>${data.nombreCliente}</b></td>
+                    <td class="small">${data.nroFactura}</td>
+                    <td style="color:var(--rojo); font-weight:bold">RD$ ${data.montoDeuda.toLocaleString()}</td>
+                    <td><button class="btn btn-main" style="padding:5px 10px; font-size:0.8rem" onclick="window.cobrarDeuda('${doc.id}', ${data.montoDeuda})">COBRAR</button></td>
+                </tr>`;
+        });
+        
+        document.getElementById('listaDeudasBody').innerHTML = html || "<tr><td colspan='4' style='text-align:center'>No hay cuentas pendientes</td></tr>";
+        
+    } catch (e) {
+        console.error(e);
+        alert("Error al cargar deudas");
+    }
+};
+
+
+// Función para buscar/filtrar deudas en el modal por nombre de cliente
+window.filtrarDeudas = () => {
+    const busqueda = document.getElementById('busquedaCredito').value.toLowerCase();
+    const filas = document.querySelectorAll('#listaDeudasBody tr');
+    
+    filas.forEach(fila => {
+        const nombre = fila.cells[0].innerText.toLowerCase();
+        fila.style.display = nombre.includes(busqueda) ? "" : "none";
+    });
+};
+
+// Función para procesar el cobro real
+window.cobrarDeuda = async (idDeuda, monto) => {
+    const confirmar = confirm(`¿Confirmas el cobro de RD$ ${monto.toLocaleString()}? \nEsto se sumará al efectivo de tu caja actual.`);
+    
+    if (confirmar) {
+        try {
+            // 1. Actualizar estado en Firebase
+            const deudaRef = doc(db, "deudas_clientes", idDeuda);
+            await updateDoc(deudaRef, {
+                estado: "PAGADO",
+                fechaPago: serverTimestamp(),
+                cobradoPor: state.userDB.nombre
+            });
+
+            // 2. Sumar el dinero al efectivo de la caja actual (Local Storage)
+            // Esto hará que aparezca en tu resumen de "Cerrar Caja"
+            let efectivoActual = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
+            localStorage.setItem('marian_ventas_efectivo', efectivoActual + monto);
+
+            alert("✅ Cobro procesado con éxito. El dinero ha sido ingresado a caja.");
+            
+            // 3. Refrescar la lista de deudas
+            window.abrirModuloCreditos(); 
+            
+        } catch (e) {
+            console.error("Error al cobrar:", e);
+            alert("❌ Hubo un error al procesar el cobro.");
+        }
+    }
+};
+
+    // 2. FUNCIONES GLOBALES (Asignadas a window para los botones del HTML)
+    window.abrirModalApertura = () => POSUI.abrirModal('modalApertura');
+    window.cerrarModal = (id) => POSUI.cerrarModal(id);
+    
+    window.cerrarSesion = () => { 
+        localStorage.clear(); 
+        signOut(auth).then(() => location.href = "../index.html"); 
+    };
+
+    window.seleccionarProductoDeLista = (producto) => {
+        state.tempProd = producto;
+        POSUI.ocultarResultados();
+        POSUI.abrirModalCantidad(producto);
+    };
+
+    window.agregarAlCarrito = () => {
+        const input = document.getElementById('cantInput');
+        const cant = parseFloat(input.value);
+        if(isNaN(cant) || cant <= 0) return alert("Cantidad no válida");
+        state.carrito = POSCore.agregarProducto(state.carrito, state.tempProd, cant);
+        POSUI.renderCarrito(state.carrito);
+        POSUI.cerrarModal('modalCantidad');
+        localStorage.setItem('marian_pos_cart', JSON.stringify(state.carrito));
+        document.getElementById('buscador').value = "";
+        document.getElementById('buscador').focus();
+    };
+
+    window.seleccionarCliente = (cliente) => {
+        state.clienteSeleccionado = cliente;
+        localStorage.setItem('marian_pos_client', JSON.stringify(cliente));
+        document.getElementById('nombre-cliente-ok').innerText = cliente.nombre;
+        document.getElementById('tel-cliente-ok').innerText = "📱 " + (cliente.telefono || "Sin tel.");
+        document.getElementById('info-cliente-sel').style.display = 'block';
+        document.getElementById('resultados-clientes').style.display = 'none';
+        document.getElementById('buscadorCliente').value = "";
+        if (cliente.permiteCredito) document.getElementById('mensaje-tipo-cobro').style.display = 'block';
+    };
+
+    window.deseleccionarCliente = () => {
+        state.clienteSeleccionado = null;
+        localStorage.removeItem('marian_pos_client');
+        document.getElementById('info-cliente-sel').style.display = 'none';
+        document.getElementById('mensaje-tipo-cobro').style.display = 'none';
+    };
+
+window.abrirModalPago = () => {
+    // 1. Verificación de seguridad
+    if (state.carrito.length === 0) return alert("⚠️ Carrito vacío");
+
+    // 2. Cálculo del total con protección contra NaN 
+    const total = state.carrito.reduce((acc, p) => {
+        const precio = parseFloat(p.precio) || 0;
+        const cantidad = parseFloat(p.cant) || 0;
+        return acc + (precio * cantidad);
+    }, 0);
+
+    // 3. Actualizar el total en el modal usando el ID correcto del HTML 
+    const displayTotal = document.getElementById('pagoTotalFactura');
+    if (displayTotal) {
+        displayTotal.innerText = "RD$ " + total.toLocaleString();
+    }
+
+    // 4. Pre-cargar el monto en el campo de entrada 
+    const inputMonto = document.getElementById('pagoMonto');
+    if (inputMonto) {
+        inputMonto.value = total;
+    }
+
+    // 5. Mostrar/Ocultar opción de Crédito según el cliente
+    const optCredito = document.getElementById('optCredito');
+    if (state.clienteSeleccionado && state.clienteSeleccionado.permiteCredito) {
+        if (optCredito) {
+            optCredito.style.display = 'block';
+            optCredito.innerText = `Crédito (${state.clienteSeleccionado.nombre})`;
+        }
+    } else {
+        if (optCredito) optCredito.style.display = 'none';
+    }
+
+    // 6. Abrir el modal
+    POSUI.abrirModal('modalPago');
+
+    // 7. Auto-foco y selección rápida (Añade esto al final de la función)
+    setTimeout(() => {
+        const inputMonto = document.getElementById('pagoMonto');
+        if(inputMonto) {
+            inputMonto.focus();
+            inputMonto.select(); // Sombra el texto para sobrescribir rápido
+        }
+    }, 150);
+};
+
+
+// --- FINALIZAR VENTA (CORREGIDA PARA ACTUALIZAR TOTALES) ---
+window.finalizarVenta = async (metodo) => {
+    if (state.carrito.length === 0) return;
+    const totalVenta = state.carrito.reduce((acc, p) => acc + (p.precio * p.cant), 0);
+
+    try {
+        const correlativoRef = doc(db, "configuracion-venta-factura", "correlativo");
+        const nuevoNumeroFactura = await runTransaction(db, async (transaction) => {
+            const sfDoc = await transaction.get(correlativoRef);
+            const nuevoNumero = (sfDoc.data().ultimoNumeroFactura || 0) + 1;
+            transaction.update(correlativoRef, { ultimoNumeroFactura: nuevoNumero });
+            return nuevoNumero;
+        });
+
+        const idFacturaFinal = `FAC-${nuevoNumeroFactura.toString().padStart(12, '0')}`;
+
+        // 1. Guardar en Firebase
+        const ventaData = {
+            nroFactura: idFacturaFinal,
+            fecha: serverTimestamp(),
+            idCliente: state.clienteSeleccionado ? state.clienteSeleccionado.id : "anonimo",
+            cliente: state.clienteSeleccionado ? state.clienteSeleccionado.nombre : "Consumidor Final",
+            productos: state.carrito,
+            total: totalVenta,
+            metodoPago: metodo,
+            cajero: state.userDB ? state.userDB.nombre : "Desconocido",
+            cajeroEmail: state.userDB ? state.userDB.email : ""
+        };
+        await addDoc(collection(db, "ventas_realizadas"), ventaData);
+
+        // 2. Lógica de Crédito
+        if (metodo === 'Credito' && state.clienteSeleccionado) {
+            await addDoc(collection(db, "deudas_clientes"), {
+                idCliente: state.clienteSeleccionado.id,
+                nombreCliente: state.clienteSeleccionado.nombre,
+                nroFactura: idFacturaFinal,
+                montoDeuda: totalVenta,
+                fecha: serverTimestamp(),
+                estado: "PENDIENTE",
+                cajero: state.userDB.nombre
+            });
+            // Acumular crédito localmente
+            let totalCred = parseFloat(localStorage.getItem('marian_ventas_credito') || "0");
+            localStorage.setItem('marian_ventas_credito', totalCred + totalVenta);
+        } else {
+            // Acumular efectivo localmente (Efectivo, Tarjeta, Solidaridad, Cheque cuentan para el flujo de caja)
+            // Si solo quieres efectivo físico, filtra por metodo === 'Efectivo'
+            let totalEf = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
+            localStorage.setItem('marian_ventas_efectivo', totalEf + totalVenta);
+        }
+
+        alert(`✅ VENTA EXITOSA: ${idFacturaFinal}`);
+
+        // Limpiar
+        state.carrito = [];
+        localStorage.removeItem('marian_pos_cart');
+        POSUI.renderCarrito(state.carrito);
+        POSUI.cerrarModal('modalPago');
+        if(state.clienteSeleccionado) window.deseleccionarCliente();
+        
+    } catch (e) {
+        console.error(e);
+        alert("❌ Error: " + e);
+    }
+};
+
+// --- VALIDAR PIN CIERRE (CORREGIDA PARA LIMPIAR TODO) ---
+window.validarPinCierre = async () => {
+    const pin = document.getElementById('pinCierre').value;
+    
+    // Verificamos que el PIN coincida con el del usuario actual
+    if (state.userDB && pin === state.userDB.pin) {
+        try {
+            // 1. Recopilamos los datos del turno para la Auditoría
+            const montoInicial = parseFloat(localStorage.getItem('marian_monto_inicial') || "0");
+            const ventasEfectivo = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
+            const ventasCredito = parseFloat(localStorage.getItem('marian_ventas_credito') || "0");
+
+            const cierreData = {
+                fechaCierre: serverTimestamp(),
+                cajeroNombre: state.userDB.nombre,
+                cajeroEmail: state.userDB.email,
+                montoInicial: montoInicial,
+                ventasEfectivo: ventasEfectivo,
+                ventasCredito: ventasCredito,
+                totalEnGaveta: montoInicial + ventasEfectivo
+            };
+
+            // 2. Guardamos el registro en la nube (colección cierres_caja)
+            await addDoc(collection(db, "cierres_caja"), cierreData);
+
+            // 3. Limpiamos el almacenamiento local y reiniciamos la interfaz
+            localStorage.removeItem('marian_pos_open');
+            localStorage.removeItem('marian_monto_inicial');
+            localStorage.removeItem('marian_ventas_efectivo');
+            localStorage.removeItem('marian_ventas_credito');
+            localStorage.removeItem('marian_pos_cart');
+            
+            state.carrito = [];
+            POSUI.renderCarrito(state.carrito);
+            POSUI.bloquearSistema();
+            POSUI.cerrarModal('modalCierre');
+            
+            // Limpiamos el campo de PIN para la próxima vez
+            document.getElementById('pinCierre').value = "";
+            
+            alert("✅ Caja cerrada con éxito. El registro se envió a Auditoría.");
+            
+        } catch (error) {
+            console.error("Error al guardar auditoría:", error);
+            alert("❌ Hubo un error al guardar el cierre en la nube. Intente nuevamente.");
+        }
+    } else {
+        alert("❌ PIN de seguridad incorrecto");
+    }
+};
+    // --- LÓGICA DE CIERRE DE CAJA ---
+window.cerrarCaja = async () => {
+    if (!state.userDB) return alert("Error: Usuario no identificado");
+    
+    const montoInicial = parseFloat(localStorage.getItem('marian_monto_inicial') || "0");
+    const ventasEfectivo = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
+    const ventasCredito = parseFloat(localStorage.getItem('marian_ventas_credito') || "0");
+    const totalEfectivoReal = montoInicial + ventasEfectivo;
+
+    // 1. Llenar los datos de identidad (Igual al modal de apertura)
+    document.getElementById('emailCajeroCierre').innerText = state.userDB.email;
+    document.getElementById('montoAperturaCierre').innerText = "RD$ " + montoInicial.toLocaleString();
+
+
+
+
+
+
+
+
+    // 2. Generar el resumen visual (Limpio y profesional)
+   document.getElementById('resumenCierre').innerHTML = `
+        <div style="background:#f0f7f0; padding:12px; border-radius:8px; margin-bottom:15px; border:1px solid #d1e7dd">
+            <div class="small">Cajero(a) actual:</div>
+            <div style="font-weight:700; color:var(--verde-pos); font-size:1.1rem">${state.userDB.nombre}</div>
+        </div>
+
+        <div style="padding: 10px; border: 1px solid #eee; border-radius: 8px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span>Monto Inicial:</span> <b>RD$ ${montoInicial.toLocaleString()}</b>
+            </div>
+            <div style="display:flex; justify-content:space-between; color: var(--verde-pos); margin-bottom:8px;">
+                <span>(+) Efectivo (Ventas/Cobros):</span> <b>RD$ ${ventasEfectivo.toLocaleString()}</b>
+            </div>
+            <div style="display:flex; justify-content:space-between; color: var(--azul); margin-bottom:8px;">
+                <span>(+) Ventas a Crédito:</span> <b>RD$ ${ventasCredito.toLocaleString()}</b>
+            </div>
+            
+            <div style="margin-top:10px; padding-top:10px; border-top:2px solid var(--verde-pos); display:flex; justify-content:space-between; align-items:center">
+                <span style="font-weight:800; font-size:0.9rem">EFECTIVO EN GAVETA:</span>
+                <span style="font-weight:800; font-size:1.3rem; color:var(--negro)">RD$ ${totalEfectivoReal.toLocaleString()}</span>
+            </div>
+        </div>
+        
+        <p style="font-size:0.7rem; color:gray; text-align:center; margin-top:10px">
+            * Ingrese su PIN para confirmar que el efectivo físico coincide.
+        </p>
+   `;
+    
+    POSUI.abrirModal('modalCierre');
+
+    
+};
+
+// --- FUNCIÓN MAESTRA DE NAVEGACIÓN CON ENTER ---
+document.addEventListener('keydown', (e) => {
+    const activo = document.activeElement;
+    const id = activo.id;
+
+    // --- BLOQUE 1: EXCEPCIONES (Permitir escribir normalmente) ---
+    // Si estamos en estos campos, el "Enter" no debe activar atajos globales
+    const camposDeTexto = ['buscador', 'cantInput', 'pagoMonto', 'pagoRef', 'pagoId', 'buscadorCliente', 'busc-cli-tel'];
+    if (camposDeTexto.includes(id)) {
+        if (e.key === 'Escape') activo.blur();
+        return; // Salimos para que el navegador maneje el Enter según pos-pagos.js
+    }
+
+    // --- BLOQUE 2: MANEJO DE ENTER (Navegación de Modales) ---
+    if (e.key === 'Enter') {
+        // 1. PIN de Apertura -> Pasa al Monto
+        if (id === 'pinApertura') {
+            e.preventDefault();
+            document.getElementById('montoInicial').focus();
+        } 
+        // 2. Monto de Apertura -> Ejecuta Entrar
+        else if (id === 'montoInicial') {
+            e.preventDefault();
+            window.validarPinApertura();
+        }
+        // 3. PIN de Cierre -> Ejecuta Cerrar Caja
+        else if (id === 'pinCierre') {
+            e.preventDefault();
+            window.validarPinCierre();
+        }
+    }
+
+    // --- BLOQUE 3: ATAJOS DE FUNCIÓN (F1 - F12) ---
+    // Solo funcionan si no estamos escribiendo en un input crítico
+    if (e.key === 'F1') {
+        e.preventDefault();
+        const buscador = document.getElementById('buscador');
+        if (buscador) {
+            buscador.focus();
+            buscador.select();
+        }
+    }
+
+    if (e.key === 'F12') {
+        e.preventDefault();
+        // Llamamos a la función que configuramos en pos-pagos.js
+        if (window.abrirInterfazPago) {
+            window.abrirInterfazPago();
+        }
+    }
+});
+
+
+    window.validarPinApertura = () => {
+        const pin = document.getElementById('pinApertura').value;
+        const monto = document.getElementById('montoInicial').value;
+        if (state.userDB && pin === state.userDB.pin) {
+            if(!monto) return alert("Ingrese monto inicial");
+            localStorage.setItem('marian_pos_open', 'true');
+            localStorage.setItem('marian_monto_inicial', monto);
+            POSUI.activarSistema();
+            POSUI.cerrarModal('modalApertura');
+        } else {
+            alert("PIN Incorrecto");
+        }
+    };
+
+    // 3. INICIALIZAR EVENTOS Y FIREBASE
+    POSEvents.init(state, POSCore, POSUI);
+    // Inicializar módulo de pagos
+   POSPagos.init(state, POSCore, POSUI, TicketSystem, db, addDoc, collection, serverTimestamp, doc, runTransaction);
+
+    onSnapshot(collection(db, "productos"), snap => {
+        state.productos = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    });
+
+    onSnapshot(collection(db, "clientes"), snap => {
+        state.clientes = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    });
+
+ // --- MANEJO DE SESIÓN ---
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            document.getElementById('emailCajeroApertura').innerText = user.email;
+            state.userDB = await POSCore.obtenerUsuario(db, user.email);
+            if (state.userDB) document.getElementById('nombreCajeroApertura').innerText = state.userDB.nombre;
+            
+            // Si el turno está abierto, activamos la interfaz y mostramos los botones
+            if (localStorage.getItem('marian_pos_open') === 'true') {
+                POSUI.activarSistema();
+                const btnCred = document.getElementById('btn-cobrar-credito');
+                const btnCerrar = document.getElementById('btn-cerrar-turno');
+                if(btnCred) btnCred.style.display = 'block';
+                if(btnCerrar) btnCerrar.style.display = 'block';
+            }
+        } else {
+            window.location.href = "../index.html";
+        }
+    });
+
+    // --- 1. ESCUCHAR EL CONTADOR MAESTRO (CORRELATIVO) ---
+    onSnapshot(doc(db, "configuracion-venta-factura", "correlativo"), (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.data();
+            const siguiente = (data.ultimoNumeroFactura || 0) + 1;
+            state.nroFactura = `FAC-${siguiente.toString().padStart(12, '0')}`;
+            
+            const display = document.getElementById('nro-factura-display');
+            if (display) display.innerText = state.nroFactura;
+            console.log("Número de factura actualizado a: ", state.nroFactura);
+        }
+    });
+
+    // --- 2. LÓGICA DE REIMPRESIÓN (BOTÓN LUPA) ---
+    const btnReimprimir = document.getElementById('btnReimprimir');
+    const inputReimprimir = document.getElementById('inputReimprimir');
+
+    if (btnReimprimir) {
+        btnReimprimir.onclick = async () => {
+            const nroBuscado = inputReimprimir.value.trim().toUpperCase();
+            if (!nroBuscado) return alert("⚠️ Escribe un número de factura (FAC-...)");
+
+            try {
+                const q = query(collection(db, "ventas_realizadas"), where("nroFactura", "==", nroBuscado));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    alert("❌ Factura no encontrada. Verifica el número.");
+                    return;
+                }
+
+                const venta = querySnapshot.docs[0].data();
+                // Se envía 'true' para imprimir con marca de agua "COPIA"
+                TicketSystem.imprimir(venta, venta.items, true);
+
+            } catch (error) {
+                console.error("Error al buscar factura:", error);
+                alert("Error al buscar la factura.");
+            }
+        };
+    }
+
+    // --- 3. INTEGRACIÓN CON NAVEGACIÓN (ENTER / F12) ---
+    document.addEventListener('keydown', (e) => {
+        const activo = document.activeElement;
+        const id = activo?.id;
+
+        // Si presionas ENTER en el buscador de facturas
+        if (e.key === 'Enter' && id === 'inputReimprimir') {
+            e.preventDefault();
+            btnReimprimir.click();
+        }
+
+        // F12 Global para abrir interfaz de pago
+        if (e.key === 'F12') {
+            e.preventDefault();
+            if (window.abrirInterfazPago) window.abrirInterfazPago();
+        }
+
+        // Navegación de PIN de Cierre
+        if (e.key === 'Enter' && id === 'pinCierre') {
+            e.preventDefault();
+            if (window.validarPinCierre) window.validarPinCierre();
+        }
+    });
+
+
+  // --- 4. DISEÑO DE CIERRE DE CAJA (SEGÚN TU SOLICITUD) ---
+    window.cerrarCaja = () => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // 1. Mostrar Email del cajero
+        document.getElementById('emailCajeroCierre').innerText = user.email;
+        
+        // 2. Mostrar Monto de Apertura (desde localStorage)
+        const montoApe = parseFloat(localStorage.getItem('marian_monto_inicial') || "0");
+        const displayApertura = document.getElementById('montoAperturaCierre');
+        if (displayApertura) displayApertura.innerText = "RD$ " + montoApe.toFixed(2);
+
+        // 3. Resumen de Ventas (Efectivo y Crédito)
+        const vEfectivo = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
+        const vCredito = parseFloat(localStorage.getItem('marian_ventas_credito') || "0");
+        
+        const resumen = document.getElementById('resumenCierre');
+        if (resumen) {
+            resumen.innerHTML = `
+                <div class="linea-cierre" style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span>(+) Apertura:</span> <b>RD$ ${montoApe.toFixed(2)}</b>
+                </div>
+                <div class="linea-cierre" style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span>(+) Ventas Efectivo:</span> <b>RD$ ${vEfectivo.toFixed(2)}</b>
+                </div>
+                <div class="linea-cierre" style="display:flex; justify-content:space-between; color:var(--azul);">
+                    <span>(+) Ventas Crédito:</span> <b>RD$ ${vCredito.toFixed(2)}</b>
+                </div>
+                <div class="total-linea" style="margin-top:10px; border-top:2px solid #2d3436; padding-top:8px; font-weight:bold; font-size:1.1rem; display:flex; justify-content:space-between;">
+                    <span>TOTAL EN CAJA:</span> <span>RD$ ${(montoApe + vEfectivo).toFixed(2)}</span>
+                </div>
+            `;
+        }
+
+        POSUI.abrirModal('modalCierre');
+    };
+
+   // --- 5. VALIDACIÓN DE CONTRASEÑA PARA CERRAR ---
+    window.validarPinCierre = () => {
+        const pin = document.getElementById('pinCierre').value;
+        if (state.userDB && pin === state.userDB.pin) {
+            localStorage.removeItem('marian_pos_open');
+            localStorage.removeItem('marian_monto_inicial');
+            localStorage.removeItem('marian_ventas_efectivo');
+            localStorage.removeItem('marian_ventas_credito');
+            
+            alert("✅ Caja cerrada exitosamente. El sistema se reiniciará.");
+            location.reload(); 
+        } else {
+            alert("⚠️ PIN Incorrecto. No se puede cerrar la caja.");
+            document.getElementById('pinCierre').value = ""; 
+        }
+    };
+
+ 
+
+</script>
+</body>
+</html>

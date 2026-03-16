@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Súper Marian - Sistema de Facturación Pro</title>
+
+<style>
+body{
+    margin:0;
+    font-family:'Segoe UI',sans-serif;
+    background:linear-gradient(135deg,#f5f7fa,#e4e8eb);
+}
+
+header{
+    background:#e67e22;
+    color:white;
+    padding:20px;
+    text-align:center;
+    font-size:24px;
+    font-weight:bold;
+    box-shadow:0 4px 10px rgba(0,0,0,.2);
+}
+
+.container{
+    max-width:1200px;
+    margin:30px auto;
+    padding:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:320px 1fr;
+    gap:25px;
+}
+
+.card{
+    background:white;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 10px 25px rgba(0,0,0,.08);
+    transition:.3s;
+}
+
+.card:hover{ transform:translateY(-4px); }
+
+h3{
+    margin-top:0;
+    color:#d35400;
+    border-bottom:2px solid #eee;
+    padding-bottom:10px;
+}
+
+input{
+    width:100%;
+    padding:12px;
+    margin:8px 0;
+    border-radius:8px;
+    border:1px solid #ddd;
+}
+
+button{
+    padding:8px 12px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.btn-fiado{
+    background:#e67e22;
+    color:white;
+    width:100%;
+}
+
+.btn-pago{ background:#27ae60; color:white; }
+.btn-historial{ background:#3498db; color:white; margin-left:5px; }
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:14px;
+    border-bottom:1px solid #eee;
+    font-size:14px;
+}
+
+th{ background:#fafafa; }
+
+.deuda{ color:#d35400; font-weight:bold; }
+.deuda-cero{ color:#27ae60; font-weight:bold; }
+
+/* MODAL */
+.modal{
+    display:none;
+    position:fixed;
+    z-index:100;
+    left:0; top:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,.5);
+}
+
+.modal-content{
+    background:white;
+    margin:5% auto;
+    padding:25px;
+    border-radius:16px;
+    width:65%;
+    max-height:80vh;
+    overflow-y:auto;
+    box-shadow:0 15px 40px rgba(0,0,0,.2);
+}
+
+.cerrar{
+    float:right;
+    font-size:22px;
+    cursor:pointer;
+}
+
+.fac-badge{
+    background:#f4f6f7;
+    padding:4px 8px;
+    border-radius:6px;
+    font-family:monospace;
+    font-weight:bold;
+    border:1px solid #ddd;
+}
+
+@media(max-width:900px){
+    .grid{ grid-template-columns:1fr; }
+    .modal-content{ width:90%; }
+}
+</style>
+
+<!-- Firebase COMPAT -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+</head>
+<body>
+
+<header>📓 Registro de Clientes y Facturas - Súper Marian</header>
+
+<div class="container">
+<div class="grid">
+
+<div class="card">
+<h3>+ Nuevo Cliente</h3>
+<input type="text" id="nomCliente" placeholder="Nombre Completo">
+<input type="text" id="cedCliente" placeholder="Cédula (000-0000000-0)" maxlength="13">
+<input type="text" id="telCliente" placeholder="Teléfono (000-000-0000)" maxlength="12">
+<input type="text" id="limiteCliente" placeholder="Límite RD$ (Solo números)">
+<button class="btn-fiado" onclick="crearCliente()">Registrar Cliente</button>
+</div>
+
+<div class="card">
+<h3>👥 Cartera de Clientes</h3>
+<table>
+<thead>
+<tr>
+<th>Cliente</th>
+<th>Estado</th>
+<th>Acciones</th>
+</tr>
+</thead>
+<tbody id="listaFiados"></tbody>
+</table>
+</div>
+
+</div>
+</div>
+
+<!-- MODAL HISTORIAL -->
+<div id="modalHistorial" class="modal">
+<div class="modal-content">
+<span class="cerrar" onclick="cerrarModal()">&times;</span>
+<h3 id="historialTitulo">Historial</h3>
+<table>
+<thead>
+<tr>
+<th>Fecha</th>
+<th>Detalle</th>
+<th>Monto</th>
+</tr>
+</thead>
+<tbody id="cuerpoHistorial"></tbody>
+</table>
+</div>
+</div>
+
+<script>
+
+var firebaseConfig = {
+    apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
+    authDomain: "supermercado-marian.firebaseapp.com",
+    projectId: "supermercado-marian"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+// --- LÓGICA DE FORMATEO AUTOMÁTICO ---
+
+// Formato Cédula: 000-0000000-0
+document.getElementById('cedCliente').addEventListener('input', function (e) {
+    let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,7})(\d{0,1})/);
+    e.target.value = !x[2] ? x[1] : x[1] + '-' + x[2] + (x[3] ? '-' + x[3] : '');
+});
+
+// Formato Teléfono: 000-000-0000
+document.getElementById('telCliente').addEventListener('input', function (e) {
+    let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
+    e.target.value = !x[2] ? x[1] : x[1] + '-' + x[2] + (x[3] ? '-' + x[3] : '');
+});
+
+// Límite: Solo números positivos, sin flechas
+document.getElementById('limiteCliente').addEventListener('input', function (e) {
+    e.target.value = e.target.value.replace(/\D/g, '');
+});
+
+/* CREAR CLIENTE */
+function crearCliente(){
+
+    
+    var nombre=document.getElementById("nomCliente").value;
+    var telefono=document.getElementById("telCliente").value;
+
+    if(!nombre || !telefono){
+        alert("Nombre y teléfono obligatorios");
+        return;
+    }
+
+    db.collection("clientes_fiado").add({
+        nombre:nombre,
+        cedula:document.getElementById("cedCliente").value,
+        telefono:telefono,
+        limite:parseFloat(document.getElementById("limiteCliente").value)||0,
+        deuda:0,
+        proximoRecibo:1
+    });
+
+    document.querySelectorAll("input").forEach(i=>i.value="");
+}
+
+/* LISTAR CLIENTES */
+db.collection("clientes_fiado").onSnapshot(function(snapshot){
+
+    var tabla=document.getElementById("listaFiados");
+    tabla.innerHTML="";
+
+    snapshot.forEach(function(doc){
+
+        var c=doc.data();
+        var id=doc.id;
+        var clase=(c.deuda<=0)?"deuda-cero":"deuda";
+
+        tabla.innerHTML+=`
+        <tr>
+            <td><strong>${c.nombre}</strong><br><small>📱 ${c.telefono||""}</small></td>
+            <td>
+                <span class="${clase}">
+                RD$ ${(c.deuda||0).toLocaleString()}
+                </span><br>
+                <small>Límite: RD$ ${(c.limite||0).toLocaleString()}</small>
+            </td>
+            <td>
+                <button class="btn-pago" onclick="abonar('${id}','${c.nombre}')">💸 Abonar</button>
+                <button class="btn-historial" onclick="verHistorial('${id}','${c.nombre}')">📜 Historial</button>
+            </td>
+        </tr>`;
+    });
+
+});
+
+/* ABONAR */
+async function abonar(id,nombre){
+
+    var docRef=db.collection("clientes_fiado").doc(id);
+    var snap=await docRef.get();
+    var data=snap.data();
+    var deudaActual=data.deuda||0;
+
+    if(deudaActual<=0){
+        alert("Sin deuda pendiente.");
+        return;
+    }
+
+    var monto=parseFloat(prompt("PAGO DE: "+nombre+"\nDeuda actual: RD$ "+deudaActual+"\nMonto a abonar:"));
+
+    if(!monto || monto<=0 || monto>deudaActual){
+        alert("Monto inválido.");
+        return;
+    }
+
+    var recibo=(data.proximoRecibo||1).toString().padStart(8,"0");
+
+    await docRef.update({
+        deuda:firebase.firestore.FieldValue.increment(-monto),
+        proximoRecibo:firebase.firestore.FieldValue.increment(1)
+    });
+
+    await db.collection("clientes_fiado").doc(id)
+    .collection("movimientos").add({
+        monto:monto,
+        nroFactura:recibo,
+        tipoOperacion:"ABONO / PAGO",
+        fecha:firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("Pago registrado. Recibo N° "+recibo);
+}
+
+/* VER HISTORIAL */
+function verHistorial(id,nombre){
+
+    document.getElementById("historialTitulo").innerText="Movimientos - "+nombre;
+    document.getElementById("modalHistorial").style.display="block";
+
+    var cuerpo=document.getElementById("cuerpoHistorial");
+    cuerpo.innerHTML="<tr><td colspan='3'>Cargando...</td></tr>";
+
+    db.collection("clientes_fiado").doc(id)
+    .collection("movimientos")
+    .orderBy("fecha","desc")
+    .onSnapshot(function(snapshot){
+
+        cuerpo.innerHTML="";
+
+        if(snapshot.empty){
+            cuerpo.innerHTML="<tr><td colspan='3'>No hay movimientos.</td></tr>";
+            return;
+        }
+
+        snapshot.forEach(function(doc){
+
+            var m=doc.data();
+            var fecha=m.fecha?m.fecha.toDate().toLocaleString():"Pendiente";
+            var esAbono=m.tipoOperacion==="ABONO / PAGO";
+            var color=esAbono?"#27ae60":"#d35400";
+            var signo=esAbono?"- ":"+ ";
+
+            cuerpo.innerHTML+=`
+            <tr>
+                <td>${fecha}</td>
+                <td>
+                    <span class="fac-badge">${m.nroFactura||"S/N"}</span><br>
+                    <small>${m.tipoOperacion||"CARGO"}</small>
+                </td>
+                <td style="color:${color};font-weight:bold;">
+                    ${signo}RD$ ${(m.monto||0).toLocaleString()}
+                </td>
+            </tr>`;
+        });
+
+    });
+}
+
+function cerrarModal(){
+    document.getElementById("modalHistorial").style.display="none";
+}
+
+</script>
+</body>
+</html>
