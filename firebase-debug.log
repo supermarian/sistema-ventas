@@ -1,0 +1,30 @@
+[debug] [2026-03-16T21:27:55.637Z] ----------------------------------------------------------------------
+[debug] [2026-03-16T21:27:55.639Z] Command:       /usr/local/share/nvm/versions/node/v24.11.1/bin/node /home/codespace/nvm/current/bin/firebase login --no-localhost
+[debug] [2026-03-16T21:27:55.639Z] CLI Version:   15.10.1
+[debug] [2026-03-16T21:27:55.640Z] Platform:      linux
+[debug] [2026-03-16T21:27:55.640Z] Node Version:  v24.11.1
+[debug] [2026-03-16T21:27:55.640Z] Time:          Mon Mar 16 2026 21:27:55 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-03-16T21:27:55.640Z] ----------------------------------------------------------------------
+[debug] 
+[info] i  The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data 
+[info] 
+[info] i  Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you. 
+[info] 
+[info] i  To change your preferences at any time, run `firebase logout` and `firebase login` again. 
+[debug] [2026-03-16T21:28:45.518Z] >>> [apiv2][query] POST https://auth.firebase.tools/attest [none]
+[debug] [2026-03-16T21:28:45.518Z] >>> [apiv2][body] POST https://auth.firebase.tools/attest {"session_id":"bba6bcb7-c1e6-4c61-8fa8-c32eaed4d0fa"}
+[debug] [2026-03-16T21:28:45.767Z] <<< [apiv2][status] POST https://auth.firebase.tools/attest 200
+[debug] [2026-03-16T21:28:45.767Z] <<< [apiv2][body] POST https://auth.firebase.tools/attest {"token":"SX4Hsj-AAPwAs6Cq0_71MGcM2u9Lasnd62XORpSmFvs"}
+[info] 
+[info] To sign in to the Firebase CLI:
+[info] 
+[info] 1. Take note of your session ID:
+[info] 
+[info]    BBA6B
+[info] 
+[info] 2. Visit the URL below on any device and follow the instructions to get your code:
+[info] 
+[info]    https://auth.firebase.tools/login?code_challenge=_o0zTOos8wJHCb9dl8j1oMLPk-g7B2zmiNq0Cb1gMJw&session=bba6bcb7-c1e6-4c61-8fa8-c32eaed4d0fa&attest=SX4Hsj-AAPwAs6Cq0_71MGcM2u9Lasnd62XORpSmFvs
+[info] 
+[info] 3. Paste or enter the authorization code below once you have it:
+[info] 
