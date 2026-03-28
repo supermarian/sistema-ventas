@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Súper Marian - POS Premium v6.1</title>
-<style>
+<style src="https://unpkg.com/html5-qrcode">
   
 :root {
     --verde-pos: #28a745;
@@ -15,8 +15,8 @@
     --negro: #2d3436;
 }
 
-/* Color para el producto resaltado con las flechas */
-.res-item.selected {
+/* Color para elementos resaltados con las flechas */
+.res-item.selected, .item-resultado.selected {
     background: #d1e7dd !important;
     border-left: 5px solid var(--verde-pos) !important;
     color: #000 !important;
@@ -206,7 +206,7 @@ header {
     
     <div style="margin: 15px 0;">
       <label class="small">Buscar Cliente por Nombre:</label>
-      <input type="text" id="busquedaCredito" class="search-box" placeholder="Escriba el nombre del cliente..." oninput="window.filtrarDeudas()">
+      <input type="text" id="busquedaCredito" class="search-box" placeholder="Escriba el nombre del cliente..." onkeyup="window.filtrarDeudas()">
     </div>
 
     <div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
@@ -246,6 +246,25 @@ header {
             </table>
         </div>
 
+
+
+        <div id="monitor-credito" style="display:none; background: #2d3436; color: #fff; padding: 15px; border-radius: 10px; margin: 10px 0; border-left: 8px solid #2ecc71;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <span style="font-size: 11px; text-transform: uppercase; opacity: 0.8;">Disponible para fiar:</span>
+            <div id="monto-disponible-grande" style="font-size: 28px; font-weight: bold; color: #2ecc71;">RD$ 0.00</div>
+        </div>
+        <div style="text-align: right;">
+            <div id="nombre-cliente-monitor" style="font-size: 14px; font-weight: bold;">-</div>
+            <small id="limite-total-monitor" style="font-size: 10px; opacity: 0.6;">Límite: RD$ 0</small>
+        </div>
+    </div>
+</div>
+
+
+
+
+
         <div style="display: flex; justify-content: flex-end; gap: 30px; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #dee2e6;">
             <div style="text-align: right;">
                 <span class="small" style="font-weight: bold;">Total Monto:</span>
@@ -282,25 +301,49 @@ header {
 </div>
 
 <div id="modalCierre" class="modal">
-  <div class="modal-content">
-    <h2 style="color:var(--rojo); border-bottom: 2px solid #eee; padding-bottom: 10px;">🔒 Cierre de Turno</h2>
+  <div class="modal-content" style="max-width: 400px; padding: 0; border-radius: 12px; overflow: hidden; border: none;">
     
-    <div style="background:#fff5f5; padding:12px; border-radius:8px; margin:12px 0; border: 1px solid #ffebeb">
-      <div id="emailCajeroCierre" class="small">Cargando...</div>
-      <div style="font-size: 0.8rem; color: #666; margin-top: 4px;">Monto de Apertura:</div>
-      <div id="montoAperturaCierre" style="font-weight:700; color:var(--negro)">RD$ 0.00</div>
+    <div style="background: var(--azul-pos); color: white; padding: 20px; text-align: center;">
+      <h2 style="margin: 0; font-size: 1.4rem;">Cerrar Jornada</h2>
+      <div id="emailCajeroCierre" style="opacity: 0.9; font-size: 0.9rem; margin-top: 5px;">Cargando usuario...</div>
     </div>
 
-    <div id="resumenCierre" style="background:#f9f9f9; padding:15px; border-radius:10px; margin:15px 0; line-height:1.6; border:1px solid #ddd; font-family: monospace; font-size: 0.9rem;">
+    <div style="padding: 20px;">
+      <div style="background: #f0f7ff; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #d0e3ff; text-align: center;">
+        <small style="color: #666; text-transform: uppercase; letter-spacing: 1px; font-size: 0.7rem; display: block;">Monto de Apertura</small>
+        <b id="montoAperturaCierre" style="font-size: 1.2rem; color: var(--negro);">RD$ 0.00</b>
       </div>
 
-    <input id="pinCierre" class="search-box" placeholder="PIN para confirmar cierre" type="password" style="text-align:center; margin-bottom: 10px;">
+      <div id="resumenCierre" style="background: #fdfdfd; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #eee; font-size: 0.95rem;">
+        </div>
 
-    <div style="display:flex; gap:10px;">
-      <button class="btn btn-danger" style="flex:1" onclick="window.validarPinCierre()">FINALIZAR TURNO</button>
-      <button class="btn" style="flex:1" onclick="window.cerrarModal('modalCierre')">VOLVER</button>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 5px; font-size: 0.8rem; color: #666; font-weight: bold;">PIN DE SEGURIDAD:</label>
+        <input id="pinCierre" type="password" placeholder="••••" 
+               style="width: 100%; padding: 15px; text-align: center; font-size: 1.5rem; border: 2px solid #eee; border-radius: 8px; letter-spacing: 10px;">
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button class="btn-cobrar" style="width: 100%; background: var(--azul-pos); padding: 15px;" onclick="window.validarPinCierre()">
+          CONFIRMAR Y CERRAR CAJA
+        </button>
+        <button style="background: none; border: none; color: #999; cursor: pointer; padding: 5px;" onclick="window.cerrarModal('modalCierre')">
+          Cancelar y Volver
+        </button>
+      </div>
     </div>
   </div>
+</div>
+
+<button onclick="window.iniciarEscaner()" class="btn">
+    📷 Abrir Escáner
+</button>
+
+<div id="contenedor-lector" style="display:none; margin-bottom: 20px;">
+    <div id="reader" style="width: 100%; max-width: 500px; border-radius: 10px; overflow: hidden;"></div>
+    <button onclick="detenerEscaner()" class="btn" style="background:red; color:white; width:100%; margin-top:10px;">
+        Cerrar Cámara
+    </div>
 </div>
 
 <div class="main-container">
@@ -318,48 +361,93 @@ header {
     </div>
   </div>
 
-  <div class="card">
-    <div style="background:#e7f3ff;padding:12px;border-radius:10px;margin-bottom:12px">
-      <strong style="color:var(--azul)">👤 GESTIÓN DE CLIENTE</strong>
-      <div style="position:relative;margin-top:8px">
-        <input id="buscadorCliente" class="search-box" placeholder="Buscar por nombre y Enter..." autocomplete="off">
-        <div id="resultados-clientes" class="resultados-flotantes"></div>
-      </div>
-      <div class="grid-cols" style="margin-top:8px">
-        <input id="busc-cli-tel" class="search-box" placeholder="📱 Buscar teléfono" autocomplete="off">
-        <button id="btnBuscarTel" class="btn" style="background:#007bff;color:#fff">Buscar</button>
-      </div>
-      <div class="grid-cols" style="margin-top:8px">
-        <input id="inputCedulaSearch" class="search-box" placeholder="🔎 Buscar cédula" autocomplete="off">
-        <button id="btnBuscarCedula" class="btn" style="background:#0069d9;color:#fff">Buscar</button>
-      </div>
-      <div id="info-cliente-sel" style="display:none;margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:2px solid var(--verde-pos)">
-        <b id="nombre-cliente-ok" style="color:var(--verde-pos)"></b><br>
-        <span id="tel-cliente-ok" class="small"></span>
-        <button style="float:right;background:none;border:none;color:red;cursor:pointer;font-weight:700" onclick="window.deseleccionarCliente()">QUITAR</button>
-      </div>
-    </div>
-    
-    <div style="margin-top:auto">
-      <div id="mensaje-tipo-cobro" class="aviso-credito" style="display:none">⚠️ FACTURA A CRÉDITO</div>
-      <div style="text-align:right;margin-top:10px">
-        <small class="small">TOTAL A COBRAR</small>
-        <h1 id="granTotal" style="font-size:2.5rem;margin:6px 0;color:var(--verde-pos)">RD$ 0.00</h1>
-        <button class="btn btn-main" style="padding:14px;font-size:1.05rem" onclick="window.abrirModalPago()">💵 COBRAR (F12)</button>
-      </div>
+ <div class="card">
+<div style="background:#e7f3ff;padding:12px;border-radius:10px;margin-bottom:12px">
+  <strong style="color:var(--azul)">👤 GESTIÓN DE CLIENTE</strong>
+  
+  <div style="position:relative; margin-top:8px">
+    <input id="buscadorCliente" class="search-box" 
+           placeholder="Buscar por nombre y Enter..." 
+           autocomplete="off"
+           onkeydown="if(event.key==='ArrowUp'||event.key==='ArrowDown') event.preventDefault();"
+           onkeyup="window.filtrarClientesNombre(event)">
+    <div id="resultados-clientes" class="resultados-flotantes" style="display:none; position:absolute; z-index:100; width:100%; background:white; border:1px solid #ccc; max-height:200px; overflow-y:auto;"></div>
+  </div>
 
+  <div class="grid-cols" style="margin-top:8px; display: flex; gap: 5px;">
+    <input id="busc-cli-tel" class="search-box" placeholder="📱 Buscar teléfono" autocomplete="off" style="flex:1">
+    <button id="btnBuscarTel" class="btn" style="background:#007bff;color:#fff" 
+            onclick="window.buscarClientePor('telefono')">Buscar</button>
+  </div>
+
+  <div class="grid-cols" style="margin-top:8px; display: flex; gap: 5px;">
+    <input id="inputCedulaSearch" class="search-box" placeholder="🔎 Buscar cédula" autocomplete="off" style="flex:1">
+    <button id="btnBuscarCedula" class="btn" style="background:#0069d9;color:#fff" 
+            onclick="window.buscarClientePor('cedula')">Buscar</button>
+  </div>
+
+  <div id="info-cliente-sel" style="display:none; margin-top:10px; padding:12px; background:#fff; border-radius:8px; border:2px solid var(--verde-pos); position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+    <b id="nombre-cliente-ok" style="color:var(--verde-pos); display: block; font-size: 1.1em;"></b>
+    <span id="tel-cliente-ok" class="small" style="color: #666; display: block; margin-bottom: 8px;"></span>
+
+    <div id="monitor-credito-ui" style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 5px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center;">
+      <div>
+        <small style="color: #888; display: block; font-size: 0.65rem; text-transform: uppercase;">Límite</small>
+        <b id="limite-cliente-ok" style="color: #444; font-size: 0.9em;">RD$ 0</b>
+      </div>
+      <div style="border-left: 1px solid #eee; border-right: 1px solid #eee;">
+        <small style="color: #888; display: block; font-size: 0.65rem; text-transform: uppercase;">Consumido</small>
+        <b id="consumido-cliente-ok" style="color: #d9534f; font-size: 0.9em;">RD$ 0</b>
+      </div>
+      <div>
+        <small style="color: #888; display: block; font-size: 0.65rem; text-transform: uppercase;">Disponible</small>
+        <b id="monto-disponible-grande" style="color: #28a745; font-size: 1em;">RD$ 0</b>
+      </div>
     </div>
+
+    <button type="button" 
+            style="position: absolute; top: 10px; right: 10px; background:none; border:none; color:red; cursor:pointer; font-weight:700; font-size: 1.2em;" 
+            onclick="window.deseleccionarCliente()">✖️</button>
   </div>
 </div>
+    
+    <div style="margin-top:auto">
+      <div id="mensaje-tipo-cobro" class="aviso-credito" 
+           style="display:none; background: #fff3cd; color: #856404; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #ffeeba; margin-bottom: 10px;">
+           ⚠️ FACTURA A CRÉDITO
+      </div>
 
-<script type="module">
+      <div style="text-align:right;margin-top:10px">
+        <small class="small" style="font-weight: bold; color: #555;">TOTAL A COBRAR</small>
+        <h1 id="granTotal" style="font-size:2.8rem; margin:5px 0; color:var(--verde-pos); letter-spacing: -1px;">RD$ 0.00</h1>
+        
+        <button class="btn btn-main" 
+                style="padding:16px; width: 100%; font-size:1.2rem; box-shadow: 0 4px 10px rgba(0,0,0,0.15);" 
+                onclick="window.abrirInterfazPago() "> 💵 COBRAR (F12)
+        </button>
+      </div>
+    </div>
+</div>
+
+</div>
+
+<script type="module" >
+
+    
 // 1. Importaciones de tus archivos locales
     import { POSCore } from './pos-core.js';
     import { POSUI } from './pos-ui.js';
     import { POSEvents } from './pos-events.js';
     import { TicketSystem } from './ticket-system.js';
     import { POSPagos } from './pos-pagos.js';
-    
+    import './pos-busclientes.js';
+
+    // 2. Importaciones del Escáner (Nueva Carpeta)
+    import './camara-js/lector-config.js';
+    import './camara-js/lector-logica.js';
+
+    // Opcional: Si necesitas inicializar algo del escáner al cargar
+    console.log("Módulos de cámara cargados correctamente");
 
     // 2. Importaciones de Firebase (Consolidado)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -398,58 +486,19 @@ header {
     };
 
 
-
- // --- ESTO VA SUELTO EN EL SCRIPT ---
-window.procesarFacturaMultiPago = async () => {
-    console.log("Iniciando procesamiento de factura...");
     
-    // 1. Validar carrito
-    if (!state.carrito || state.carrito.length === 0) {
-        return alert("El carrito está vacío");
-    }
+// Esta es nuestra lista vacía que llenaremos al iniciar
+window.clientesInventario = [];
 
-    // 2. Preparar datos para el ticket
-    const datosVenta = {
-        nroFactura: state.nroFactura || "001",
-        cajero: state.userDB ? state.userDB.nombre : "General",
-        total: state.carrito.reduce((acc, i) => acc + (Number(i.subtotal) || 0), 0)
-    };
-
-    // 3. Mandar a imprimir usando el sistema externo
-    // Pasamos el carrito actual (state.carrito)
-    TicketSystem.imprimir(datosVenta, state.carrito, false);
-
-    // 4. Aquí pones tu lógica de Firebase para guardar la venta
-    // await guardarVentaEnFirebase(datosVenta, state.carrito);
-    
-    console.log("Venta procesada e impresa.");
-};
+    // Exponer al objeto global para que la consola y el HTML lo vean
+window.db = db;
+window.state = state;
+window.collection = collection;
+window.getDocs = getDocs;
+window.query = query;
+window.where = where;
 
 
-
-
-window.procesarFacturaMultiPago = async () => {
-    // 1. Validar que el carrito tenga algo
-    if (!state.carrito || state.carrito.length === 0) return;
-
-    // 2. Preparar los datos para el Ticket
-    const datosVenta = {
-        nroFactura: state.nroFactura || "001",
-        cajero: state.userDB ? state.userDB.nombre : "General",
-        total: state.carrito.reduce((acc, i) => acc + (Number(i.subtotal) || 0), 0)
-    };
-
-    // 3. ENVIAR AL SISTEMA DE TICKETS
-    // Importante: TicketSystem debe estar importado desde ticket-system.js
-    TicketSystem.imprimir(datosVenta, state.carrito, false);
-
-    // 4. Lógica de guardado (Opcional por ahora)
-    console.log("Venta enviada a impresión exitosamente.");
-    
-    // Aquí puedes cerrar el modal y limpiar el carrito después de imprimir
-    // window.cerrarModal('modalPago');
-    // limpiarCarrito();
-};
 
 // --- CONFIGURACIÓN DE TECLADO PARA EL MODAL DE PAGO ---
 const configurarNavegacionPago = () => {
@@ -509,7 +558,7 @@ configurarNavegacionPago();
 window.abrirModuloCreditos = async () => {
     POSUI.abrirModal('modalModuloCreditos');
     document.getElementById('listaDeudasBody').innerHTML = "<tr><td colspan='4' style='text-align:center'>Cargando deudas...</td></tr>";
-    git 
+   
     try {
         const q = query(collection(db, "deudas_clientes"), where("estado", "==", "PENDIENTE"));
         const querySnapshot = await getDocs(q);
@@ -536,46 +585,136 @@ window.abrirModuloCreditos = async () => {
     }
 };
 
+// Asegúrate de que esté asignada a window para que el HTML la vea
+window.abrirModalPago = () => {
+    // 1. Validar que haya productos en el carrito
+    if (state.carrito.length === 0) {
+        alert("El carrito está vacío");
+        return;
+    }
+
+    // 2. Mostrar el modal (asegúrate de que el ID coincida con tu HTML)
+    const modal = document.getElementById('modal-pago');
+    if (modal) {
+        modal.style.display = 'flex';
+        
+        // 3. Actualizar los totales dentro del modal
+        const totalVenta = state.carrito.reduce((acc, p) => acc + p.subtotal, 0);
+        document.getElementById('total-modal').innerText = "RD$ " + totalVenta.toLocaleString();
+        
+        // 4. Poner el foco en el campo de "Paga con" para rapidez
+        setTimeout(() => {
+            document.getElementById('monto-pagado')?.focus();
+        }, 200);
+    }
+};
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'F12') {
+        e.preventDefault(); // Evita que se abra la herramienta de desarrollador estándar
+        window.abrirModalPago();
+    }
+});
+
 
 // Función para buscar/filtrar deudas en el modal por nombre de cliente
-window.filtrarDeudas = () => {
-    const busqueda = document.getElementById('busquedaCredito').value.toLowerCase();
-    const filas = document.querySelectorAll('#listaDeudasBody tr');
+window.filtrarDeudas = async () => {
+    const busqueda = document.getElementById('busquedaCredito').value.trim().toLowerCase();
+    const tbody = document.getElementById('listaDeudasBody');
     
-    filas.forEach(fila => {
-        const nombre = fila.cells[0].innerText.toLowerCase();
-        fila.style.display = nombre.includes(busqueda) ? "" : "none";
-    });
+    // Si el buscador está vacío, puedes elegir mostrar todos o limpiar la tabla
+    if (busqueda === "") {
+        tbody.innerHTML = "";
+        return;
+    }
+
+    tbody.innerHTML = "<tr><td colspan='4' style='text-align:center;'>🔍 Buscando coincidencia...</td></tr>";
+
+    try {
+        // Traemos los clientes que tienen deuda > 0
+        const q = query(collection(db, "clientes_fiado"));
+        const querySnapshot = await getDocs(q);
+        
+        tbody.innerHTML = "";
+        let hayResultados = false;
+
+        querySnapshot.forEach((docSnap) => {
+            const cliente = { id: docSnap.id, ...docSnap.data() };
+            const nombreCliente = (cliente.nombre || "").toLowerCase();
+
+            // Verificamos si el nombre incluye lo que escribiste (ej: "m")
+            if (nombreCliente.includes(busqueda)) {
+                hayResultados = true;
+                const fila = document.createElement('tr');
+                fila.innerHTML = `
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                        <strong>${cliente.nombre}</strong>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                        <span class="fac-badge">Límite: RD$ ${(cliente.limite || 0).toLocaleString()}</span>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; color:var(--rojo); font-weight:bold;">
+                        RD$ ${(cliente.deuda || 0).toLocaleString()}
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">
+                        <button class="btn btn-main" style="padding:5px 10px; font-size:0.85rem;" 
+                                onclick="window.prepararAbono('${cliente.id}', '${cliente.nombre}', ${cliente.deuda})">
+                            💸 Cobrar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(fila);
+            }
+        });
+
+        if (!hayResultados) {
+            tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; padding:20px; color:#666;'>❌ No hay clientes con deuda que coincidan con '" + busqueda + "'</td></tr>";
+        }
+    } catch (error) {
+        console.error("Error al filtrar deudas:", error);
+        tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color:red;'>Error crítico al cargar datos.</td></tr>";
+    }
 };
 
 // Función para procesar el cobro real
-window.cobrarDeuda = async (idDeuda, monto) => {
-    const confirmar = confirm(`¿Confirmas el cobro de RD$ ${monto.toLocaleString()}? \nEsto se sumará al efectivo de tu caja actual.`);
+window.cobrarDeuda = async (idCliente, monto, nombreCliente) => {
+    const confirmar = confirm(`¿Confirmas el cobro de RD$ ${monto.toLocaleString()} a ${nombreCliente}?\n\nEste dinero se sumará al efectivo de tu caja hoy.`);
     
-    if (confirmar) {
-        try {
-            // 1. Actualizar estado en Firebase
-            const deudaRef = doc(db, "deudas_clientes", idDeuda);
-            await updateDoc(deudaRef, {
-                estado: "PAGADO",
-                fechaPago: serverTimestamp(),
-                cobradoPor: state.userDB.nombre
-            });
+    if (!confirmar) return;
 
-            // 2. Sumar el dinero al efectivo de la caja actual (Local Storage)
-            // Esto hará que aparezca en tu resumen de "Cerrar Caja"
-            let efectivoActual = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
-            localStorage.setItem('marian_ventas_efectivo', efectivoActual + monto);
+    try {
+        // 1. Referencia al CLIENTE (donde está la deuda principal que vimos en la foto)
+        const clienteRef = doc(db, "clientes_fiado", idCliente);
 
-            alert("✅ Cobro procesado con éxito. El dinero ha sido ingresado a caja.");
-            
-            // 3. Refrescar la lista de deudas
-            window.abrirModuloCreditos(); 
-            
-        } catch (e) {
-            console.error("Error al cobrar:", e);
-            alert("❌ Hubo un error al procesar el cobro.");
+        // 2. Actualizar la deuda en Firebase (Restar el monto)
+        await updateDoc(clienteRef, {
+            deuda: increment(-monto), // Esto baja la deuda en la lista que me mostraste
+            ultimaActividad: serverTimestamp()
+        });
+
+        // 3. REGISTRAR EL MOVIMIENTO (Para que salga en el Historial del cliente)
+        await addDoc(collection(db, `clientes_fiado/${idCliente}/movimientos`), {
+            tipoOperacion: "ABONO / PAGO",
+            monto: monto,
+            fecha: serverTimestamp(),
+            nroFactura: "PAGO-CAJA",
+            cajero: state.userDB?.email || "Cajero"
+        });
+
+        // 4. SUMAR AL EFECTIVO LOCAL (Para el Cierre de Caja)
+        let efectivoActual = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
+        localStorage.setItem('marian_ventas_efectivo', efectivoActual + monto);
+
+        alert("✅ ¡Cobro exitoso!\nEl dinero ha sido ingresado a la caja del día.");
+        
+        // 5. Refrescar la lista de deudas en el modal
+        if (typeof window.filtrarDeudas === 'function') {
+            window.filtrarDeudas(); 
         }
+
+    } catch (e) {
+        console.error("Error crítico al cobrar:", e);
+        alert("❌ Error: No se pudo actualizar la deuda en Firebase.");
     }
 };
 
@@ -583,10 +722,15 @@ window.cobrarDeuda = async (idDeuda, monto) => {
     window.abrirModalApertura = () => POSUI.abrirModal('modalApertura');
     window.cerrarModal = (id) => POSUI.cerrarModal(id);
     
-    window.cerrarSesion = () => { 
-        localStorage.clear(); 
-        signOut(auth).then(() => location.href = "../index.html"); 
-    };
+ window.cerrarSesion = () => { 
+    // Borramos solo lo relacionado a la sesión, manteniendo los datos de caja si el turno sigue abierto
+    localStorage.removeItem('marian_usuario_actual');
+    localStorage.removeItem('marian_user_role');
+    
+    signOut(auth).then(() => {
+        location.href = "../index.html";
+    });
+};
 
     window.seleccionarProductoDeLista = (producto) => {
         state.tempProd = producto;
@@ -594,149 +738,150 @@ window.cobrarDeuda = async (idDeuda, monto) => {
         POSUI.abrirModalCantidad(producto);
     };
 
-    window.agregarAlCarrito = () => {
-        const input = document.getElementById('cantInput');
-        const cant = parseFloat(input.value);
-        if(isNaN(cant) || cant <= 0) return alert("Cantidad no válida");
-        state.carrito = POSCore.agregarProducto(state.carrito, state.tempProd, cant);
-        POSUI.renderCarrito(state.carrito);
-        POSUI.cerrarModal('modalCantidad');
-        localStorage.setItem('marian_pos_cart', JSON.stringify(state.carrito));
-        document.getElementById('buscador').value = "";
-        document.getElementById('buscador').focus();
-    };
-
-    window.seleccionarCliente = (cliente) => {
-        state.clienteSeleccionado = cliente;
-        localStorage.setItem('marian_pos_client', JSON.stringify(cliente));
-        document.getElementById('nombre-cliente-ok').innerText = cliente.nombre;
-        document.getElementById('tel-cliente-ok').innerText = "📱 " + (cliente.telefono || "Sin tel.");
-        document.getElementById('info-cliente-sel').style.display = 'block';
-        document.getElementById('resultados-clientes').style.display = 'none';
-        document.getElementById('buscadorCliente').value = "";
-        if (cliente.permiteCredito) document.getElementById('mensaje-tipo-cobro').style.display = 'block';
-    };
-
-    window.deseleccionarCliente = () => {
-        state.clienteSeleccionado = null;
-        localStorage.removeItem('marian_pos_client');
-        document.getElementById('info-cliente-sel').style.display = 'none';
-        document.getElementById('mensaje-tipo-cobro').style.display = 'none';
-    };
-
-window.abrirModalPago = () => {
-    // 1. Verificación de seguridad
-    if (state.carrito.length === 0) return alert("⚠️ Carrito vacío");
-
-    // 2. Cálculo del total con protección contra NaN 
-    const total = state.carrito.reduce((acc, p) => {
-        const precio = parseFloat(p.precio) || 0;
-        const cantidad = parseFloat(p.cant) || 0;
-        return acc + (precio * cantidad);
-    }, 0);
-
-    // 3. Actualizar el total en el modal usando el ID correcto del HTML 
-    const displayTotal = document.getElementById('pagoTotalFactura');
-    if (displayTotal) {
-        displayTotal.innerText = "RD$ " + total.toLocaleString();
+   window.agregarAlCarrito = () => {
+    const input = document.getElementById('cantInput');
+    const cant = parseFloat(input.value);
+    
+    if(isNaN(cant) || cant <= 0) return alert("Cantidad no válida");
+    
+    // 1. Agregamos el producto al estado
+    state.carrito = POSCore.agregarProducto(state.carrito, state.tempProd, cant);
+    
+    // 2. Dibujamos el carrito en pantalla
+    POSUI.renderCarrito(state.carrito);
+    
+    // --- NUEVO: ACTUALIZAR EL DISPONIBLE DEL CLIENTE ---
+    if (window.actualizarLimiteEnTiempoReal) {
+        window.actualizarLimiteEnTiempoReal();
     }
+    // --------------------------------------------------
 
-    // 4. Pre-cargar el monto en el campo de entrada 
-    const inputMonto = document.getElementById('pagoMonto');
-    if (inputMonto) {
-        inputMonto.value = total;
-    }
+    POSUI.cerrarModal('modalCantidad');
+    localStorage.setItem('marian_pos_cart', JSON.stringify(state.carrito));
+    
+    document.getElementById('buscador').value = "";
+    document.getElementById('buscador').focus();
+};
 
-    // 5. Mostrar/Ocultar opción de Crédito según el cliente
-    const optCredito = document.getElementById('optCredito');
-    if (state.clienteSeleccionado && state.clienteSeleccionado.permiteCredito) {
-        if (optCredito) {
-            optCredito.style.display = 'block';
-            optCredito.innerText = `Crédito (${state.clienteSeleccionado.nombre})`;
-        }
-    } else {
-        if (optCredito) optCredito.style.display = 'none';
-    }
-
-    // 6. Abrir el modal
-    POSUI.abrirModal('modalPago');
-
-    // 7. Auto-foco y selección rápida (Añade esto al final de la función)
-    setTimeout(() => {
-        const inputMonto = document.getElementById('pagoMonto');
-        if(inputMonto) {
-            inputMonto.focus();
-            inputMonto.select(); // Sombra el texto para sobrescribir rápido
-        }
-    }, 150);
+ 
+window.deseleccionarCliente = () => {
+   state.clienteSeleccionado = null;
+    localStorage.removeItem('marian_pos_client');
+    document.getElementById('info-cliente-sel').style.display = 'none';
+    document.getElementById('mensaje-tipo-cobro').style.display = 'none';
+    // Si usas el buscador de clientes, límpialo también
+    const buscador = document.getElementById('buscadorCliente');
+    if(buscador) buscador.value = "";
 };
 
 
+    window.abrirCierreCaja = () => {
+    // 1. Identificación del Cajero
+    const emailCajero = document.getElementById('emailCajeroCierre');
+    if (emailCajero) emailCajero.innerText = "Cajero: " + (state.userDB?.email || "Usuario Local");
+
+    // 2. Obtener valores acumulados
+    const montoApe = parseFloat(localStorage.getItem('marian_monto_inicial') || 0);
+    const vEfectivo = parseFloat(localStorage.getItem('marian_ventas_efectivo') || 0);
+    const vCredito = parseFloat(localStorage.getItem('marian_ventas_credito') || 0);
+
+    // 3. Mostrar Monto de Apertura en su div dedicado
+    const dispApe = document.getElementById('montoAperturaCierre');
+    if (dispApe) dispApe.innerText = "RD$ " + montoApe.toLocaleString();
+
+    // 4. Generar el resumen detallado en el div 'resumenCierre'
+    const resumenDiv = document.getElementById('resumenCierre');
+if (resumenDiv) {
+        resumenDiv.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span style="color:#666;">Ventas Efectivo</span>
+                <span style="font-weight:bold;">RD$ ${vEfectivo.toLocaleString()}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                <span style="color:#666;">Ventas Crédito</span>
+                <span style="font-weight:bold;">RD$ ${vCredito.toLocaleString()}</span>
+            </div>
+            
+            <div style="background:var(--azul-pos); color:white; padding:10px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.8rem; text-transform:uppercase;">Efectivo en Gaveta</span>
+                <strong style="font-size:1.2rem;">RD$ ${(montoApe + vEfectivo).toLocaleString()}</strong>
+            </div>
+
+            <p style="font-size: 0.65rem; color: #999; margin-top: 15px; text-align: center; line-height:1.2;">
+                Fondo Inicial (RD$ ${montoApe.toLocaleString()}) + Efectivo del Día.<br>
+                El Crédito no suma al efectivo físico.
+            </p>
+        `;
+    }
+    // 5. Mostrar el modal
+    window.abrirModal('modalCierre');
+};
+
+// para poner consumidor guardado en firebase factura
 // --- FINALIZAR VENTA (CORREGIDA PARA ACTUALIZAR TOTALES) ---
 window.finalizarVenta = async (metodo) => {
     if (state.carrito.length === 0) return;
-    const totalVenta = state.carrito.reduce((acc, p) => acc + (p.precio * p.cant), 0);
+    
+    // Calculamos el total asegurándonos de que sean números
+    const totalVenta = state.carrito.reduce((acc, p) => acc + (Number(p.precio) * Number(p.cantidad)), 0);
 
     try {
         const correlativoRef = doc(db, "configuracion-venta-factura", "correlativo");
-        const nuevoNumeroFactura = await runTransaction(db, async (transaction) => {
+        
+        // 1. OBTENER EL NÚMERO (Transacción)
+        const nuevoNumero = await runTransaction(db, async (transaction) => {
             const sfDoc = await transaction.get(correlativoRef);
-            const nuevoNumero = (sfDoc.data().ultimoNumeroFactura || 0) + 1;
-            transaction.update(correlativoRef, { ultimoNumeroFactura: nuevoNumero });
-            return nuevoNumero;
+            if (!sfDoc.exists()) throw "Falta documento correlativo en Firebase";
+            
+            const siguiente = (sfDoc.data().ultimoNumeroFactura || 0) + 1;
+            transaction.update(correlativoRef, { ultimoNumeroFactura: siguiente });
+            return siguiente;
         });
 
-        const idFacturaFinal = `FAC-${nuevoNumeroFactura.toString().padStart(12, '0')}`;
+        const idFacturaFinal = `FAC-${nuevoNumero.toString().padStart(12, '0')}`;
 
-        // 1. Guardar en Firebase
+        // 2. PREPARAR DATOS (Aquí rellenamos lo que faltaba)
         const ventaData = {
             nroFactura: idFacturaFinal,
-            fecha: serverTimestamp(),
-            idCliente: state.clienteSeleccionado ? state.clienteSeleccionado.id : "anonimo",
-            cliente: state.clienteSeleccionado ? state.clienteSeleccionado.nombre : "Consumidor Final",
-            productos: state.carrito,
-            total: totalVenta,
+            cajero: state.userDB?.nombre || "Marcos Rosario",
+            cliente: state.clienteSeleccionado?.nombre || "Consumidor Final",
+            idCliente: state.clienteSeleccionado?.id || "anonimo",
+            fecha: serverTimestamp(), // Fecha oficial de Firebase
             metodoPago: metodo,
-            cajero: state.userDB ? state.userDB.nombre : "Desconocido",
-            cajeroEmail: state.userDB ? state.userDB.email : ""
+            estadoPago: metodo === "FIADO" ? "PENDIENTE (CRÉDITO)" : "PAGADO",
+            productos: state.carrito.map(p => ({
+                id: p.id,
+                nombre: p.nombre,
+                precio: Number(p.precio),
+                cantidad: Number(p.cantidad),
+                subtotal: Number(p.precio) * Number(p.cantidad)
+            })),
+            total: totalVenta
         };
+
+        // 3. GUARDAR EN VENTAS_REALIZADAS
         await addDoc(collection(db, "ventas_realizadas"), ventaData);
 
-        // 2. Lógica de Crédito
-        if (metodo === 'Credito' && state.clienteSeleccionado) {
-            await addDoc(collection(db, "deudas_clientes"), {
-                idCliente: state.clienteSeleccionado.id,
-                nombreCliente: state.clienteSeleccionado.nombre,
-                nroFactura: idFacturaFinal,
-                montoDeuda: totalVenta,
-                fecha: serverTimestamp(),
-                estado: "PENDIENTE",
-                cajero: state.userDB.nombre
-            });
-            // Acumular crédito localmente
-            let totalCred = parseFloat(localStorage.getItem('marian_ventas_credito') || "0");
-            localStorage.setItem('marian_ventas_credito', totalCred + totalVenta);
+        // 4. LÓGICA DE CRÉDITO / CAJA LOCAL
+        if (metodo === 'FIADO' || metodo === 'Crédito') {
+            let actual = parseFloat(localStorage.getItem('marian_ventas_credito') || "0");
+            localStorage.setItem('marian_ventas_credito', (actual + totalVenta).toString());
         } else {
-            // Acumular efectivo localmente (Efectivo, Tarjeta, Solidaridad, Cheque cuentan para el flujo de caja)
-            // Si solo quieres efectivo físico, filtra por metodo === 'Efectivo'
-            let totalEf = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
-            localStorage.setItem('marian_ventas_efectivo', totalEf + totalVenta);
+            let actual = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
+            localStorage.setItem('marian_ventas_efectivo', (actual + totalVenta).toString());
         }
 
-        alert(`✅ VENTA EXITOSA: ${idFacturaFinal}`);
+        // RETORNAMOS EL ID PARA EL TICKET
+        return idFacturaFinal; 
 
-        // Limpiar
-        state.carrito = [];
-        localStorage.removeItem('marian_pos_cart');
-        POSUI.renderCarrito(state.carrito);
-        POSUI.cerrarModal('modalPago');
-        if(state.clienteSeleccionado) window.deseleccionarCliente();
-        
     } catch (e) {
-        console.error(e);
+        console.error("Error en finalizarVenta:", e);
         alert("❌ Error: " + e);
+        throw e; 
     }
 };
+
+
 
 // --- VALIDAR PIN CIERRE (CORREGIDA PARA LIMPIAR TODO) ---
 window.validarPinCierre = async () => {
@@ -909,18 +1054,50 @@ document.addEventListener('keydown', (e) => {
         }
     };
 
-    // 3. INICIALIZAR EVENTOS Y FIREBASE
-    POSEvents.init(state, POSCore, POSUI);
-    // Inicializar módulo de pagos
-   POSPagos.init(state, POSCore, POSUI, TicketSystem, db, addDoc, collection, serverTimestamp, doc, runTransaction);
+ 
 
+
+    
+// ================================================================
+// CONFIGURACIÓN DE ESCUCHA EN TIEMPO REAL (SNAPSHOT)
+// Este bloque carga y mantiene actualizados los productos y clientes
+// ================================================================
+document.addEventListener("DOMContentLoaded", function () {
+    // 1. Inicializar módulos
+    POSEvents.init(state, POSCore, POSUI, db);
+    POSPagos.init(state, POSCore, POSUI, TicketSystem, db, addDoc, collection, serverTimestamp, doc, runTransaction);
+
+    // 2. RECUPERAR Y DIBUJAR AL INSTANTE
+    const carritoGuardado = localStorage.getItem('pos_carrito_temporal');
+    if (carritoGuardado) {
+        try {
+            const datosRecuperados = JSON.parse(carritoGuardado);
+            if (datosRecuperados && datosRecuperados.length > 0) {
+                state.carrito = datosRecuperados;
+                
+                // --- ESTA ES LA CLAVE ---
+                // Forzamos el dibujado en el HTML inmediatamente
+                POSUI.renderCarrito(state.carrito); 
+                
+                // También actualizamos el número de factura si es necesario
+                console.log("🛒 Carrito restaurado visualmente con", state.carrito.length, "items");
+            }
+        } catch (e) {
+            console.error("Error al parsear el carrito guardado:", e);
+        }
+    }
+
+    // 3. Sincronizar Productos (Firebase)
     onSnapshot(collection(db, "productos"), snap => {
         state.productos = snap.docs.map(d => ({id: d.id, ...d.data()}));
     });
 
-    onSnapshot(collection(db, "clientes"), snap => {
+    // 4. Sincronizar Clientes (Firebase)
+    onSnapshot(collection(db, "clientes_fiado"), snap => {
         state.clientes = snap.docs.map(d => ({id: d.id, ...d.data()}));
     });
+});
+
 
  // --- MANEJO DE SESIÓN ---
     onAuthStateChanged(auth, async (user) => {
@@ -1064,8 +1241,13 @@ document.addEventListener('keydown', (e) => {
         }
     };
 
- 
+
+
+
+
 
 </script>
 </body>
 </html>
+
+

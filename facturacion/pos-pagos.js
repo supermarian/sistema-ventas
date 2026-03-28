@@ -3,30 +3,39 @@ export const POSPagos = {
     init: function(state, POSCore, POSUI, TicketSystem, db, addDoc, collection, serverTimestamp, doc, runTransaction) {
         
         // --- FUNCIÓN PARA ABRIR EL MODAL (F12) ---
-        window.abrirInterfazPago = () => {
-            const totalVenta = POSCore.calcularTotal(state.carrito);
-            if (totalVenta <= 0) return alert("⚠️ El carrito está vacío");
+  // --- 1. ACTUALIZAR ESTA FUNCIÓN PARA MOSTRAR/OCULTAR EL CRÉDITO ---
+window.abrirInterfazPago = () => {
+    const totalVenta = POSCore.calcularTotal(state.carrito);
+    if (totalVenta <= 0) return alert("⚠️ El carrito está vacío");
 
-            state.pagosRealizados = [];
-            window.renderTablaPagos();
+    state.pagosRealizados = [];
+    window.renderTablaPagos();
 
-            const totalModal = document.getElementById('totalModal');
-            if (totalModal) totalModal.innerText = "RD$ " + totalVenta.toLocaleString();
+    const totalModal = document.getElementById('pagoTotalFactura');
+    if (totalModal) totalModal.innerText = "RD$ " + totalVenta.toLocaleString();
 
-            POSUI.abrirModal('modalPago');
+    const optCredito = document.getElementById('optCredito');
+    
+    // VALIDACIÓN DE CRÉDITO
+    if (state.clienteSeleccionado && state.clienteSeleccionado.permiteCredito) {
+        const deudaActual = state.clienteSeleccionado.deuda || 0;
+        const limite = state.clienteSeleccionado.limite || 0;
+        
+        // Verificamos si la venta actual cabe en su límite disponible
+        if ((deudaActual + totalVenta) <= limite) {
+            optCredito.style.display = 'block';
+            optCredito.innerText = `Crédito (${state.clienteSeleccionado.nombre})`;
+        } else {
+            optCredito.style.display = 'none';
+            alert(`⚠️ Límite insuficiente.\nDebe: RD$ ${deudaActual.toLocaleString()}\nLímite: RD$ ${limite.toLocaleString()}`);
+        }
+    } else {
+        if (optCredito) optCredito.style.display = 'none';
+        document.getElementById('pagoTipo').value = "Efectivo"; 
+    }
 
-            // --- CAMBIO CLAVE: El foco ahora va al TIPO DE PAGO primero ---
-            setTimeout(() => {
-                const selectTipo = document.getElementById('pagoTipo');
-                if (selectTipo) {
-                    selectTipo.focus();
-                }
-                
-                // Ponemos el monto total en el input pero sin darle el foco todavía
-                const inputMonto = document.getElementById('pagoMonto');
-                if (inputMonto) inputMonto.value = totalVenta;
-            }, 200);
-        };
+    POSUI.abrirModal('modalPago');
+};
 
         // --- NAVEGACIÓN INTELIGENTE ---
         const configurarNavegacionPago = () => {
@@ -134,31 +143,54 @@ export const POSPagos = {
         };
 
         // 3. FINALIZAR E IMPRIMIR
-        window.procesarFacturaMultiPago = async () => {
-            const btn = document.getElementById('btnFacturar');
-            btn.disabled = true;
-            btn.innerText = "⏳ Procesando...";
+// 3. FINALIZAR E IMPRIMIR
+window.procesarFacturaMultiPago = async () => {
+    const btn = document.getElementById('btnFacturar');
+    if (state.carrito.length === 0) return;
 
-            let metodoFinal = state.pagosRealizados.length === 1 ? state.pagosRealizados[0].tipo : "Múltiple";
+    // Guardamos una copia del carrito ANTES de que cualquier cosa lo pueda borrar
+    const copiaCarrito = [...state.carrito];
+    const totalVenta = POSCore.calcularTotal(copiaCarrito);
+    
+    btn.disabled = true;
+    btn.innerText = "⏳ Guardando...";
 
-            await window.finalizarVenta(metodoFinal); 
+    let metodoFinal = state.pagosRealizados.length === 1 ? state.pagosRealizados[0].tipo : "Múltiple";
 
-            const datosVenta = {
-                nroFactura: state.nroFactura,
-                cajero: state.userDB?.nombre || "Cajero",
-                clienteNombre: state.clienteSeleccionado?.nombre || "Consumidor Final",
-                total: POSCore.calcularTotal(state.carrito),
-                metodoPago: metodoFinal
-            };
+    try {
+        // 1. GUARDAR Y OBTENER ID REAL
+        const idReal = await window.finalizarVenta(metodoFinal);
 
-            TicketSystem.imprimir(datosVenta, state.carrito);
-            state.pagosRealizados = [];
-            window.renderTablaPagos();
-            btn.innerText = "🖨️ Imprimir / Aplicar Venta";
-            
-            // Cerrar modal automáticamente tras imprimir
-            POSUI.cerrarModal('modalPago');
+        // 2. IMPRIMIR (Usamos la copia del carrito y el ID real)
+        const datosTicket = {
+            nroFactura: idReal,
+            cajero: state.userDB?.nombre || "Cajero",
+            total: totalVenta
         };
+        TicketSystem.imprimir(datosTicket, copiaCarrito);
+
+        // 3. AHORA SÍ: LIMPIAR TODO TRAS EL ÉXITO
+        state.carrito = [];
+        state.pagosRealizados = [];
+        localStorage.removeItem('marian_pos_cart');
+        
+        // Actualizar UI
+        window.renderTablaPagos();
+        POSUI.renderCarrito(state.carrito);
+        POSUI.cerrarModal('modalPago');
+        if(state.clienteSeleccionado) window.deseleccionarCliente();
+        
+        btn.disabled = false;
+        btn.innerText = "🖨️ Imprimir / Aplicar Venta";
+        alert("✅ Venta aplicada con éxito: " + idReal);
+
+    } catch (error) {
+        console.error("Error al procesar:", error);
+        alert("❌ Error: " + error);
+        btn.disabled = false;
+        btn.innerText = "🖨️ Reintentar";
+    }
+};
 
         configurarNavegacionPago();
     }

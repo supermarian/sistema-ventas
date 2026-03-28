@@ -1,153 +1,97 @@
+// pos-events.js - VERSIÓN CORREGIDA FINAL
 export const POSEvents = {
-    init: function(state, POSCore, POSUI) {
-        // 1. BUSCADOR DE PRODUCTOS (F1)
+    init: function(state, POSCore, POSUI, db) {
+        
+        // --- 2. BUSCADOR DE PRODUCTOS (F1 / ESCÁNER) ---
         this.configurarBuscador(
             'buscador', 
             'resultados-flotantes', 
-            () => state.productos,
-            (term) => POSCore.buscarProducto(state.productos, term),
-            (item) => window.seleccionarProductoDeLista(item),
+            () => state.productos || [],
+            (term) => POSCore.buscarProducto(state.productos || [], term),
+            (item) => {
+                if (typeof window.seleccionarProductoDeLista === 'function') {
+                    window.seleccionarProductoDeLista(item);
+                }
+            },
             POSUI
         );
 
-        // 2. BUSCADOR DE CLIENTES (Nombre o Cédula)
-        this.configurarBuscador(
-            'buscadorCliente', 
-            'resultados-clientes', 
-            () => state.clientes,
-            (term) => state.clientes.filter(c => 
-                c.nombre.toLowerCase().includes(term.toLowerCase()) || 
-                (c.cedula && c.cedula.includes(term))
-            ),
-            (item) => window.seleccionarCliente(item),
-            POSUI
-        );
+        // 3. BOTONES DE BÚSQUEDA MANUAL (Teléfono y Cédula)
+        this.setupBotonesManuales(state);
 
-        // 3. BOTONES DE BÚSQUEDA MANUAL
-        const btnTel = document.getElementById('btnBuscarTel');
-        if (btnTel) {
-            btnTel.onclick = () => {
-                const tel = document.getElementById('busc-cli-tel').value.trim();
-                const cliente = state.clientes.find(c => c.telefono === tel);
-                if (cliente) window.seleccionarCliente(cliente);
-                else alert("❌ Teléfono no registrado");
-            };
-        }
+        // 4. ATAJOS DE TECLADO GLOBALES
+        this.setupAtajosTeclado(POSUI);
 
-        const btnCed = document.getElementById('btnBuscarCedula');
-        if (btnCed) {
-            btnCed.onclick = () => {
-                const ced = document.getElementById('inputCedulaSearch').value.trim();
-                const cliente = state.clientes.find(c => c.cedula === ced);
-                if (cliente) window.seleccionarCliente(cliente);
-                else alert("❌ Cédula no encontrada");
-            };
-        }
-
-        // 4. ATAJOS DE TECLADO
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'F12') {
-                e.preventDefault();
-                window.abrirModalPago();
-            }
-            if (e.key === 'Escape') {
-                POSUI.ocultarResultados();
-                POSUI.cerrarModal('modalCantidad');
-                POSUI.cerrarModal('modalPago');
-            }
-            if (e.key === 'F1') {
-                e.preventDefault();
-                document.getElementById('buscador').focus();
-            }
-        });
-
-        // Cerrar listas al hacer clic fuera
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-container') && !e.target.closest('#buscadorCliente')) {
-                const rf = document.getElementById('resultados-flotantes');
-                const rc = document.getElementById('resultados-clientes');
-                if(rf) rf.style.display = 'none';
-                if(rc) rc.style.display = 'none';
-            }
-        });
+        // 5. CERRAR LISTAS AL HACER CLIC FUERA
+        this.setupCierreAutomatico();
     },
+
+  
 
     configurarBuscador: function(inputId, listaId, getColeccion, filtrarFn, seleccionarFn, POSUI) {
         const input = document.getElementById(inputId);
         const lista = document.getElementById(listaId);
         let selectedIndex = -1;
 
-        if (!input) return;
+        if (!input || !lista) return;
 
         input.addEventListener('keydown', (e) => {
             const items = lista.querySelectorAll('.res-item');
-            if (e.key === 'ArrowDown') {
+            
+            if (e.key === 'ArrowDown' && lista.style.display === 'block') {
                 e.preventDefault();
-                if (lista.style.display === 'none') return;
                 selectedIndex = (selectedIndex + 1) % items.length;
                 this.updateVisualSelection(items, selectedIndex);
             } 
-            else if (e.key === 'ArrowUp') {
+            else if (e.key === 'ArrowUp' && lista.style.display === 'block') {
                 e.preventDefault();
-                if (lista.style.display === 'none') return;
                 selectedIndex = (selectedIndex - 1 + items.length) % items.length;
                 this.updateVisualSelection(items, selectedIndex);
             } 
             else if (e.key === 'Enter') {
                 e.preventDefault();
-                if (selectedIndex > -1 && items[selectedIndex]) {
+                const term = input.value.trim();
+
+                if (lista.style.display === 'block' && selectedIndex > -1 && items[selectedIndex]) {
                     items[selectedIndex].click();
                     selectedIndex = -1;
-                } else {
-                    const term = input.value.trim();
-                    if (!term) return;
-                    const resultados = filtrarFn(term);
-                    if (resultados.length > 0) {
-                        this.renderizarLista(listaId, resultados, seleccionarFn);
-                        lista.style.display = 'block';
-                        selectedIndex = 0;
-                        this.updateVisualSelection(lista.querySelectorAll('.res-item'), 0);
-                    }
+                    return;
                 }
-            }
-        });
 
-        input.addEventListener('input', () => { 
-            selectedIndex = -1; 
-            const term = input.value.trim();
-            if (term.length < 2) {
-                lista.style.display = 'none';
-            } else {
+                if (!term) return;
                 const resultados = filtrarFn(term);
-                this.renderizarLista(listaId, resultados, seleccionarFn);
-                lista.style.display = resultados.length > 0 ? 'block' : 'none';
+
+                if (resultados.length === 0) {
+                    alert("❌ No encontrado: " + term);
+                } else if (resultados.length === 1) {
+                    seleccionarFn(resultados[0]);
+                    input.value = "";
+                    lista.style.display = 'none';
+                } else {
+                    this.renderizarLista(listaId, resultados, seleccionarFn);
+                    lista.style.display = 'block';
+                    selectedIndex = 0;
+                    this.updateVisualSelection(lista.querySelectorAll('.res-item'), 0);
+                }
             }
         });
     },
 
     renderizarLista: function(listaId, datos, seleccionarFn) {
         const lista = document.getElementById(listaId);
-        lista.innerHTML = datos.map((item, i) => {
-            const titulo = item.nombre || item.nombreProd;
-            const sub = item.precio ? `RD$ ${item.precio}` : (item.telefono || 'Sin teléfono');
-            const badgCredito = item.permiteCredito ? `<span style="color:var(--verde-pos); font-size:10px; font-weight:bold;"> [CRÉDITO OK]</span>` : '';
-            
-            return `
-                <div class="res-item" id="${listaId}-item-${i}">
-                    <div>
-                        <strong>${titulo}</strong> ${badgCredito}<br>
-                        <small style="color: #666;">${sub}</small>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        if (!lista) return;
+
+        lista.innerHTML = datos.map((item, i) => `
+            <div class="res-item" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;">
+                <strong>${item.nombre || "Sin nombre"}</strong><br>
+                <small>RD$ ${Number(item.precio || 0).toLocaleString()}</small>
+            </div>
+        `).join('');
 
         lista.querySelectorAll('.res-item').forEach((div, i) => {
             div.onclick = () => {
                 seleccionarFn(datos[i]);
                 lista.style.display = 'none';
-                const input = document.getElementById(listaId === 'resultados-flotantes' ? 'buscador' : 'buscadorCliente');
-                if(input) input.value = "";
             };
         });
     },
@@ -155,10 +99,42 @@ export const POSEvents = {
     updateVisualSelection: function(items, index) {
         items.forEach((item, i) => {
             if (i === index) {
-                item.classList.add('selected');
+                item.style.background = "#e3f2fd"; // Azul claro de selección
                 item.scrollIntoView({ block: 'nearest' });
             } else {
-                item.classList.remove('selected');
+                item.style.background = "transparent";
+            }
+        });
+    },
+
+    setupBotonesManuales: function(state) {
+        const btnTel = document.getElementById('btnBuscarTel');
+        const inputTel = document.getElementById('busc-cli-tel');
+        if (btnTel && inputTel) {
+            btnTel.onclick = () => {
+                const cliente = (state.clientes || []).find(c => c.telefono?.includes(inputTel.value));
+                if (cliente) window.seleccionarCliente(cliente);
+                else alert("No encontrado");
+            };
+        }
+    },
+
+    setupAtajosTeclado: function(POSUI) {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F1') { e.preventDefault(); document.getElementById('buscador')?.focus(); }
+            if (e.key === 'F12') { e.preventDefault(); window.abrirInterfazPago?.(); }
+            if (e.key === 'Escape') {
+                document.getElementById('resultados-clientes').style.display = 'none';
+                document.getElementById('resultados-flotantes').style.display = 'none';
+                POSUI.cerrarModal('modalPago');
+            }
+        });
+    },
+
+    setupCierreAutomatico: function() {
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#buscadorCliente') && !e.target.closest('#resultados-clientes')) {
+                document.getElementById('resultados-clientes').style.display = 'none';
             }
         });
     }

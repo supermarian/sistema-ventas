@@ -221,10 +221,9 @@ document.getElementById('limiteCliente').addEventListener('input', function (e) 
 
 /* CREAR CLIENTE */
 function crearCliente(){
-
-    
-    var nombre=document.getElementById("nomCliente").value;
-    var telefono=document.getElementById("telCliente").value;
+    var nombre = document.getElementById("nomCliente").value;
+    var telefono = document.getElementById("telCliente").value;
+    var limite = parseFloat(document.getElementById("limiteCliente").value) || 0;
 
     if(!nombre || !telefono){
         alert("Nombre y teléfono obligatorios");
@@ -232,15 +231,18 @@ function crearCliente(){
     }
 
     db.collection("clientes_fiado").add({
-        nombre:nombre,
-        cedula:document.getElementById("cedCliente").value,
-        telefono:telefono,
-        limite:parseFloat(document.getElementById("limiteCliente").value)||0,
-        deuda:0,
-        proximoRecibo:1
+        nombre: nombre,
+        cedula: document.getElementById("cedCliente").value,
+        telefono: telefono,
+        limite: limite,
+        deuda: 0,
+        proximoRecibo: 1,
+        // AGREGAMOS ESTO PARA QUE LA FACTURACIÓN LO RECONOZCA:
+        permiteCredito: true
     });
 
     document.querySelectorAll("input").forEach(i=>i.value="");
+    alert("✅ Cliente guardado correctamente");
 }
 
 /* LISTAR CLIENTES */
@@ -274,41 +276,80 @@ db.collection("clientes_fiado").onSnapshot(function(snapshot){
 });
 
 /* ABONAR */
-async function abonar(id,nombre){
+/* ABONAR (Versión Completa con Reporte a Caja) */
+async function abonar(id, nombre) {
+    try {
+        var docRef = db.collection("clientes_fiado").doc(id);
+        var snap = await docRef.get();
+        
+        if (!snap.exists) {
+            alert("El cliente no existe.");
+            return;
+        }
 
-    var docRef=db.collection("clientes_fiado").doc(id);
-    var snap=await docRef.get();
-    var data=snap.data();
-    var deudaActual=data.deuda||0;
+        var data = snap.data();
+        var deudaActual = data.deuda || 0;
 
-    if(deudaActual<=0){
-        alert("Sin deuda pendiente.");
-        return;
+        // 1. Validar si tiene deuda
+        if (deudaActual <= 0) {
+            alert("Este cliente no tiene deuda pendiente.");
+            return;
+        }
+
+        // 2. Pedir el monto al usuario
+        var inputMonto = prompt(
+            "PAGO DE: " + nombre + "\n" +
+            "Deuda actual: RD$ " + deudaActual.toLocaleString() + "\n\n" +
+            "Ingrese el monto a abonar:"
+        );
+
+        var monto = parseFloat(inputMonto);
+
+        // 3. Validaciones de seguridad
+        if (isNaN(monto) || monto <= 0) {
+            alert("Monto inválido. Ingrese un número mayor a cero.");
+            return;
+        }
+
+        if (monto > deudaActual) {
+            alert("El abono no puede ser mayor a la deuda (RD$ " + deudaActual.toLocaleString() + ").");
+            return;
+        }
+
+        // 4. Preparar número de recibo
+        var recibo = (data.proximoRecibo || 1).toString().padStart(8, "0");
+
+        // 5. ACTUALIZAR FIREBASE (Deuda y Recibo)
+        await docRef.update({
+            deuda: firebase.firestore.FieldValue.increment(-monto),
+            proximoRecibo: firebase.firestore.FieldValue.increment(1)
+        });
+
+        // 6. REGISTRAR MOVIMIENTO en la sub-colección
+        await db.collection("clientes_fiado").doc(id)
+            .collection("movimientos").add({
+                monto: monto,
+                nroFactura: recibo,
+                tipoOperacion: "ABONO / PAGO",
+                fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                cajero: localStorage.getItem('marian_usuario_actual') || "Cajero" // Opcional: saber quién cobró
+            });
+
+        // 7. ACTUALIZAR CAJA LOCAL (Para que cuadre el cierre de turno)
+        // Sumamos este dinero al efectivo total recibido hoy
+        let efectivoHoy = parseFloat(localStorage.getItem('marian_ventas_efectivo') || 0);
+        localStorage.setItem('marian_ventas_efectivo', efectivoHoy + monto);
+
+        // 8. Mensaje de éxito
+        alert("✅ Pago registrado con éxito.\n" +
+              "Recibo N°: " + recibo + "\n" +
+              "Monto: RD$ " + monto.toLocaleString() + "\n" +
+              "Nuevo Saldo: RD$ " + (deudaActual - monto).toLocaleString());
+
+    } catch (error) {
+        console.error("Error al procesar el abono:", error);
+        alert("❌ Error al procesar el pago. Revise su conexión.");
     }
-
-    var monto=parseFloat(prompt("PAGO DE: "+nombre+"\nDeuda actual: RD$ "+deudaActual+"\nMonto a abonar:"));
-
-    if(!monto || monto<=0 || monto>deudaActual){
-        alert("Monto inválido.");
-        return;
-    }
-
-    var recibo=(data.proximoRecibo||1).toString().padStart(8,"0");
-
-    await docRef.update({
-        deuda:firebase.firestore.FieldValue.increment(-monto),
-        proximoRecibo:firebase.firestore.FieldValue.increment(1)
-    });
-
-    await db.collection("clientes_fiado").doc(id)
-    .collection("movimientos").add({
-        monto:monto,
-        nroFactura:recibo,
-        tipoOperacion:"ABONO / PAGO",
-        fecha:firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    alert("Pago registrado. Recibo N° "+recibo);
 }
 
 /* VER HISTORIAL */
@@ -358,6 +399,21 @@ function verHistorial(id,nombre){
 
 function cerrarModal(){
     document.getElementById("modalHistorial").style.display="none";
+}
+
+// Función para buscar clientes en la tabla de créditos
+function buscarEnCartera() {
+    var input = document.getElementById("buscarClienteCartera").value.toLowerCase();
+    var filas = document.getElementById("listaFiados").getElementsByTagName("tr");
+
+    for (var i = 0; i < filas.length; i++) {
+        var nombre = filas[i].getElementsByTagName("td")[0].innerText.toLowerCase();
+        if (nombre.indexOf(input) > -1) {
+            filas[i].style.display = "";
+        } else {
+            filas[i].style.display = "none";
+        }
+    }
 }
 
 </script>
