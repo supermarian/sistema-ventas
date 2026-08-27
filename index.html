@@ -29,6 +29,7 @@
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18">
         Entrar con Google
     </button>
+    <a href="cliente.html" style="display:block;margin-top:18px;color:#1a73e8;font-weight:bold;text-decoration:none">👤 Soy cliente / Crear cuenta</a>
 </div>
 
 <script type="module">
@@ -58,6 +59,10 @@
         if (!querySnapshot.empty) {
             querySnapshot.forEach((doc) => {
                 const datos = doc.data();
+                if (datos.rol === 'Cliente') {
+                    window.location.href = 'cliente.html';
+                    return;
+                }
                 // Guardamos en la memoria del navegador para usarlo en el menú
                 localStorage.setItem("userRol", datos.rol);
                 localStorage.setItem("userName", datos.nombre);

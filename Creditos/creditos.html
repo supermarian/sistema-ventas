@@ -2,364 +2,117 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Súper Marian - Sistema de Facturación Pro</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Súper Marian - Créditos</title>
 <style>
-body{
-    margin:0;
-    font-family:'Segoe UI',sans-serif;
-    background:linear-gradient(135deg,#f5f7fa,#e4e8eb);
-}
-
-header{
-    background:#e67e22;
-    color:white;
-    padding:20px;
-    text-align:center;
-    font-size:24px;
-    font-weight:bold;
-    box-shadow:0 4px 10px rgba(0,0,0,.2);
-}
-
-.container{
-    max-width:1200px;
-    margin:30px auto;
-    padding:20px;
-}
-
-.grid{
-    display:grid;
-    grid-template-columns:320px 1fr;
-    gap:25px;
-}
-
-.card{
-    background:white;
-    padding:25px;
-    border-radius:16px;
-    box-shadow:0 10px 25px rgba(0,0,0,.08);
-    transition:.3s;
-}
-
-.card:hover{ transform:translateY(-4px); }
-
-h3{
-    margin-top:0;
-    color:#d35400;
-    border-bottom:2px solid #eee;
-    padding-bottom:10px;
-}
-
-input{
-    width:100%;
-    padding:12px;
-    margin:8px 0;
-    border-radius:8px;
-    border:1px solid #ddd;
-}
-
-button{
-    padding:8px 12px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-.btn-fiado{
-    background:#e67e22;
-    color:white;
-    width:100%;
-}
-
-.btn-pago{ background:#27ae60; color:white; }
-.btn-historial{ background:#3498db; color:white; margin-left:5px; }
-
-table{
-    width:100%;
-    border-collapse:collapse;
-}
-
-th,td{
-    padding:14px;
-    border-bottom:1px solid #eee;
-    font-size:14px;
-}
-
-th{ background:#fafafa; }
-
-.deuda{ color:#d35400; font-weight:bold; }
-.deuda-cero{ color:#27ae60; font-weight:bold; }
-
-/* MODAL */
-.modal{
-    display:none;
-    position:fixed;
-    z-index:100;
-    left:0; top:0;
-    width:100%; height:100%;
-    background:rgba(0,0,0,.5);
-}
-
-.modal-content{
-    background:white;
-    margin:5% auto;
-    padding:25px;
-    border-radius:16px;
-    width:65%;
-    max-height:80vh;
-    overflow-y:auto;
-    box-shadow:0 15px 40px rgba(0,0,0,.2);
-}
-
-.cerrar{
-    float:right;
-    font-size:22px;
-    cursor:pointer;
-}
-
-.fac-badge{
-    background:#f4f6f7;
-    padding:4px 8px;
-    border-radius:6px;
-    font-family:monospace;
-    font-weight:bold;
-    border:1px solid #ddd;
-}
-
-@media(max-width:900px){
-    .grid{ grid-template-columns:1fr; }
-    .modal-content{ width:90%; }
-}
+body{margin:0;font-family:'Segoe UI',sans-serif;background:#f4f6f8;color:#263238}
+header{background:#d35400;color:#fff;padding:18px 24px;font-size:23px;font-weight:bold;box-shadow:0 3px 10px #0002}
+.container{max-width:1250px;margin:24px auto;padding:0 18px}.grid{display:grid;grid-template-columns:330px 1fr;gap:20px}
+.card{background:#fff;padding:20px;border-radius:12px;box-shadow:0 5px 18px #00000012}.card h2{margin-top:0;color:#b94700;border-bottom:2px solid #eee;padding-bottom:10px}
+label{display:block;margin-top:10px;font-size:13px;font-weight:600;color:#555}input,select{width:100%;padding:11px;margin-top:5px;border:1px solid #ccd3d8;border-radius:7px;box-sizing:border-box;font-size:15px}
+button{padding:10px 14px;border:0;border-radius:7px;cursor:pointer;font-weight:bold}.btn-main{background:#d35400;color:#fff;width:100%;margin-top:15px}.btn-abono{background:#27ae60;color:#fff}.btn-volver{background:#666;color:#fff;margin-bottom:18px}
+.consulta{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px}.consulta button{background:#1a73e8;color:#fff}.estado{color:#666;min-height:20px;font-size:13px}
+table{width:100%;border-collapse:collapse}th,td{padding:11px 8px;border-bottom:1px solid #eee;text-align:left;font-size:14px}th{background:#fafafa}.badge{padding:4px 7px;border-radius:5px;background:#e8f0fe;color:#1a73e8;font-family:monospace;font-weight:bold}.pendiente{color:#d35400;font-weight:bold}.vencido{color:#c0392b;font-weight:bold}.pagado{color:#27ae60;font-weight:bold}
+.table-wrap{overflow:auto}.resumen{display:flex;gap:25px;margin-bottom:15px;flex-wrap:wrap}.resumen strong{display:block;font-size:20px;color:#d35400}.modal{display:none;position:fixed;inset:0;background:#0008;z-index:10;align-items:center;justify-content:center;padding:15px}.modal-content{background:#fff;border-radius:12px;padding:22px;width:min(600px,100%);box-sizing:border-box}.modal-content h2{margin-top:0;color:#b94700}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.consulta{grid-template-columns:1fr}header{font-size:19px}}
 </style>
-
-<!-- Firebase COMPAT -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 </head>
 <body>
-
-<header>📓 Registro de Clientes y Facturas - Súper Marian</header>
-
+<header>📓 Créditos y cuentas por cobrar</header>
 <div class="container">
+<button class="btn-volver" onclick="location.href='../menu.html'">⬅ Volver al menú</button>
 <div class="grid">
-
-<div class="card">
-<h3>+ Nuevo Cliente</h3>
-<input type="text" id="nomCliente" placeholder="Nombre Completo">
-<input type="text" id="cedCliente" placeholder="Cédula (000-0000000-0)" maxlength="13">
-<input type="text" id="telCliente" placeholder="Teléfono (000-000-0000)" maxlength="12">
-<input type="text" id="limiteCliente" placeholder="Límite RD$ (Solo números)">
-<button class="btn-fiado" onclick="crearCliente()">Registrar Cliente</button>
-</div>
-
-<div class="card">
-<h3>👥 Cartera de Clientes</h3>
-<table>
-<thead>
-<tr>
-<th>Cliente</th>
-<th>Estado</th>
-<th>Acciones</th>
-</tr>
-</thead>
-<tbody id="listaFiados"></tbody>
-</table>
-</div>
-
+<section class="card" id="nuevoClienteCard">
+<h2>Nuevo cliente</h2>
+<label>Nombre completo *<input id="nomCliente" type="text" autocomplete="name"></label>
+<label>Teléfono *<input id="telCliente" type="tel" autocomplete="tel"></label>
+<label>Dirección<input id="dirCliente" type="text" autocomplete="street-address"></label>
+<label>Cédula<input id="cedCliente" type="text"></label>
+<label>RNC<input id="rncCliente" type="text"></label>
+<label>Límite de crédito RD$<input id="limiteCliente" type="number" min="0" step="0.01" value="0"></label>
+<button class="btn-main" onclick="crearCliente()">Registrar cliente</button>
+<p id="estadoCliente" class="estado"></p>
+</section>
+<section class="card">
+<h2>Consulta de créditos</h2>
+<div class="resumen"><div>Saldo pendiente<strong id="totalPendiente">RD$ 0</strong></div><div>Vencidos<strong id="totalVencidos">0</strong></div></div>
+<div class="consulta"><input id="busquedaCredito" type="search" placeholder="Cliente, teléfono, crédito o factura..." autocomplete="off"><button onclick="ejecutarBusqueda()">Consultar</button></div>
+<p id="estadoConsulta" class="estado">Escribe y presiona Enter para consultar.</p>
+<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Crédito</th><th>Factura</th><th>Saldo</th><th>Vencimiento</th><th>Acción</th></tr></thead><tbody id="listaCreditos"></tbody></table></div>
+</section>
 </div>
 </div>
-
-<!-- MODAL HISTORIAL -->
-<div id="modalHistorial" class="modal">
-<div class="modal-content">
-<span class="cerrar" onclick="cerrarModal()">&times;</span>
-<h3 id="historialTitulo">Historial</h3>
-<table>
-<thead>
-<tr>
-<th>Fecha</th>
-<th>Detalle</th>
-<th>Monto</th>
-</tr>
-</thead>
-<tbody id="cuerpoHistorial"></tbody>
-</table>
-</div>
-</div>
-
+<div id="modalAbono" class="modal"><div class="modal-content">
+<h2>Registrar abono</h2><p id="detalleAbono"></p>
+<label>Monto a abonar<input id="montoAbono" type="number" min="0.01" step="0.01"></label>
+<label>Observación<input id="observacionAbono" type="text"></label>
+<div style="display:flex;gap:8px;margin-top:15px"><button class="btn-abono" onclick="guardarAbono()">Guardar abono</button><button onclick="cerrarModal()">Cancelar</button></div>
+</div></div>
 <script>
+const firebaseConfig={apiKey:"AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",authDomain:"supermercado-marian.firebaseapp.com",projectId:"supermercado-marian"};
+firebase.initializeApp(firebaseConfig);const db=firebase.firestore();const auth=firebase.auth();
+let clientes=[],creditos=[],creditoSeleccionado=null,busquedaActiva=false,rolActual='';
+const escapar=valor=>String(valor??'').replace(/[&<>"']/g,caracter=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[caracter]));
+const fechaComoDate=valor=>{if(!valor)return null;if(typeof valor.toDate==='function')return valor.toDate();const fecha=new Date(valor);return Number.isNaN(fecha.getTime())?null:fecha};
+const dinero=valor=>`RD$ ${Number(valor||0).toLocaleString('es-DO',{minimumFractionDigits:2})}`;
 
-var firebaseConfig = {
-    apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
-    authDomain: "supermercado-marian.firebaseapp.com",
-    projectId: "supermercado-marian"
-};
-
-firebase.initializeApp(firebaseConfig);
-var db = firebase.firestore();
-
-// --- LÓGICA DE FORMATEO AUTOMÁTICO ---
-
-// Formato Cédula: 000-0000000-0
-document.getElementById('cedCliente').addEventListener('input', function (e) {
-    let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,7})(\d{0,1})/);
-    e.target.value = !x[2] ? x[1] : x[1] + '-' + x[2] + (x[3] ? '-' + x[3] : '');
-});
-
-// Formato Teléfono: 000-000-0000
-document.getElementById('telCliente').addEventListener('input', function (e) {
-    let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
-    e.target.value = !x[2] ? x[1] : x[1] + '-' + x[2] + (x[3] ? '-' + x[3] : '');
-});
-
-// Límite: Solo números positivos, sin flechas
-document.getElementById('limiteCliente').addEventListener('input', function (e) {
-    e.target.value = e.target.value.replace(/\D/g, '');
-});
-
-/* CREAR CLIENTE */
-function crearCliente(){
-
-    
-    var nombre=document.getElementById("nomCliente").value;
-    var telefono=document.getElementById("telCliente").value;
-
-    if(!nombre || !telefono){
-        alert("Nombre y teléfono obligatorios");
-        return;
-    }
-
-    db.collection("clientes_fiado").add({
-        nombre:nombre,
-        cedula:document.getElementById("cedCliente").value,
-        telefono:telefono,
-        limite:parseFloat(document.getElementById("limiteCliente").value)||0,
-        deuda:0,
-        proximoRecibo:1
-    });
-
-    document.querySelectorAll("input").forEach(i=>i.value="");
+async function cargarDatos(){
+    const [clientesSnapshot, creditosSnapshot]=await Promise.all([
+        db.collection('clientes').get(),
+        db.collection('deudas_clientes').get()
+    ]);
+    clientes=clientesSnapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
+    creditos=creditosSnapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
 }
 
-/* LISTAR CLIENTES */
-db.collection("clientes_fiado").onSnapshot(function(snapshot){
-
-    var tabla=document.getElementById("listaFiados");
-    tabla.innerHTML="";
-
-    snapshot.forEach(function(doc){
-
-        var c=doc.data();
-        var id=doc.id;
-        var clase=(c.deuda<=0)?"deuda-cero":"deuda";
-
-        tabla.innerHTML+=`
-        <tr>
-            <td><strong>${c.nombre}</strong><br><small>📱 ${c.telefono||""}</small></td>
-            <td>
-                <span class="${clase}">
-                RD$ ${(c.deuda||0).toLocaleString()}
-                </span><br>
-                <small>Límite: RD$ ${(c.limite||0).toLocaleString()}</small>
-            </td>
-            <td>
-                <button class="btn-pago" onclick="abonar('${id}','${c.nombre}')">💸 Abonar</button>
-                <button class="btn-historial" onclick="verHistorial('${id}','${c.nombre}')">📜 Historial</button>
-            </td>
-        </tr>`;
-    });
-
+auth.onAuthStateChanged(async user=>{
+    if(!user)return window.location.href='../index.html';
+    const token=await user.getIdTokenResult();
+    rolActual=token.claims.rol||'';
+    if(!['Administrador','Jefe'].includes(rolActual))document.getElementById('nuevoClienteCard').style.display='none';
 });
 
-/* ABONAR */
-async function abonar(id,nombre){
-
-    var docRef=db.collection("clientes_fiado").doc(id);
-    var snap=await docRef.get();
-    var data=snap.data();
-    var deudaActual=data.deuda||0;
-
-    if(deudaActual<=0){
-        alert("Sin deuda pendiente.");
-        return;
-    }
-
-    var monto=parseFloat(prompt("PAGO DE: "+nombre+"\nDeuda actual: RD$ "+deudaActual+"\nMonto a abonar:"));
-
-    if(!monto || monto<=0 || monto>deudaActual){
-        alert("Monto inválido.");
-        return;
-    }
-
-    var recibo=(data.proximoRecibo||1).toString().padStart(8,"0");
-
-    await docRef.update({
-        deuda:firebase.firestore.FieldValue.increment(-monto),
-        proximoRecibo:firebase.firestore.FieldValue.increment(1)
-    });
-
-    await db.collection("clientes_fiado").doc(id)
-    .collection("movimientos").add({
-        monto:monto,
-        nroFactura:recibo,
-        tipoOperacion:"ABONO / PAGO",
-        fecha:firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    alert("Pago registrado. Recibo N° "+recibo);
+async function crearCliente(){
+    if(!['Administrador','Jefe'].includes(rolActual))return alert('Solo Administrador o Jefe puede registrar clientes.');
+    const nombre=document.getElementById('nomCliente').value.trim(),telefono=document.getElementById('telCliente').value.trim();
+    const direccion=document.getElementById('dirCliente').value.trim(),cedula=document.getElementById('cedCliente').value.trim(),rnc=document.getElementById('rncCliente').value.trim();
+    const limite=Number(document.getElementById('limiteCliente').value)||0;
+    if(!nombre||!telefono)return alert('Nombre y teléfono son obligatorios.');
+    if(!clientes.length)await cargarDatos();
+    if(clientes.some(cliente=>cliente.telefono===telefono||(cedula&&cliente.cedula===cedula)||(rnc&&cliente.rnc===rnc)))return alert('Ya existe un cliente con ese teléfono, cédula o RNC.');
+    db.collection('clientes').add({nombre,telefono,direccion,cedula,rnc,limiteCredito:limite,permiteCredito:true,fechaRegistro:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>{
+        document.querySelectorAll('#nomCliente,#telCliente,#dirCliente,#cedCliente,#rncCliente').forEach(input=>input.value='');document.getElementById('limiteCliente').value='0';document.getElementById('estadoCliente').innerText='Cliente guardado correctamente.';
+    }).catch(error=>{console.error(error);alert('No se pudo guardar el cliente.');});
 }
 
-/* VER HISTORIAL */
-function verHistorial(id,nombre){
+async function ejecutarBusqueda(){
+    const estado=document.getElementById('estadoConsulta');
+    estado.innerText='Consultando Firebase...';
+    try{await cargarDatos();busquedaActiva=true;renderizarCreditos()}catch(error){console.error(error);estado.innerText='No se pudo consultar. Revisa la conexión y los permisos.'}
+}
+document.getElementById('busquedaCredito').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();ejecutarBusqueda()}});
 
-    document.getElementById("historialTitulo").innerText="Movimientos - "+nombre;
-    document.getElementById("modalHistorial").style.display="block";
-
-    var cuerpo=document.getElementById("cuerpoHistorial");
-    cuerpo.innerHTML="<tr><td colspan='3'>Cargando...</td></tr>";
-
-    db.collection("clientes_fiado").doc(id)
-    .collection("movimientos")
-    .orderBy("fecha","desc")
-    .onSnapshot(function(snapshot){
-
-        cuerpo.innerHTML="";
-
-        if(snapshot.empty){
-            cuerpo.innerHTML="<tr><td colspan='3'>No hay movimientos.</td></tr>";
-            return;
-        }
-
-        snapshot.forEach(function(doc){
-
-            var m=doc.data();
-            var fecha=m.fecha?m.fecha.toDate().toLocaleString():"Pendiente";
-            var esAbono=m.tipoOperacion==="ABONO / PAGO";
-            var color=esAbono?"#27ae60":"#d35400";
-            var signo=esAbono?"- ":"+ ";
-
-            cuerpo.innerHTML+=`
-            <tr>
-                <td>${fecha}</td>
-                <td>
-                    <span class="fac-badge">${m.nroFactura||"S/N"}</span><br>
-                    <small>${m.tipoOperacion||"CARGO"}</small>
-                </td>
-                <td style="color:${color};font-weight:bold;">
-                    ${signo}RD$ ${(m.monto||0).toLocaleString()}
-                </td>
-            </tr>`;
-        });
-
-    });
+function renderizarCreditos(){
+    if(!busquedaActiva)return;
+    const termino=document.getElementById('busquedaCredito').value.trim().toLowerCase();
+    const lista=creditos.filter(credito=>{const cliente=clientes.find(item=>item.id===credito.idCliente);const texto=[credito.nroCredito,credito.nroFactura,credito.nombreCliente,cliente?.telefono,cliente?.cedula].join(' ').toLowerCase();return !termino||texto.includes(termino)});
+    const ahora=new Date();let saldoTotal=0,vencidos=0;
+    lista.forEach(credito=>{saldoTotal+=Number(credito.saldoPendiente??credito.montoDeuda??0);const vencimiento=fechaComoDate(credito.fechaVencimiento);if(credito.estado!=='PAGADO'&&vencimiento&&vencimiento<ahora)vencidos++});
+    document.getElementById('totalPendiente').innerText=dinero(saldoTotal);document.getElementById('totalVencidos').innerText=vencidos;document.getElementById('estadoConsulta').innerText=`${lista.length} crédito(s) encontrado(s).`;
+    document.getElementById('listaCreditos').innerHTML=lista.map(credito=>{const saldo=Number(credito.saldoPendiente??credito.montoDeuda??0),vencimiento=fechaComoDate(credito.fechaVencimiento);const estaVencido=credito.estado!=='PAGADO'&&vencimiento&&vencimiento<ahora;const estado=credito.estado==='PAGADO'?'pagado':estaVencido?'vencido':'pendiente';const accion=saldo>0&&['Administrador','Jefe'].includes(rolActual)?`<button class="btn-abono" onclick="abrirAbono('${credito.id}')">Abonar</button>`:'<span class="pagado">Solo lectura</span>';return `<tr><td><b>${escapar(credito.nombreCliente||'Sin cliente')}</b></td><td><span class="badge">${escapar(credito.nroCredito||'Sin número')}</span></td><td>${escapar(credito.nroFactura||'S/N')}</td><td class="${estado}">${dinero(saldo)}<br><small>${credito.estado||'PENDIENTE'}</small></td><td class="${estaVencido?'vencido':''}">${vencimiento?vencimiento.toLocaleDateString('es-DO'):'Sin fecha'}</td><td>${accion}</td></tr>`}).join('')||'<tr><td colspan="6">No hay resultados.</td></tr>';
 }
 
-function cerrarModal(){
-    document.getElementById("modalHistorial").style.display="none";
-}
+function abrirAbono(id){creditoSeleccionado=creditos.find(credito=>credito.id===id);if(!creditoSeleccionado)return;const saldo=Number(creditoSeleccionado.saldoPendiente??creditoSeleccionado.montoDeuda??0);document.getElementById('detalleAbono').innerText=`${creditoSeleccionado.nroCredito||'Crédito'} - ${creditoSeleccionado.nombreCliente||'Cliente'} - Saldo: ${dinero(saldo)}`;document.getElementById('montoAbono').value='';document.getElementById('observacionAbono').value='';document.getElementById('modalAbono').style.display='flex'}
+function cerrarModal(){document.getElementById('modalAbono').style.display='none';creditoSeleccionado=null}
 
+async function guardarAbono(){
+    if(!['Administrador','Jefe'].includes(rolActual))return alert('Solo Administrador o Jefe puede registrar abonos.');
+    if(!creditoSeleccionado)return;const monto=Number(document.getElementById('montoAbono').value);const saldoActual=Number(creditoSeleccionado.saldoPendiente??creditoSeleccionado.montoDeuda??0);if(!Number.isFinite(monto)||monto<=0||monto>saldoActual)return alert('El monto no es válido.');
+    const deudaRef=db.collection('deudas_clientes').doc(creditoSeleccionado.id);const pagoRef=db.collection('pagos_creditos').doc();const nuevoSaldo=Math.max(0,saldoActual-monto);
+    try{await db.runTransaction(async transaction=>{const deuda=await transaction.get(deudaRef);if(!deuda.exists)throw new Error('Crédito no encontrado');const saldo=Number(deuda.data().saldoPendiente??deuda.data().montoDeuda??0);if(monto>saldo)throw new Error('El saldo cambió. Consulta nuevamente.');transaction.update(deudaRef,{saldoPendiente:Math.max(0,saldo-monto),estado:saldo-monto<=0?'PAGADO':'PENDIENTE',fechaUltimoAbono:firebase.firestore.FieldValue.serverTimestamp()});transaction.set(pagoRef,{idCredito:creditoSeleccionado.id,nroCredito:creditoSeleccionado.nroCredito||null,nroFactura:creditoSeleccionado.nroFactura||null,idCliente:creditoSeleccionado.idCliente,monto,observacion:document.getElementById('observacionAbono').value.trim(),fecha:firebase.firestore.FieldValue.serverTimestamp(),tipo:'ABONO'});});cerrarModal();alert(`Abono registrado. Nuevo saldo: ${dinero(nuevoSaldo)}`);renderizarCreditos()}catch(error){console.error(error);alert(error.message||'No se pudo registrar el abono.')}}
 </script>
 </body>
 </html>

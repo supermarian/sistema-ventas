@@ -1,0 +1,132 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    // Preparado para cuando cada documento usuarios/{uid} tenga el rol.
+    function administrador() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'Administrador';
+    }
+
+    function gestorPrecios() {
+      return autenticado() && (
+        request.auth.token.admin == true
+        || request.auth.token.rol == 'Administrador'
+        || request.auth.token.rol == 'Jefe'
+      );
+    }
+
+    function actualizaSoloStock() {
+      return autenticado()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock'])
+        && request.resource.data.stock >= 0;
+    }
+
+    function autorizaStockNegativo() {
+      return autenticado() && request.auth.token.admin == true;
+    }
+
+    match /usuarios/{usuarioId} {
+      allow read: if autenticado();
+      allow create, update, delete: if administrador();
+    }
+
+    match /productos/{productoId} {
+      allow read: if autenticado();
+      allow create, update, delete: if administrador();
+      allow update: if actualizaSoloStock();
+      allow update: if gestorPrecios()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['precio', 'stock', 'seguimientoPrecio']);
+      allow update: if autorizaStockNegativo()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']);
+    }
+
+    match /clientes/{clienteId} {
+      allow read: if autenticado();
+      allow create, update: if autenticado();
+      allow delete: if administrador();
+    }
+
+    // Una venta se crea desde el POS, pero nunca se edita ni se elimina.
+    match /ventas_realizadas/{ventaId} {
+      allow read: if autenticado();
+      allow create: if autenticado();
+      allow update, delete: if false;
+    }
+
+    match /clientes_portal/{clienteId} {
+      allow read: if autenticado() && request.auth.uid == clienteId;
+      allow create, update: if autenticado() && request.auth.uid == clienteId;
+      allow delete: if false;
+    }
+
+    match /cotizaciones/{cotizacionId} {
+      allow create: if autenticado() && request.resource.data.uidCliente == request.auth.uid;
+      allow read: if autenticado() && (
+        resource.data.uidCliente == request.auth.uid || request.auth.token.admin == true
+        || request.auth.token.rol == 'Administrador' || request.auth.token.rol == 'Jefe'
+      );
+      allow update: if autenticado() && (
+        resource.data.uidCliente == request.auth.uid || request.auth.token.admin == true
+        || request.auth.token.rol == 'Administrador' || request.auth.token.rol == 'Jefe'
+      );
+      allow delete: if false;
+    }
+
+    match /deudas_clientes/{deudaId} {
+      allow read: if autenticado();
+      allow create: if autenticado();
+      allow update: if autenticado();
+      allow delete: if administrador();
+    }
+
+    match /pagos_creditos/{pagoId} {
+      allow read: if autenticado();
+      allow create: if autenticado();
+      allow update, delete: if false;
+    }
+
+    match /movimientos_caja/{movimientoId} {
+      allow read: if autenticado();
+      allow create: if autenticado();
+      allow update, delete: if administrador();
+    }
+
+    match /alertas_auditoria/{alertaId} {
+      allow read: if administrador();
+      allow create: if autenticado();
+      allow update, delete: if administrador();
+    }
+
+    match /ventas_precio/{ventaPrecioId} {
+      allow read: if administrador();
+      allow create: if autenticado();
+      allow update, delete: if administrador();
+    }
+
+    match /historial_precios/{cambioId} {
+      allow read: if administrador();
+      allow create: if autenticado();
+      allow update, delete: if administrador();
+    }
+
+    match /cierres_caja/{cierreId} {
+      allow read: if autenticado();
+      allow create: if autenticado();
+      allow update, delete: if false;
+    }
+
+    match /configuracion-venta-factura/{configuracionId} {
+      allow read, write: if autenticado();
+    }
+
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}

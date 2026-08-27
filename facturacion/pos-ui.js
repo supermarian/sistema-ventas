@@ -50,6 +50,7 @@ export const POSUI = {
                     <td>${p.cantidad}</td>
                     <td>RD$ ${subtotalVal.toFixed(2)}</td>
                     <td>
+                        ${window.puedeEditarPrecios ? `<button onclick="window.editarPrecioCarrito(${i})" style="background:#fff3cd;border:1px solid #856404;color:#856404;cursor:pointer;font-weight:bold;padding:3px 6px;border-radius:5px;">Precio</button>` : ''}
                         <button onclick="window.eliminar(${i})" 
                                 style="background:none;border:none;color:red;cursor:pointer;font-weight:bold;font-size:1.2rem;padding:0 10px;">
                             ✖

@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { existeDuplicado } from './validaciones.js';
 
 const firebaseConfig = {
@@ -13,6 +14,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 let productosCache = [];
 let busquedaActiva = false; 
 
@@ -120,6 +122,8 @@ document.getElementById('btnGuardar').onclick = async () => {
 window.actualizarProducto = async () => {
     const idDocActual = document.getElementById('editId').value;
     const codBarra = document.getElementById('codBarra').value.trim();
+    const productoAnterior = productosCache.find(producto => producto.idDoc === idDocActual);
+    const precioNuevo = Number(document.getElementById('preProd').value);
 
     if (codBarra && codBarra !== "S/C") {
         const duplicado = await existeDuplicado(db, 'codigo', codBarra, idDocActual);
@@ -129,10 +133,21 @@ window.actualizarProducto = async () => {
     await updateDoc(doc(db, "productos", idDocActual), {
         codigo: codBarra,
         nombre: document.getElementById('nomProd').value,
-        precio: Number(document.getElementById('preProd').value),
+        precio: precioNuevo,
         stock: Number(document.getElementById('stockProd').value),
         estatus: document.getElementById('estatusProd').value // Aquí guardamos el cambio de estatus
     });
+    const diferencia = precioNuevo - Number(productoAnterior?.precio || 0);
+    if (productoAnterior && Math.abs(diferencia) > 0.009) {
+        await addDoc(collection(db, "alertas_auditoria"), {
+            tipo: Math.abs(diferencia) > Math.max(100, Math.abs(Number(productoAnterior.precio || 0)) * 0.2) ? "CAMBIO_PRECIO_IMPORTANTE" : "CAMBIO_PRECIO",
+            idProducto: idDocActual, producto: document.getElementById('nomProd').value.trim(),
+            precioAnterior: Number(productoAnterior.precio || 0), precioNuevo, diferencia,
+            usuarioUid: auth.currentUser?.uid || "", cajeroEmail: auth.currentUser?.email || "",
+            dispositivo: navigator.userAgent, fecha: serverTimestamp(), estado: "PENDIENTE",
+            ventasObjetivo: 5, ventasRegistradas: 0
+        });
+    }
     alert("✅ ¡Cambios guardados con éxito!");
     window.cancelarEdicion();
 };

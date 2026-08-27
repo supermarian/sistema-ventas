@@ -51,6 +51,7 @@ export const TicketSystem = {
                     }
                     th { border-bottom: 1px solid #000; }
                     .item-row td { padding: 4px 0; }
+                    .credito-banner { display: ${venta.nroCredito ? 'block' : 'none'}; border: 3px solid #000; padding: 8px; margin: 8px 0; text-align: center; font-size: 22px; font-weight: bold; }
                 </style>
             </head>
             <body>
@@ -66,9 +67,12 @@ export const TicketSystem = {
                 <div>
                     <b>${esCopia ? '*** REIMPRESIÓN / COPIA ***' : 'FACTURA ORIGINAL'}</b><br>
                     <b>No:</b> ${venta.nroFactura || 'S/N'}<br>
+                    ${venta.nroCredito ? `<b>No. Crédito:</b> ${venta.nroCredito}<br><b>Vence:</b> ${venta.fechaVencimientoCredito ? new Date(venta.fechaVencimientoCredito).toLocaleDateString() : 'Pendiente'}<br>` : ''}
                     <b>Fecha:</b> ${fechaHoy}<br>
                     <b>Cajero:</b> ${venta.cajero || 'General'}
                 </div>
+
+                <div class="credito-banner">${venta.nroCredito ? `CRÉDITO<br><small>${esCopia ? 'COPIA - SIN VALOR FISCAL' : 'ORIGINAL'}</small>` : ''}</div>
 
                 <div class="separator"></div>
 

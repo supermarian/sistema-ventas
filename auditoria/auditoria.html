@@ -107,7 +107,7 @@
 <div class="container">
     <header>
         <h1><i class="fas fa-file-invoice-dollar"></i> Panel de Auditoría de Cierres</h1>
-        <a href="factura1.html" class="btn-regresar"><i class="fas fa-arrow-left"></i> Volver al POS</a>
+            <a href="../menu.html" class="btn-regresar"><i class="fas fa-arrow-left"></i> Volver al menú</a>
     </header>
 
     <div class="stats-grid">
@@ -143,11 +143,19 @@
                 </tbody>
         </table>
     </div>
+    <h2 style="margin-top:30px">Alertas de cambios de precio</h2>
+    <div style="overflow-x:auto">
+        <table>
+            <thead><tr><th>Fecha</th><th>Producto</th><th>Factura</th><th>Anterior</th><th>Nuevo</th><th>Diferencia</th><th>Usuario / Dispositivo</th></tr></thead>
+            <tbody id="tabla-alertas-body"></tbody>
+        </table>
+    </div>
 </div>
 
 <script type="module">
     // IMPORTACIONES DE FIREBASE
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // TU CONFIGURACIÓN (La misma que usas en el POS)
@@ -161,11 +169,14 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
+    let accesoPermitido = false;
 
     // FUNCIÓN PARA CARGAR LOS DATOS
     const cargarAuditoria = () => {
-        const q = query(collection(db, "auditoria_cierres"), orderBy("fechaCierre", "desc"));
+        if (!accesoPermitido) return;
+        const q = query(collection(db, "cierres_caja"), orderBy("fechaCierre", "desc"));
         
         onSnapshot(q, (snapshot) => {
             const tbody = document.getElementById('tabla-auditoria-body');
@@ -195,11 +206,11 @@
                     <tr>
                         <td>${fecha}</td>
                         <td><strong>${data.cajeroNombre || 'Sin nombre'}</strong><br><small>${data.cajeroEmail}</small></td>
-                        <td>RD$ ${data.fondoInicial.toLocaleString()}</td>
-                        <td style="color: var(--verde)">RD$ ${data.ventasEfectivo.toLocaleString()}</td>
-                        <td>RD$ ${data.montoEsperadoEnCaja.toLocaleString()}</td>
-                        <td>RD$ ${data.montoRealContado.toLocaleString()}</td>
-                        <td><span class="badge ${badgeClass}">RD$ ${data.diferencia.toLocaleString()}</span></td>
+                        <td>RD$ ${Number(data.fondoInicial ?? data.montoInicial ?? 0).toLocaleString()}</td>
+                        <td style="color: var(--verde)">RD$ ${Number(data.ventasEfectivo || 0).toLocaleString()}</td>
+                        <td>RD$ ${Number(data.montoEsperadoEnCaja ?? data.totalEnGaveta ?? 0).toLocaleString()}</td>
+                        <td>RD$ ${Number(data.montoRealContado ?? data.totalEnGaveta ?? 0).toLocaleString()}</td>
+                        <td><span class="badge ${badgeClass}">RD$ ${Number(data.diferencia || 0).toLocaleString()}</span></td>
                         <td><small>${data.estado || 'CERRADO'}</small></td>
                     </tr>
                 `;
@@ -215,6 +226,23 @@
     };
 
     cargarAuditoria();
+
+    onAuthStateChanged(auth, async user => {
+        if (!user) return window.location.href = '../index.html';
+        const token = await user.getIdTokenResult();
+        accesoPermitido = ['Administrador', 'Jefe', 'Consultor', 'Contador'].includes(token.claims.rol);
+        if (accesoPermitido) cargarAuditoria();
+    });
+
+    onSnapshot(query(collection(db, "alertas_auditoria"), orderBy("fecha", "desc")), (snapshot) => {
+        const tbody = document.getElementById('tabla-alertas-body');
+        tbody.innerHTML = '';
+        snapshot.forEach(doc => {
+            const alerta = doc.data();
+            const fecha = alerta.fecha?.toDate ? alerta.fecha.toDate().toLocaleString() : '---';
+            tbody.innerHTML += `<tr><td>${fecha}</td><td>${alerta.producto || '---'}</td><td>${alerta.nroFactura || '---'}</td><td>RD$ ${Number(alerta.precioAnterior || 0).toFixed(2)}</td><td>RD$ ${Number(alerta.precioNuevo || 0).toFixed(2)}</td><td>RD$ ${Number(alerta.diferencia || 0).toFixed(2)}</td><td>${alerta.cajeroNombre || '---'}<br><small>${alerta.dispositivo || ''}</small></td></tr>`;
+        });
+    });
 </script>
 
 </body>

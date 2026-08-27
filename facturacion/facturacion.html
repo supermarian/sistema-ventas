@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Súper Marian - POS Premium v6.1</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   
 :root {
@@ -73,6 +74,16 @@ header {
 .modal-content { background: #fff; border-radius: 14px; padding: 22px; width: 420px; max-height: 85vh; overflow: auto; }
 .small { font-size: .9rem; color: #666; }
 .grid-cols { display: grid; grid-template-columns: 1fr 120px; gap: 8px; align-items: center; }
+.lector-preview { width: 100%; min-height: 240px; background: #111; border-radius: 10px; overflow: hidden; }
+.sesion-cajero { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #eef7ee; text-align: left; }
+.venta-rapida-btn { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px; margin-bottom: 12px; border: 1px solid #b9d8f5; border-radius: 12px; background: #f5faff; color: var(--azul); cursor: pointer; text-align: left; }
+.venta-rapida-btn:hover { background: #e7f3ff; }
+.venta-rapida-icon { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 12px; background: var(--azul); color: #fff; font-size: 2.2rem; flex: 0 0 auto; }
+.venta-rapida-btn strong { display: block; font-size: 1.05rem; }
+.venta-rapida-btn > span:not(.venta-rapida-icon) { display: block; margin-top: 3px; color: #46627a; font-size: .85rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-grid .full { grid-column: 1 / -1; }
+@media(max-width:560px){ .form-grid { grid-template-columns: 1fr; } .form-grid .full { grid-column: auto; } }
 @media(max-width:980px){ .main-container { grid-template-columns: 1fr; } }
 
 /* Estilo Premium para el Resumen de Cierre */
@@ -124,6 +135,8 @@ header {
   
 
     <button id="btn-cobrar-credito" class="btn" style="background:var(--azul); color:#fff; display:none" onclick="window.abrirModuloCreditos()">💳 COBRAR CRÉDITO</button>
+    <button id="btn-egreso-caja" class="btn" style="background:#8e44ad; color:#fff; display:none" onclick="window.abrirModalEgreso()">💸 EGRESO</button>
+    <button id="btn-cotizaciones" class="btn" style="background:#17a2b8; color:#fff; display:none" onclick="window.abrirCotizaciones()">📋 COTIZACIONES</button>
     <button id="btn-cerrar-turno" class="btn btn-danger" onclick="window.cerrarCaja()" style="display:none">🔒 CERRAR CAJA</button>
     <button class="btn" style="background:#666;color:#fff" onclick="window.cerrarSesion()">🚪 SALIR</button>
   </div>
@@ -162,6 +175,69 @@ header {
   </div>
 </div></div>
 
+<div id="modalLectorCodigo" class="modal"><div class="modal-content">
+    <h3 style="margin-top:0">📷 Escanear producto</h3>
+    <p id="estadoLectorCodigo" class="small">Apunta al código de barras del producto.</p>
+    <div id="lectorCodigoPreview" class="lector-preview"></div>
+    <input id="fotoCodigo" type="file" accept="image/*" capture="environment" style="margin-top:12px;width:100%">
+    <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-main" onclick="window.nuevoEscaneoCodigo()">🔄 NUEVO PRODUCTO</button>
+        <button class="btn" onclick="window.cerrarLectorCodigo()">CERRAR</button>
+    </div>
+</div></div>
+
+<div id="modalVentaRapida" class="modal"><div class="modal-content">
+    <h2 style="margin-top:0;color:var(--azul)">📱 Venta rápida</h2>
+    <p class="small">Registra los datos del cliente y continúa con esta venta.</p>
+    <div class="form-grid">
+        <div>
+            <label class="small" for="ventaRapidaTelefono">Teléfono *</label>
+            <input id="ventaRapidaTelefono" class="search-box" type="tel" placeholder="809-000-0000" autocomplete="tel">
+        </div>
+        <div>
+            <label class="small" for="ventaRapidaNombre">Nombre completo *</label>
+            <input id="ventaRapidaNombre" class="search-box" type="text" placeholder="Nombre del cliente" autocomplete="name">
+        </div>
+        <div class="full">
+            <label class="small" for="ventaRapidaDireccion">Dirección *</label>
+            <input id="ventaRapidaDireccion" class="search-box" type="text" placeholder="Calle, número, sector" autocomplete="street-address">
+        </div>
+        <div>
+            <label class="small" for="ventaRapidaCedula">Cédula</label>
+            <input id="ventaRapidaCedula" class="search-box" type="text" placeholder="000-0000000-0" inputmode="numeric">
+        </div>
+        <div>
+            <label class="small" for="ventaRapidaRnc">RNC</label>
+            <input id="ventaRapidaRnc" class="search-box" type="text" placeholder="000000000" inputmode="numeric">
+        </div>
+        <div>
+            <label class="small" for="ventaRapidaEmail">Correo electrónico</label>
+            <input id="ventaRapidaEmail" class="search-box" type="email" placeholder="cliente@correo.com" autocomplete="email">
+        </div>
+        <div>
+            <label class="small" for="ventaRapidaCredito">¿Puede comprar a crédito?</label>
+            <select id="ventaRapidaCredito" class="search-box">
+                <option value="false">No</option>
+                <option value="true">Sí</option>
+            </select>
+        </div>
+    </div>
+    <p class="small" style="margin-bottom:0">Para una venta formal, registra la cédula o el RNC.</p>
+    <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn btn-main" onclick="window.guardarVentaRapida()">GUARDAR Y CONTINUAR</button>
+        <button class="btn" onclick="window.cerrarModal('modalVentaRapida')">CANCELAR</button>
+    </div>
+</div></div>
+
+<div id="modalCotizaciones" class="modal"><div class="modal-content" style="width:800px;max-width:95%">
+    <h2 style="margin-top:0;color:#17a2b8">📋 Cotizaciones de clientes</h2>
+    <p class="small">Busca solo cuando termines de escribir y presiones Enter.</p>
+    <div style="display:flex;gap:8px"><input id="busquedaCotizacion" class="search-box" placeholder="Número, cliente o correo..."><button class="btn" style="background:#17a2b8;color:#fff" onclick="window.buscarCotizaciones()">BUSCAR</button></div>
+    <p id="estadoCotizaciones" class="small">Escribe un filtro y presiona Enter.</p>
+    <div style="max-height:360px;overflow:auto"><table class="cart-table"><thead><tr><th>Cotización</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Acción</th></tr></thead><tbody id="listaCotizaciones"></tbody></table></div>
+    <div style="text-align:right;margin-top:14px"><button class="btn" onclick="window.cerrarModal('modalCotizaciones')">CERRAR</button></div>
+</div></div>
+
 <div id="modalPago" class="modal">
     <div class="modal-content" style="width: 800px; max-width: 95%;">
         <h2 style="margin-top:0; border-bottom: 2px solid var(--verde-pos); padding-bottom:10px; color: var(--verde-dark);">
@@ -185,7 +261,7 @@ header {
             </div>
             <div>
                 <label class="small">Monto Tipo</label>
-                <input type="number" id="pagoMonto" class="search-box" placeholder="0.00" onkeydown="if(event.key==='Enter') window.agregarPagoLine()">
+                <input type="number" id="pagoMonto" class="search-box" placeholder="0.00">
             </div>
             <div>
                 <label class="small">No. de Ref.</label>
@@ -212,9 +288,10 @@ header {
     <div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
       <table class="cart-table">
         <thead style="background:#f8f9fa; position: sticky; top:0;">
-          <tr>
-            <th>Cliente</th>
-            <th>Factura</th>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Crédito</th>
+                        <th>Factura</th>
             <th>Monto</th>
             <th>Acción</th>
           </tr>
@@ -262,6 +339,15 @@ header {
                 <label class="small">Nota Factura</label>
                 <input type="text" id="notaFactura" class="search-box">
             </div>
+            <div>
+                <label class="small">Plazo del crédito</label>
+                <select id="plazoCredito" class="search-box">
+                    <option value="1">1 día</option>
+                    <option value="7">7 días</option>
+                    <option value="15" selected>15 días</option>
+                    <option value="30">30 días</option>
+                </select>
+            </div>
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
                 <div>
                     <label class="small">Nota Delivery</label>
@@ -273,6 +359,11 @@ header {
                 </div>
             </div>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;color:#856404;font-weight:700">
+            <input id="autorizarStockNegativo" type="checkbox" style="width:auto">
+            Autorizar venta con stock negativo (solo administrador)
+        </label>
+        <input id="pinStockNegativo" class="search-box" type="password" placeholder="PIN de administrador para autorizar" style="display:none;margin-bottom:14px">
 
         <div style="display: flex; justify-content: space-between;">
             <button class="btn btn-danger" onclick="window.cerrarModal('modalPago')">❌ Cancelar</button>
@@ -294,6 +385,8 @@ header {
     <div id="resumenCierre" style="background:#f9f9f9; padding:15px; border-radius:10px; margin:15px 0; line-height:1.6; border:1px solid #ddd; font-family: monospace; font-size: 0.9rem;">
       </div>
 
+        <label class="small" for="montoRealContado">Efectivo contado físicamente</label>
+        <input id="montoRealContado" class="search-box" type="number" min="0" step="0.01" placeholder="RD$ 0.00" style="text-align:center; margin-bottom:10px;">
     <input id="pinCierre" class="search-box" placeholder="PIN para confirmar cierre" type="password" style="text-align:center; margin-bottom: 10px;">
 
     <div style="display:flex; gap:10px;">
@@ -303,6 +396,20 @@ header {
   </div>
 </div>
 
+<div id="modalEgresoCaja" class="modal"><div class="modal-content">
+    <h2 style="color:#8e44ad;margin-top:0">💸 Registrar egreso de caja</h2>
+    <p class="small">Registra dinero que sale de caja sin crear una venta o un crédito.</p>
+    <input id="egresoMotivo" class="search-box" placeholder="Motivo: suplidor, retiro, devolución...">
+    <input id="egresoBeneficiario" class="search-box" placeholder="Beneficiario" style="margin-top:8px">
+    <input id="egresoMonto" class="search-box" type="number" min="0.01" step="0.01" placeholder="Monto RD$" style="margin-top:8px">
+    <input id="egresoObservacion" class="search-box" placeholder="Observación (opcional)" style="margin-top:8px">
+    <input id="egresoPin" class="search-box" type="password" placeholder="PIN del cajero" style="margin-top:8px">
+    <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn" style="background:#8e44ad;color:#fff" onclick="window.guardarEgresoCaja()">CONFIRMAR EGRESO</button>
+        <button class="btn" onclick="window.cerrarModal('modalEgresoCaja')">CANCELAR</button>
+    </div>
+</div></div>
+
 <div class="main-container">
   <div class="card">
     <h3>📦 PRODUCTOS</h3>
@@ -310,6 +417,7 @@ header {
       <input id="buscador" class="search-box" placeholder="🔎 Buscar producto o escanear y Enter..." autocomplete="off">
       <div id="resultados-flotantes" class="resultados-flotantes"></div>
     </div>
+        <button class="btn" style="margin-top:8px;background:var(--azul);color:#fff" onclick="window.abrirLectorCodigo()">📷 USAR CÁMARA / FOTO</button>
     <div style="margin-top:14px;flex:1;overflow:auto">
       <table class="cart-table">
         <thead><tr><th>Producto</th><th>Cant.</th><th>Subtotal</th><th></th></tr></thead>
@@ -321,6 +429,10 @@ header {
   <div class="card">
     <div style="background:#e7f3ff;padding:12px;border-radius:10px;margin-bottom:12px">
       <strong style="color:var(--azul)">👤 GESTIÓN DE CLIENTE</strong>
+            <button class="venta-rapida-btn" type="button" onclick="window.abrirVentaRapida()" aria-label="Abrir venta rápida">
+                <span class="venta-rapida-icon" aria-hidden="true">📱</span>
+                <span><strong>VENTA RÁPIDA</strong>Registrar cliente y preparar la venta</span>
+            </button>
       <div style="position:relative;margin-top:8px">
         <input id="buscadorCliente" class="search-box" placeholder="Buscar por nombre y Enter..." autocomplete="off">
         <div id="resultados-clientes" class="resultados-flotantes"></div>
@@ -394,122 +506,136 @@ header {
         userDB: null,
         clienteSeleccionado: JSON.parse(localStorage.getItem('marian_pos_client')) || null,
         nroFactura: "FAC-000000",
-        tempProd: null
+        tempProd: null,
+        cotizacionSeleccionada: null
+    };
+    window.puedeEditarPrecios = false;
+
+    const guardarCarritoTemporal = () => {
+        localStorage.setItem('marian_pos_cart', JSON.stringify(state.carrito));
     };
 
+    let lectorCodigo = null;
+    let codigoBloqueado = null;
+    let lectorActivo = false;
 
-
- // --- ESTO VA SUELTO EN EL SCRIPT ---
-window.procesarFacturaMultiPago = async () => {
-    console.log("Iniciando procesamiento de factura...");
-    
-    // 1. Validar carrito
-    if (!state.carrito || state.carrito.length === 0) {
-        return alert("El carrito está vacío");
-    }
-
-    // 2. Preparar datos para el ticket
-    const datosVenta = {
-        nroFactura: state.nroFactura || "001",
-        cajero: state.userDB ? state.userDB.nombre : "General",
-        total: state.carrito.reduce((acc, i) => acc + (Number(i.subtotal) || 0), 0)
+    const mostrarEstadoLector = (mensaje) => {
+        const estado = document.getElementById('estadoLectorCodigo');
+        if (estado) estado.innerText = mensaje;
     };
 
-    // 3. Mandar a imprimir usando el sistema externo
-    // Pasamos el carrito actual (state.carrito)
-    TicketSystem.imprimir(datosVenta, state.carrito, false);
-
-    // 4. Aquí pones tu lógica de Firebase para guardar la venta
-    // await guardarVentaEnFirebase(datosVenta, state.carrito);
-    
-    console.log("Venta procesada e impresa.");
-};
-
-
-
-
-window.procesarFacturaMultiPago = async () => {
-    // 1. Validar que el carrito tenga algo
-    if (!state.carrito || state.carrito.length === 0) return;
-
-    // 2. Preparar los datos para el Ticket
-    const datosVenta = {
-        nroFactura: state.nroFactura || "001",
-        cajero: state.userDB ? state.userDB.nombre : "General",
-        total: state.carrito.reduce((acc, i) => acc + (Number(i.subtotal) || 0), 0)
+    const detenerLectorCodigo = async () => {
+        if (!lectorCodigo || !lectorActivo) return;
+        try {
+            await lectorCodigo.stop();
+            lectorActivo = false;
+        } catch (error) {
+            console.error('Error al detener el lector:', error);
+        }
     };
 
-    // 3. ENVIAR AL SISTEMA DE TICKETS
-    // Importante: TicketSystem debe estar importado desde ticket-system.js
-    TicketSystem.imprimir(datosVenta, state.carrito, false);
+    const usarCodigoDetectado = async (codigo) => {
+        const codigoNormalizado = String(codigo).trim();
+        if (!codigoNormalizado || codigoBloqueado === codigoNormalizado) return;
 
-    // 4. Lógica de guardado (Opcional por ahora)
-    console.log("Venta enviada a impresión exitosamente.");
-    
-    // Aquí puedes cerrar el modal y limpiar el carrito después de imprimir
-    // window.cerrarModal('modalPago');
-    // limpiarCarrito();
-};
+        codigoBloqueado = codigoNormalizado;
+        await detenerLectorCodigo();
 
-// --- CONFIGURACIÓN DE TECLADO PARA EL MODAL DE PAGO ---
-const configurarNavegacionPago = () => {
-    const tipo = document.getElementById('pagoTipo');
-    const monto = document.getElementById('pagoMonto');
-    const ref = document.getElementById('pagoRef');
-    const iden = document.getElementById('pagoId');
+        const resultados = POSCore.buscarProducto(state.productos, codigoNormalizado);
+        const producto = resultados.find(item => String(item.codigo || '').trim() === codigoNormalizado);
 
-    if(!tipo) return;
+        if (!producto) {
+            mostrarEstadoLector(`Código ${codigoNormalizado} no está registrado. Retira el producto y pulsa NUEVO PRODUCTO.`);
+            return;
+        }
 
-    // Las flechas arriba/abajo ya funcionan por defecto en los <select> de HTML
-    tipo.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') { e.preventDefault(); monto.focus(); monto.select(); }
+        document.getElementById('modalLectorCodigo').style.display = 'none';
+        window.seleccionarProductoDeLista(producto);
+    };
+
+    const iniciarLectorCodigo = async () => {
+        if (codigoBloqueado) {
+            mostrarEstadoLector('Retira el producto actual y pulsa NUEVO PRODUCTO para escanear otro.');
+            return;
+        }
+
+        if (!window.Html5Qrcode) {
+            mostrarEstadoLector('No se pudo cargar el lector. Verifica tu conexión e inténtalo de nuevo.');
+            return;
+        }
+
+        if (!lectorCodigo) lectorCodigo = new window.Html5Qrcode('lectorCodigoPreview');
+
+        try {
+            const camaras = await window.Html5Qrcode.getCameras();
+            if (!camaras.length) throw new Error('No hay cámaras disponibles');
+
+            await lectorCodigo.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 280, height: 120 } },
+                usarCodigoDetectado,
+                () => {}
+            );
+            lectorActivo = true;
+            mostrarEstadoLector('Apunta al código. Se detendrá después de una lectura.');
+        } catch (error) {
+            lectorActivo = false;
+            console.error('No se pudo iniciar la cámara:', error);
+            mostrarEstadoLector('No se pudo iniciar la cámara. Usa la opción de foto o revisa el permiso.');
+        }
+    };
+
+    window.abrirLectorCodigo = () => {
+        document.getElementById('modalLectorCodigo').style.display = 'flex';
+        mostrarEstadoLector(codigoBloqueado
+            ? 'Retira el producto actual y pulsa NUEVO PRODUCTO.'
+            : 'Apunta al código de barras del producto.');
+        if (!codigoBloqueado) iniciarLectorCodigo();
+    };
+
+    window.nuevoEscaneoCodigo = async () => {
+        await detenerLectorCodigo();
+        codigoBloqueado = null;
+        document.getElementById('lectorCodigoPreview').innerHTML = '';
+        lectorCodigo = null;
+        iniciarLectorCodigo();
+    };
+
+    window.cerrarLectorCodigo = async () => {
+        await detenerLectorCodigo();
+        document.getElementById('modalLectorCodigo').style.display = 'none';
+    };
+
+    document.getElementById('fotoCodigo').addEventListener('change', async (event) => {
+        const archivo = event.target.files[0];
+        if (!archivo || codigoBloqueado) return;
+
+        if (!window.Html5Qrcode) {
+            mostrarEstadoLector('No se pudo cargar el lector de imágenes.');
+            return;
+        }
+
+        await detenerLectorCodigo();
+        if (!lectorCodigo) lectorCodigo = new window.Html5Qrcode('lectorCodigoPreview');
+
+        try {
+            mostrarEstadoLector('Leyendo la foto...');
+            const codigo = await lectorCodigo.scanFile(archivo, true);
+            await usarCodigoDetectado(codigo);
+        } catch (error) {
+            console.error('No se encontró un código en la foto:', error);
+            mostrarEstadoLector('No se encontró un código legible en la foto.');
+        } finally {
+            event.target.value = '';
+        }
     });
-    
-    monto.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') { e.preventDefault(); ref.focus(); }
-    });
 
-    ref.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') { e.preventDefault(); iden.focus(); }
-    });
-
-iden.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter') { 
-        e.preventDefault(); 
-        window.agregarPagoLine(); // Agrega el pago a la lista
-        
-        setTimeout(() => {
-            const btn = document.getElementById('btnFacturar');
-            
-            // Si el pago completó el total, el botón se habilita
-            if(btn && !btn.disabled) {
-                btn.focus(); 
-                
-                // --- AQUÍ SE DISPARA TODO ---
-                window.procesarFacturaMultiPago(); 
-                
-            } else {
-                // Si aún falta dinero por pagar, vuelve al campo monto
-                const montoInput = document.getElementById('pagoMonto');
-                if(montoInput) {
-                    montoInput.focus();
-                    montoInput.select();
-                }
-            }
-        }, 150); // 150ms para asegurar que el sistema procesó el pago
-    }
-});
-};
-
-// Llama a la función una vez para que active los detectores de teclas
-configurarNavegacionPago();
 
 
 // Función para abrir el modal y cargar deudas
 window.abrirModuloCreditos = async () => {
     POSUI.abrirModal('modalModuloCreditos');
-    document.getElementById('listaDeudasBody').innerHTML = "<tr><td colspan='4' style='text-align:center'>Cargando deudas...</td></tr>";
-    git 
+    document.getElementById('listaDeudasBody').innerHTML = "<tr><td colspan='5' style='text-align:center'>Cargando deudas...</td></tr>";
     try {
         const q = query(collection(db, "deudas_clientes"), where("estado", "==", "PENDIENTE"));
         const querySnapshot = await getDocs(q);
@@ -522,13 +648,14 @@ window.abrirModuloCreditos = async () => {
             html += `
                 <tr>
                     <td><b>${data.nombreCliente}</b></td>
-                    <td class="small">${data.nroFactura}</td>
-                    <td style="color:var(--rojo); font-weight:bold">RD$ ${data.montoDeuda.toLocaleString()}</td>
-                    <td><button class="btn btn-main" style="padding:5px 10px; font-size:0.8rem" onclick="window.cobrarDeuda('${doc.id}', ${data.montoDeuda})">COBRAR</button></td>
+                    <td class="small"><span class="fac-badge">${data.nroCredito || "CRÉDITO SIN NÚMERO"}</span></td>
+                    <td class="small">${data.nroFactura || "S/N"}</td>
+                    <td style="color:var(--rojo); font-weight:bold">RD$ ${Number(data.saldoPendiente ?? data.montoDeuda ?? 0).toLocaleString()}</td>
+                    <td><button class="btn btn-main" style="padding:5px 10px; font-size:0.8rem" onclick="window.cobrarDeuda('${doc.id}')">ABONAR</button></td>
                 </tr>`;
         });
         
-        document.getElementById('listaDeudasBody').innerHTML = html || "<tr><td colspan='4' style='text-align:center'>No hay cuentas pendientes</td></tr>";
+        document.getElementById('listaDeudasBody').innerHTML = html || "<tr><td colspan='5' style='text-align:center'>No hay cuentas pendientes</td></tr>";
         
     } catch (e) {
         console.error(e);
@@ -549,17 +676,40 @@ window.filtrarDeudas = () => {
 };
 
 // Función para procesar el cobro real
-window.cobrarDeuda = async (idDeuda, monto) => {
-    const confirmar = confirm(`¿Confirmas el cobro de RD$ ${monto.toLocaleString()}? \nEsto se sumará al efectivo de tu caja actual.`);
+window.cobrarDeuda = async (idDeuda) => {
+    const deudaActual = state.deudasPendientes.find(deuda => deuda.id === idDeuda);
+    const saldo = Number(deudaActual?.saldoPendiente ?? deudaActual?.montoDeuda ?? 0);
+    const monto = Number(prompt(`Saldo pendiente: RD$ ${saldo.toLocaleString()}\nMonto a abonar:`));
+    if (!Number.isFinite(monto) || monto <= 0 || monto > saldo) return alert('Monto de abono inválido.');
+    const confirmar = confirm(`¿Confirmas el abono de RD$ ${monto.toLocaleString()}?\nEsto se sumará al efectivo de tu caja actual.`);
     
     if (confirmar) {
         try {
-            // 1. Actualizar estado en Firebase
             const deudaRef = doc(db, "deudas_clientes", idDeuda);
-            await updateDoc(deudaRef, {
-                estado: "PAGADO",
-                fechaPago: serverTimestamp(),
-                cobradoPor: state.userDB.nombre
+            const pagoRef = doc(collection(db, "pagos_creditos"));
+            await runTransaction(db, async transaction => {
+                const deudaSnapshot = await transaction.get(deudaRef);
+                if (!deudaSnapshot.exists()) throw new Error('Crédito no encontrado.');
+                const saldoActual = Number(deudaSnapshot.data().saldoPendiente ?? deudaSnapshot.data().montoDeuda ?? 0);
+                if (monto > saldoActual) throw new Error('El saldo cambió. Consulta nuevamente.');
+                const nuevoSaldo = Math.max(0, saldoActual - monto);
+                transaction.update(deudaRef, {
+                    saldoPendiente: nuevoSaldo,
+                    estado: nuevoSaldo === 0 ? "PAGADO" : "PENDIENTE",
+                    fechaUltimoAbono: serverTimestamp(),
+                    cobradoPor: state.userDB?.nombre || 'Desconocido'
+                });
+                transaction.set(pagoRef, {
+                    idCredito: idDeuda,
+                    nroCredito: deudaSnapshot.data().nroCredito || null,
+                    nroFactura: deudaSnapshot.data().nroFactura || null,
+                    idCliente: deudaSnapshot.data().idCliente || null,
+                    monto,
+                    tipo: 'ABONO',
+                    cajero: state.userDB?.nombre || 'Desconocido',
+                    cajeroEmail: state.userDB?.email || '',
+                    fecha: serverTimestamp()
+                });
             });
 
             // 2. Sumar el dinero al efectivo de la caja actual (Local Storage)
@@ -588,6 +738,84 @@ window.cobrarDeuda = async (idDeuda, monto) => {
         signOut(auth).then(() => location.href = "../index.html"); 
     };
 
+    window.abrirModalEgreso = () => {
+        ['egresoMotivo', 'egresoBeneficiario', 'egresoMonto', 'egresoObservacion', 'egresoPin'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        POSUI.abrirModal('modalEgresoCaja');
+        setTimeout(() => document.getElementById('egresoMotivo')?.focus(), 150);
+    };
+
+    window.abrirCotizaciones = () => {
+        document.getElementById('busquedaCotizacion').value = '';
+        document.getElementById('listaCotizaciones').innerHTML = '';
+        document.getElementById('estadoCotizaciones').innerText = 'Escribe un filtro y presiona Enter.';
+        POSUI.abrirModal('modalCotizaciones');
+        setTimeout(() => document.getElementById('busquedaCotizacion')?.focus(), 150);
+    };
+
+    window.buscarCotizaciones = async () => {
+        const termino = document.getElementById('busquedaCotizacion').value.trim().toLowerCase();
+        if (!termino) return alert('Escribe un número, cliente o correo.');
+        const estado = document.getElementById('estadoCotizaciones');
+        estado.innerText = 'Consultando cotizaciones...';
+        try {
+            const snapshot = await getDocs(collection(db, 'cotizaciones'));
+            const cotizaciones = snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+                .filter(item => item.estado === 'PENDIENTE' && JSON.stringify(item).toLowerCase().includes(termino));
+            document.getElementById('listaCotizaciones').innerHTML = cotizaciones.map(item => `
+                <tr><td><span class="fac-badge">${item.id}</span></td>
+                <td>${item.nombre || 'Sin nombre'}<br><small>${item.emailCliente || item.telefono || ''}</small></td>
+                <td>${(item.items || []).map(producto => `${producto.cantidad}x ${producto.nombre}`).join(', ')}</td>
+                <td>RD$ ${Number(item.total || 0).toFixed(2)}</td>
+                <td><button class="btn btn-main" style="padding:6px 10px" onclick="window.cargarCotizacion('${item.id}')">CARGAR</button></td></tr>`).join('') || '<tr><td colspan="5">No se encontraron cotizaciones pendientes.</td></tr>';
+            state.cotizacionesEncontradas = cotizaciones;
+            estado.innerText = `${cotizaciones.length} cotización(es) encontrada(s).`;
+        } catch (error) {
+            console.error(error);
+            estado.innerText = 'No se pudo consultar Firebase.';
+        }
+    };
+
+    window.cargarCotizacion = id => {
+        const cotizacion = state.cotizacionesEncontradas?.find(item => item.id === id);
+        if (!cotizacion) return;
+        state.cotizacionSeleccionada = cotizacion;
+        state.carrito = (cotizacion.items || []).map(item => ({ ...item, cantidad: Number(item.cantidad) || 1, precio: Number(item.precio) || 0, subtotal: (Number(item.precio) || 0) * (Number(item.cantidad) || 1) }));
+        guardarCarritoTemporal();
+        POSUI.renderCarrito(state.carrito);
+        POSUI.cerrarModal('modalCotizaciones');
+        alert(`Cotización ${id} cargada. Verifica precios y modifica el carrito antes de cobrar.`);
+    };
+
+    document.getElementById('busquedaCotizacion')?.addEventListener('keydown', event => {
+        if (event.key === 'Enter') { event.preventDefault(); window.buscarCotizaciones(); }
+    });
+
+    window.guardarEgresoCaja = async () => {
+        const motivo = document.getElementById('egresoMotivo').value.trim();
+        const beneficiario = document.getElementById('egresoBeneficiario').value.trim();
+        const monto = Number(document.getElementById('egresoMonto').value);
+        const observacion = document.getElementById('egresoObservacion').value.trim();
+        const pin = document.getElementById('egresoPin').value;
+        if (!motivo || !beneficiario || !Number.isFinite(monto) || monto <= 0) return alert('Complete motivo, beneficiario y un monto válido.');
+        if (!state.userDB || pin !== state.userDB.pin) return alert('PIN incorrecto.');
+        try {
+            await addDoc(collection(db, 'movimientos_caja'), {
+                tipo: 'EGRESO', motivo, beneficiario, monto, observacion,
+                cajero: state.userDB.nombre, cajeroEmail: state.userDB.email,
+                fecha: serverTimestamp()
+            });
+            const egresosActuales = Number(localStorage.getItem('marian_egresos_caja') || 0);
+            localStorage.setItem('marian_egresos_caja', String(egresosActuales + monto));
+            POSUI.cerrarModal('modalEgresoCaja');
+            alert(`✅ Egreso registrado: RD$ ${monto.toFixed(2)}`);
+        } catch (error) {
+            console.error('Error al guardar egreso:', error);
+            alert('No se pudo registrar el egreso. La caja no fue modificada.');
+        }
+    };
+
     window.seleccionarProductoDeLista = (producto) => {
         state.tempProd = producto;
         POSUI.ocultarResultados();
@@ -601,9 +829,27 @@ window.cobrarDeuda = async (idDeuda, monto) => {
         state.carrito = POSCore.agregarProducto(state.carrito, state.tempProd, cant);
         POSUI.renderCarrito(state.carrito);
         POSUI.cerrarModal('modalCantidad');
-        localStorage.setItem('marian_pos_cart', JSON.stringify(state.carrito));
+        guardarCarritoTemporal();
         document.getElementById('buscador').value = "";
         document.getElementById('buscador').focus();
+    };
+
+    window.eliminar = (indice) => {
+        if (!Number.isInteger(indice) || !state.carrito[indice]) return;
+        state.carrito.splice(indice, 1);
+        guardarCarritoTemporal();
+        POSUI.renderCarrito(state.carrito);
+    };
+
+    window.editarPrecioCarrito = (indice) => {
+        if (!window.puedeEditarPrecios || !state.carrito[indice]) return alert('Solo un administrador puede modificar precios.');
+        const item = state.carrito[indice];
+        const precio = Number(prompt(`Precio actual de ${item.nombre}:`, Number(item.precio || 0).toFixed(2)));
+        if (!Number.isFinite(precio) || precio < 0) return alert('Precio no válido.');
+        item.precio = precio;
+        item.subtotal = precio * (Number(item.cantidad) || 0);
+        guardarCarritoTemporal();
+        POSUI.renderCarrito(state.carrito);
     };
 
     window.seleccionarCliente = (cliente) => {
@@ -615,6 +861,68 @@ window.cobrarDeuda = async (idDeuda, monto) => {
         document.getElementById('resultados-clientes').style.display = 'none';
         document.getElementById('buscadorCliente').value = "";
         if (cliente.permiteCredito) document.getElementById('mensaje-tipo-cobro').style.display = 'block';
+    };
+
+    window.abrirVentaRapida = () => {
+        ['Telefono', 'Nombre', 'Direccion', 'Cedula', 'Rnc', 'Email'].forEach(campo => {
+            const input = document.getElementById(`ventaRapida${campo}`);
+            if (input) input.value = '';
+        });
+        document.getElementById('ventaRapidaCredito').value = 'false';
+        POSUI.abrirModal('modalVentaRapida');
+        setTimeout(() => document.getElementById('ventaRapidaTelefono')?.focus(), 150);
+    };
+
+    window.guardarVentaRapida = async () => {
+        const telefono = document.getElementById('ventaRapidaTelefono').value.trim();
+        const nombre = document.getElementById('ventaRapidaNombre').value.trim();
+        const direccion = document.getElementById('ventaRapidaDireccion').value.trim();
+        const cedula = document.getElementById('ventaRapidaCedula').value.trim();
+        const rnc = document.getElementById('ventaRapidaRnc').value.trim();
+        const email = document.getElementById('ventaRapidaEmail').value.trim();
+        const permiteCredito = document.getElementById('ventaRapidaCredito').value === 'true';
+
+        if (!telefono || !nombre || !direccion) {
+            return alert('Ingrese teléfono, nombre y dirección del cliente.');
+        }
+        if (!cedula && !rnc) {
+            return alert('Ingrese la cédula o el RNC del cliente.');
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return alert('El correo electrónico no es válido.');
+        }
+
+        const identificacionDuplicada = state.clientes.find(cliente =>
+            cliente.telefono === telefono ||
+            (cedula && cliente.cedula === cedula) ||
+            (rnc && cliente.rnc === rnc)
+        );
+        if (identificacionDuplicada) {
+            window.seleccionarCliente(identificacionDuplicada);
+            POSUI.cerrarModal('modalVentaRapida');
+            return alert(`El cliente ya existe: ${identificacionDuplicada.nombre}. Se seleccionó para esta venta.`);
+        }
+
+        const nuevoCliente = {
+            telefono,
+            nombre,
+            direccion,
+            cedula,
+            rnc,
+            email,
+            permiteCredito,
+            fechaRegistro: serverTimestamp()
+        };
+
+        try {
+            const clienteRef = await addDoc(collection(db, 'clientes'), nuevoCliente);
+            window.seleccionarCliente({ id: clienteRef.id, ...nuevoCliente, fechaRegistro: null });
+            POSUI.cerrarModal('modalVentaRapida');
+            alert('✅ Cliente guardado y seleccionado para la venta.');
+        } catch (error) {
+            console.error('Error al guardar cliente:', error);
+            alert('❌ No se pudo guardar el cliente. Verifique la conexión e intente nuevamente.');
+        }
     };
 
     window.deseleccionarCliente = () => {
@@ -631,7 +939,7 @@ window.abrirModalPago = () => {
     // 2. Cálculo del total con protección contra NaN 
     const total = state.carrito.reduce((acc, p) => {
         const precio = parseFloat(p.precio) || 0;
-        const cantidad = parseFloat(p.cant) || 0;
+        const cantidad = parseFloat(p.cantidad) || 0;
         return acc + (precio * cantidad);
     }, 0);
 
@@ -671,59 +979,204 @@ window.abrirModalPago = () => {
     }, 150);
 };
 
-
 // --- FINALIZAR VENTA (CORREGIDA PARA ACTUALIZAR TOTALES) ---
 window.finalizarVenta = async (metodo) => {
     if (state.carrito.length === 0) return;
-    const totalVenta = state.carrito.reduce((acc, p) => acc + (p.precio * p.cant), 0);
+    if (metodo === 'Credito' && !state.clienteSeleccionado) {
+        throw new Error("Una venta a crédito necesita un cliente seleccionado");
+    }
+
+    const carritoVenta = state.carrito.map(item => ({
+        ...item,
+        cantidad: Number(item.cantidad) || 0,
+        precio: Number(item.precio) || 0,
+        subtotal: Number(item.subtotal) || 0
+    }));
+    const totalVenta = POSCore.calcularTotal(carritoVenta);
 
     try {
         const correlativoRef = doc(db, "configuracion-venta-factura", "correlativo");
-        const nuevoNumeroFactura = await runTransaction(db, async (transaction) => {
+        const resultadoVenta = await runTransaction(db, async (transaction) => {
             const sfDoc = await transaction.get(correlativoRef);
-            const nuevoNumero = (sfDoc.data().ultimoNumeroFactura || 0) + 1;
-            transaction.update(correlativoRef, { ultimoNumeroFactura: nuevoNumero });
-            return nuevoNumero;
-        });
-
-        const idFacturaFinal = `FAC-${nuevoNumeroFactura.toString().padStart(12, '0')}`;
-
-        // 1. Guardar en Firebase
-        const ventaData = {
-            nroFactura: idFacturaFinal,
-            fecha: serverTimestamp(),
-            idCliente: state.clienteSeleccionado ? state.clienteSeleccionado.id : "anonimo",
-            cliente: state.clienteSeleccionado ? state.clienteSeleccionado.nombre : "Consumidor Final",
-            productos: state.carrito,
-            total: totalVenta,
-            metodoPago: metodo,
-            cajero: state.userDB ? state.userDB.nombre : "Desconocido",
-            cajeroEmail: state.userDB ? state.userDB.email : ""
-        };
-        await addDoc(collection(db, "ventas_realizadas"), ventaData);
-
-        // 2. Lógica de Crédito
-        if (metodo === 'Credito' && state.clienteSeleccionado) {
-            await addDoc(collection(db, "deudas_clientes"), {
-                idCliente: state.clienteSeleccionado.id,
-                nombreCliente: state.clienteSeleccionado.nombre,
-                nroFactura: idFacturaFinal,
-                montoDeuda: totalVenta,
+            const nuevoNumero = (sfDoc.exists() ? sfDoc.data().ultimoNumeroFactura || 0 : 0) + 1;
+            const idFactura = `FAC-${nuevoNumero.toString().padStart(12, '0')}`;
+            let creditoNumero = null;
+            let plazoDias = null;
+            let vencimiento = null;
+            if (metodo === 'Credito') {
+                plazoDias = Number(document.getElementById('plazoCredito')?.value || 15);
+                vencimiento = new Date();
+                vencimiento.setDate(vencimiento.getDate() + plazoDias);
+            }
+            const correlativoCreditoRef = doc(db, "configuracion-venta-factura", "correlativo-credito");
+            let creditoConfig = null;
+            if (metodo === 'Credito') {
+                creditoConfig = await transaction.get(correlativoCreditoRef);
+                const nuevoNumeroCredito = (creditoConfig.exists() ? creditoConfig.data().ultimoNumeroCredito || 0 : 0) + 1;
+                creditoNumero = `CRD-${nuevoNumeroCredito.toString().padStart(8, '0')}`;
+            }
+            const clienteDatos = state.clienteSeleccionado ? {
+                telefono: state.clienteSeleccionado.telefono || "",
+                nombre: state.clienteSeleccionado.nombre || "",
+                direccion: state.clienteSeleccionado.direccion || "",
+                cedula: state.clienteSeleccionado.cedula || "",
+                rnc: state.clienteSeleccionado.rnc || "",
+                email: state.clienteSeleccionado.email || ""
+            } : null;
+            const ventaRef = doc(collection(db, "ventas_realizadas"));
+            const ventaData = {
+                nroFactura: idFactura,
                 fecha: serverTimestamp(),
-                estado: "PENDIENTE",
-                cajero: state.userDB.nombre
+                idCliente: state.clienteSeleccionado ? state.clienteSeleccionado.id : "anonimo",
+                cliente: state.clienteSeleccionado ? state.clienteSeleccionado.nombre : "Consumidor Final",
+                clienteDatos,
+                nroCredito: creditoNumero,
+                plazoCreditoDias: plazoDias,
+                fechaVencimientoCredito: vencimiento ? vencimiento.toISOString() : null,
+                items: carritoVenta,
+                productos: carritoVenta,
+                total: totalVenta,
+                metodoPago: metodo,
+                pagos: state.pagosRealizados || [],
+                cajero: state.userDB ? state.userDB.nombre : "Desconocido",
+                cajeroEmail: state.userDB ? state.userDB.email : ""
+            };
+            if (state.cotizacionSeleccionada) ventaData.idCotizacion = state.cotizacionSeleccionada.id;
+            const referenciasProductos = carritoVenta.map(item => doc(db, 'productos', item.id));
+            const documentosProductos = await Promise.all(referenciasProductos.map(referencia => transaction.get(referencia)));
+            const cambiosPrecio = [];
+            const ventasPosteriores = [];
+            const autorizaStockNegativo = document.getElementById('autorizarStockNegativo')?.checked === true;
+            const pinStockNegativo = document.getElementById('pinStockNegativo')?.value || '';
+            const puedeAutorizarStockNegativo = autorizaStockNegativo && state.userDB?.rol === 'Administrador' && pinStockNegativo === state.userDB?.pin;
+            if (autorizaStockNegativo && !puedeAutorizarStockNegativo) {
+                throw new Error('La venta con stock negativo requiere autorización válida de un administrador.');
+            }
+            documentosProductos.forEach((documento, indice) => {
+                if (!documento.exists()) throw new Error(`El producto ${carritoVenta[indice].nombre || 'seleccionado'} ya no existe.`);
+                const stockActual = Number(documento.data().stock) || 0;
+                const cantidadSolicitada = Number(carritoVenta[indice].cantidad) || 0;
+                const precioActual = Number(documento.data().precio) || 0;
+                const precioVenta = Number(carritoVenta[indice].precio) || 0;
+                if (Math.abs(precioVenta - precioActual) > 0.009 && !window.puedeEditarPrecios) {
+                    throw new Error(`El precio de ${carritoVenta[indice].nombre || 'el producto'} no puede ser modificado por un cajero.`);
+                }
+                if (Math.abs(precioVenta - precioActual) > 0.009) {
+                    cambiosPrecio.push({
+                        idProducto: referenciasProductos[indice].id,
+                        producto: carritoVenta[indice].nombre || 'Producto',
+                        precioAnterior: precioActual,
+                        precioNuevo: precioVenta
+                    });
+                }
+                const seguimiento = documento.data().seguimientoPrecio;
+                if (seguimiento && Number(seguimiento.ventasRegistradas || 0) < 5 && Math.abs(precioVenta - precioActual) <= 0.009) {
+                    ventasPosteriores.push({
+                        ...seguimiento,
+                        idProducto: referenciasProductos[indice].id,
+                        producto: carritoVenta[indice].nombre || 'Producto',
+                        precioVenta
+                    });
+                }
+                if (stockActual < cantidadSolicitada && !puedeAutorizarStockNegativo) throw new Error(`Stock insuficiente para ${carritoVenta[indice].nombre || 'el producto'}. Disponible: ${stockActual}.`);
             });
+            transaction.set(correlativoRef, { ultimoNumeroFactura: nuevoNumero }, { merge: true });
+            if (metodo === 'Credito') {
+                const nuevoNumeroCredito = Number(creditoNumero.replace('CRD-', ''));
+                transaction.set(correlativoCreditoRef, { ultimoNumeroCredito: nuevoNumeroCredito }, { merge: true });
+            }
+            documentosProductos.forEach((documento, indice) => {
+                const stockActual = Number(documento.data().stock) || 0;
+                const cantidadSolicitada = Number(carritoVenta[indice].cantidad) || 0;
+                const precioActual = Number(documento.data().precio) || 0;
+                const precioVenta = Number(carritoVenta[indice].precio) || 0;
+                const actualizacion = { stock: stockActual - cantidadSolicitada };
+                if (window.puedeEditarPrecios && Math.abs(precioVenta - precioActual) > 0.009) actualizacion.precio = precioVenta;
+                const cambio = cambiosPrecio.find(item => item.idProducto === referenciasProductos[indice].id);
+                if (cambio) {
+                    actualizacion.seguimientoPrecio = {
+                        idCambio: `${ventaRef.id}-${cambio.idProducto}`,
+                        precioAnterior: cambio.precioAnterior,
+                        precioNuevo: cambio.precioNuevo,
+                        ventasRegistradas: 0,
+                        objetivoVentas: 5
+                    };
+                }
+                const ventaPosterior = ventasPosteriores.find(item => item.idProducto === referenciasProductos[indice].id);
+                if (ventaPosterior) {
+                    actualizacion.seguimientoPrecio = {
+                        ...ventaPosterior,
+                        ventasRegistradas: Number(ventaPosterior.ventasRegistradas || 0) + 1
+                    };
+                }
+                transaction.update(referenciasProductos[indice], actualizacion);
+            });
+            transaction.set(ventaRef, ventaData);
+            if (state.cotizacionSeleccionada) {
+                transaction.update(doc(db, 'cotizaciones', state.cotizacionSeleccionada.id), {
+                    estado: 'CONVERTIDA', idVenta: ventaRef.id, nroFactura: idFactura
+                });
+            }
+            let deudaRef = null;
+            if (metodo === 'Credito' && state.clienteSeleccionado) {
+                deudaRef = doc(collection(db, "deudas_clientes"));
+                transaction.set(deudaRef, {
+                    nroCredito: creditoNumero,
+                    idVenta: ventaRef.id,
+                    idCliente: state.clienteSeleccionado.id,
+                    nombreCliente: state.clienteSeleccionado.nombre,
+                    clienteDatos,
+                    nroFactura: idFactura,
+                    montoDeuda: totalVenta,
+                    montoOriginal: totalVenta,
+                    saldoPendiente: totalVenta,
+                    fecha: serverTimestamp(),
+                    plazoDias,
+                    fechaVencimiento: vencimiento,
+                    estado: "PENDIENTE",
+                    cajero: state.userDB ? state.userDB.nombre : "Desconocido"
+                });
+            }
+            cambiosPrecio.forEach(cambio => {
+                const diferencia = cambio.precioNuevo - cambio.precioAnterior;
+                const umbral = Math.max(100, Math.abs(cambio.precioAnterior) * 0.2);
+                const alertaRef = doc(collection(db, 'alertas_auditoria'));
+                transaction.set(alertaRef, {
+                    tipo: Math.abs(diferencia) > umbral ? 'CAMBIO_PRECIO_IMPORTANTE' : 'CAMBIO_PRECIO',
+                    ...cambio, diferencia, umbral, idVenta: ventaRef.id, nroFactura: idFactura,
+                    usuarioUid: auth.currentUser?.uid || '', cajeroNombre: state.userDB?.nombre || 'Desconocido',
+                    cajeroEmail: state.userDB?.email || auth.currentUser?.email || '', dispositivo: navigator.userAgent,
+                    fecha: serverTimestamp(), estado: 'PENDIENTE', ventasObjetivo: 5, ventasRegistradas: 0
+                });
+            });
+            ventasPosteriores.forEach(venta => {
+                const ventaRefSeguimiento = doc(collection(db, 'ventas_precio'));
+                transaction.set(ventaRefSeguimiento, {
+                    tipo: 'VENTA_POSTERIOR_CAMBIO_PRECIO', idCambio: venta.idCambio,
+                    idProducto: venta.idProducto, producto: venta.producto, precioVenta: venta.precioVenta,
+                    idVenta: ventaRef.id, nroFactura: idFactura, usuarioUid: auth.currentUser?.uid || '',
+                    cajeroNombre: state.userDB?.nombre || 'Desconocido', fecha: serverTimestamp()
+                });
+            });
+            return { ventaRef, ventaData, deudaRef };
+        });
+        const { ventaRef, ventaData } = resultadoVenta;
+
+        if (metodo === 'Credito' && state.clienteSeleccionado) {
             // Acumular crédito localmente
             let totalCred = parseFloat(localStorage.getItem('marian_ventas_credito') || "0");
             localStorage.setItem('marian_ventas_credito', totalCred + totalVenta);
         } else {
-            // Acumular efectivo localmente (Efectivo, Tarjeta, Solidaridad, Cheque cuentan para el flujo de caja)
-            // Si solo quieres efectivo físico, filtra por metodo === 'Efectivo'
+            const efectivoVenta = state.pagosRealizados?.length
+                ? state.pagosRealizados
+                    .filter(pago => pago.tipo === 'Efectivo')
+                    .reduce((total, pago) => total + pago.monto, 0)
+                : metodo === 'Efectivo' ? totalVenta : 0;
             let totalEf = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
-            localStorage.setItem('marian_ventas_efectivo', totalEf + totalVenta);
+            localStorage.setItem('marian_ventas_efectivo', totalEf + efectivoVenta);
         }
 
-        alert(`✅ VENTA EXITOSA: ${idFacturaFinal}`);
+        alert(`✅ VENTA EXITOSA: ${ventaData.nroFactura}`);
 
         // Limpiar
         state.carrito = [];
@@ -731,6 +1184,8 @@ window.finalizarVenta = async (metodo) => {
         POSUI.renderCarrito(state.carrito);
         POSUI.cerrarModal('modalPago');
         if(state.clienteSeleccionado) window.deseleccionarCliente();
+
+        return { ...ventaData, id: ventaRef.id };
         
     } catch (e) {
         console.error(e);
@@ -738,56 +1193,6 @@ window.finalizarVenta = async (metodo) => {
     }
 };
 
-// --- VALIDAR PIN CIERRE (CORREGIDA PARA LIMPIAR TODO) ---
-window.validarPinCierre = async () => {
-    const pin = document.getElementById('pinCierre').value;
-    
-    // Verificamos que el PIN coincida con el del usuario actual
-    if (state.userDB && pin === state.userDB.pin) {
-        try {
-            // 1. Recopilamos los datos del turno para la Auditoría
-            const montoInicial = parseFloat(localStorage.getItem('marian_monto_inicial') || "0");
-            const ventasEfectivo = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
-            const ventasCredito = parseFloat(localStorage.getItem('marian_ventas_credito') || "0");
-
-            const cierreData = {
-                fechaCierre: serverTimestamp(),
-                cajeroNombre: state.userDB.nombre,
-                cajeroEmail: state.userDB.email,
-                montoInicial: montoInicial,
-                ventasEfectivo: ventasEfectivo,
-                ventasCredito: ventasCredito,
-                totalEnGaveta: montoInicial + ventasEfectivo
-            };
-
-            // 2. Guardamos el registro en la nube (colección cierres_caja)
-            await addDoc(collection(db, "cierres_caja"), cierreData);
-
-            // 3. Limpiamos el almacenamiento local y reiniciamos la interfaz
-            localStorage.removeItem('marian_pos_open');
-            localStorage.removeItem('marian_monto_inicial');
-            localStorage.removeItem('marian_ventas_efectivo');
-            localStorage.removeItem('marian_ventas_credito');
-            localStorage.removeItem('marian_pos_cart');
-            
-            state.carrito = [];
-            POSUI.renderCarrito(state.carrito);
-            POSUI.bloquearSistema();
-            POSUI.cerrarModal('modalCierre');
-            
-            // Limpiamos el campo de PIN para la próxima vez
-            document.getElementById('pinCierre').value = "";
-            
-            alert("✅ Caja cerrada con éxito. El registro se envió a Auditoría.");
-            
-        } catch (error) {
-            console.error("Error al guardar auditoría:", error);
-            alert("❌ Hubo un error al guardar el cierre en la nube. Intente nuevamente.");
-        }
-    } else {
-        alert("❌ PIN de seguridad incorrecto");
-    }
-};
     // --- LÓGICA DE CIERRE DE CAJA ---
 window.cerrarCaja = async () => {
     if (!state.userDB) return alert("Error: Usuario no identificado");
@@ -897,12 +1302,17 @@ document.addEventListener('keydown', (e) => {
 
     window.validarPinApertura = () => {
         const pin = document.getElementById('pinApertura').value;
-        const monto = document.getElementById('montoInicial').value;
+        const monto = Number(document.getElementById('montoInicial').value);
         if (state.userDB && pin === state.userDB.pin) {
-            if(!monto) return alert("Ingrese monto inicial");
+            if(!Number.isFinite(monto) || monto < 0) return alert("Ingrese un monto inicial válido");
             localStorage.setItem('marian_pos_open', 'true');
-            localStorage.setItem('marian_monto_inicial', monto);
+            localStorage.setItem('marian_monto_inicial', String(monto));
+            localStorage.setItem('marian_pos_open_at', String(Date.now()));
+            localStorage.setItem('marian_pos_open_email', state.userDB.email || auth.currentUser?.email || '');
+            localStorage.setItem('marian_pos_open_name', state.userDB.nombre || '');
+            document.getElementById('pinApertura').value = '';
             POSUI.activarSistema();
+            document.getElementById('btn-egreso-caja').style.display = 'block';
             POSUI.cerrarModal('modalApertura');
         } else {
             alert("PIN Incorrecto");
@@ -913,9 +1323,20 @@ document.addEventListener('keydown', (e) => {
     POSEvents.init(state, POSCore, POSUI);
     // Inicializar módulo de pagos
    POSPagos.init(state, POSCore, POSUI, TicketSystem, db, addDoc, collection, serverTimestamp, doc, runTransaction);
+    POSUI.renderCarrito(state.carrito);
+
+    document.getElementById('autorizarStockNegativo')?.addEventListener('change', event => {
+        const pin = document.getElementById('pinStockNegativo');
+        if (pin) {
+            pin.style.display = event.target.checked ? 'block' : 'none';
+            if (!event.target.checked) pin.value = '';
+        }
+    });
 
     onSnapshot(collection(db, "productos"), snap => {
-        state.productos = snap.docs.map(d => ({id: d.id, ...d.data()}));
+        state.productos = snap.docs
+            .map(d => ({id: d.id, ...d.data()}))
+            .filter(producto => producto.estatus !== 'INACTIVO');
     });
 
     onSnapshot(collection(db, "clientes"), snap => {
@@ -927,15 +1348,37 @@ document.addEventListener('keydown', (e) => {
         if (user) {
             document.getElementById('emailCajeroApertura').innerText = user.email;
             state.userDB = await POSCore.obtenerUsuario(db, user.email);
+            window.puedeEditarPrecios = state.userDB?.rol === 'Administrador';
+            if (state.userDB?.rol !== 'Administrador') {
+                const autorizacion = document.getElementById('autorizarStockNegativo');
+                if (autorizacion) autorizacion.closest('label').style.display = 'none';
+            }
             if (state.userDB) document.getElementById('nombreCajeroApertura').innerText = state.userDB.nombre;
+            if (state.clienteSeleccionado) window.seleccionarCliente(state.clienteSeleccionado);
             
-            // Si el turno está abierto, activamos la interfaz y mostramos los botones
-            if (localStorage.getItem('marian_pos_open') === 'true') {
+            const turnoAbierto = localStorage.getItem('marian_pos_open') === 'true';
+            const fechaApertura = Number(localStorage.getItem('marian_pos_open_at') || 0);
+            const mismoCajero = localStorage.getItem('marian_pos_open_email') === user.email;
+            const turnoVigente = fechaApertura > 0 && Date.now() - fechaApertura < 12 * 60 * 60 * 1000;
+
+            // Recuperar una caja abierta por el mismo cajero durante el turno vigente.
+            if (turnoAbierto && mismoCajero && turnoVigente) {
                 POSUI.activarSistema();
                 const btnCred = document.getElementById('btn-cobrar-credito');
                 const btnCerrar = document.getElementById('btn-cerrar-turno');
                 if(btnCred) btnCred.style.display = 'block';
                 if(btnCerrar) btnCerrar.style.display = 'block';
+                const btnEgreso = document.getElementById('btn-egreso-caja');
+                if(btnEgreso) btnEgreso.style.display = 'block';
+                const btnCotizaciones = document.getElementById('btn-cotizaciones');
+                if(btnCotizaciones) btnCotizaciones.style.display = 'block';
+                POSUI.renderCarrito(state.carrito);
+            } else if (turnoAbierto) {
+                localStorage.removeItem('marian_pos_open');
+                localStorage.removeItem('marian_monto_inicial');
+                localStorage.removeItem('marian_pos_open_at');
+                localStorage.removeItem('marian_pos_open_email');
+                localStorage.removeItem('marian_pos_open_name');
             }
         } else {
             window.location.href = "../index.html";
@@ -1025,6 +1468,8 @@ document.addEventListener('keydown', (e) => {
         // 3. Resumen de Ventas (Efectivo y Crédito)
         const vEfectivo = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
         const vCredito = parseFloat(localStorage.getItem('marian_ventas_credito') || "0");
+        const egresos = parseFloat(localStorage.getItem('marian_egresos_caja') || "0");
+        const esperado = montoApe + vEfectivo - egresos;
         
         const resumen = document.getElementById('resumenCierre');
         if (resumen) {
@@ -1038,26 +1483,65 @@ document.addEventListener('keydown', (e) => {
                 <div class="linea-cierre" style="display:flex; justify-content:space-between; color:var(--azul);">
                     <span>(+) Ventas Crédito:</span> <b>RD$ ${vCredito.toFixed(2)}</b>
                 </div>
+                <div class="linea-cierre" style="display:flex; justify-content:space-between; color:#8e44ad;">
+                    <span>(-) Egresos:</span> <b>RD$ ${egresos.toFixed(2)}</b>
+                </div>
                 <div class="total-linea" style="margin-top:10px; border-top:2px solid #2d3436; padding-top:8px; font-weight:bold; font-size:1.1rem; display:flex; justify-content:space-between;">
-                    <span>TOTAL EN CAJA:</span> <span>RD$ ${(montoApe + vEfectivo).toFixed(2)}</span>
+                    <span>TOTAL ESPERADO:</span> <span>RD$ ${esperado.toFixed(2)}</span>
                 </div>
             `;
         }
 
         POSUI.abrirModal('modalCierre');
+        document.getElementById('montoRealContado').value = '';
     };
 
    // --- 5. VALIDACIÓN DE CONTRASEÑA PARA CERRAR ---
-    window.validarPinCierre = () => {
+    window.validarPinCierre = async () => {
         const pin = document.getElementById('pinCierre').value;
         if (state.userDB && pin === state.userDB.pin) {
-            localStorage.removeItem('marian_pos_open');
-            localStorage.removeItem('marian_monto_inicial');
-            localStorage.removeItem('marian_ventas_efectivo');
-            localStorage.removeItem('marian_ventas_credito');
-            
-            alert("✅ Caja cerrada exitosamente. El sistema se reiniciará.");
-            location.reload(); 
+            try {
+                const montoInicial = Number(localStorage.getItem('marian_monto_inicial') || 0);
+                const ventasEfectivo = Number(localStorage.getItem('marian_ventas_efectivo') || 0);
+                const ventasCredito = Number(localStorage.getItem('marian_ventas_credito') || 0);
+                const egresos = Number(localStorage.getItem('marian_egresos_caja') || 0);
+                const montoRealContado = Number(document.getElementById('montoRealContado').value);
+                const montoEsperadoEnCaja = montoInicial + ventasEfectivo - egresos;
+                if (!Number.isFinite(montoRealContado) || montoRealContado < 0) return alert('Ingrese el efectivo contado físicamente.');
+                const diferencia = montoRealContado - montoEsperadoEnCaja;
+                const umbralDiferencia = Math.max(100, Math.abs(montoEsperadoEnCaja) * 0.05);
+                await addDoc(collection(db, 'cierres_caja'), {
+                    fechaCierre: serverTimestamp(),
+                    cajeroNombre: state.userDB.nombre,
+                    cajeroEmail: state.userDB.email,
+                    montoInicial,
+                    fondoInicial: montoInicial,
+                    ventasEfectivo,
+                    ventasCredito,
+                    egresos,
+                    montoEsperadoEnCaja,
+                    montoRealContado,
+                    diferencia,
+                    umbralDiferencia,
+                    alertaDiferencia: Math.abs(diferencia) > umbralDiferencia,
+                    totalEnGaveta: montoRealContado
+                });
+                if (Math.abs(diferencia) > umbralDiferencia) {
+                    await addDoc(collection(db, 'alertas_auditoria'), {
+                        tipo: diferencia < 0 ? 'FALTANTE_CAJA' : 'SOBRANTE_CAJA',
+                        diferencia, montoEsperado: montoEsperadoEnCaja, montoContado: montoRealContado,
+                        umbral: umbralDiferencia, cajeroNombre: state.userDB.nombre,
+                        cajeroEmail: state.userDB.email, usuarioUid: auth.currentUser?.uid || '',
+                        dispositivo: navigator.userAgent, fecha: serverTimestamp(), estado: 'PENDIENTE'
+                    });
+                }
+                ['marian_pos_open', 'marian_monto_inicial', 'marian_pos_open_at', 'marian_pos_open_email', 'marian_pos_open_name', 'marian_ventas_efectivo', 'marian_ventas_credito', 'marian_egresos_caja', 'marian_pos_cart'].forEach(clave => localStorage.removeItem(clave));
+                alert("✅ Caja cerrada exitosamente. El cierre fue registrado.");
+                location.reload();
+            } catch (error) {
+                console.error('Error al registrar el cierre:', error);
+                alert('No se pudo registrar el cierre en Firebase. La caja permanece abierta.');
+            }
         } else {
             alert("⚠️ PIN Incorrecto. No se puede cerrar la caja.");
             document.getElementById('pinCierre').value = ""; 

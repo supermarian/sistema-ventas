@@ -35,6 +35,16 @@
         .menu-card span { font-size: 40px; display: block; margin-bottom: 10px; }
         .locked { opacity: 0.4; cursor: not-allowed !important; filter: grayscale(1); }
         .btn-salir { margin: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .modal { display:none; position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.55); align-items:center; justify-content:center; padding:16px; }
+        .modal-content { background:#fff; width:min(620px, 100%); max-height:90vh; overflow:auto; border-radius:12px; padding:24px; box-sizing:border-box; }
+        .quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .quick-grid label { display:flex; flex-direction:column; gap:5px; font-weight:600; color:#444; }
+        .quick-grid input { padding:10px; border:1px solid #ccd2d8; border-radius:7px; font-size:1rem; box-sizing:border-box; }
+        .quick-results { margin-top:8px; border:1px solid #e2e6ea; border-radius:8px; max-height:180px; overflow:auto; }
+        .quick-result { display:flex; justify-content:space-between; gap:12px; padding:10px; border-bottom:1px solid #eee; cursor:pointer; }
+        .quick-result:last-child { border-bottom:0; }
+        .quick-result:hover { background:#f1f7ff; }
+        @media(max-width:600px) { .grid-menu { grid-template-columns:1fr; } .quick-grid { grid-template-columns:1fr; } }
     </style>
 </head>
 <body>
@@ -51,24 +61,34 @@
 </div>
 
 <div class="grid-menu">
-    <div class="menu-card" id="btnAlmacen" onclick="navegar('Almacen/Almacen.html', 'Administrador')">
+    <div class="menu-card" id="btnAlmacen" onclick="navegar('Almacen/Almacen.html', ['Administrador','Jefe'])">
         <span>📦</span> <h3>Almacén</h3> <p>Stock y Precios</p>
+    </div>
+
+<div id="avisoCreditos" class="alerta-stock" style="background:#f8d7da;color:#721c24;border-color:#f5c6cb;display:none">
+    <strong>⚠️ CRÉDITOS VENCIDOS:</strong> <span id="listaCreditosVencidos"></span>
+</div>
+    <div class="menu-card" id="btnProductosRapidos" onclick="window.abrirGestionProductosRapida()">
+        <span>🏷️</span> <h3>Productos rápidos</h3> <p>Crear producto o ajustar precio</p>
+    </div>
+    <div class="menu-card" id="btnControlPrecios" onclick="navegar('auditoria/auditoria.html', ['Administrador','Jefe'])">
+        <span>🔐</span> <h3>Control de precios</h3> <p>Alertas y cambios administrativos</p>
     </div>
   <div class="menu-card" id="btnFacturacion" onclick="navegar('facturacion/facturacion.html', 'Cajero')">
         <span>🧾</span> <h3>Facturación</h3> <p>Ventas rápidas</p>
     </div>
-    <div class="menu-card" id="btnReportes" onclick="navegar('reportes.html', 'Administrador')">
-        <span>📈</span> <h3>Reportes</h3> <p>Ganancias</p>
+    <div class="menu-card" id="btnReportes" onclick="navegar('reportes.html', ['Administrador','Jefe','Consultor','Contador'])">
+        <span>📈</span> <h3>Reportes y consultas</h3> <p>Ventas, créditos, caja e inventario</p>
     </div>
     <div class="menu-card" id="btnPersonal" onclick="navegar('personal.html', 'Administrador')">
         <span>👥</span> <h3>Personal</h3> <p>Usuarios</p>
     </div>
-    <div class="menu-card" id="btnFiado" onclick="navegar('Creditos/creditos.html', 'Administrador')">
+    <div class="menu-card" id="btnFiado" onclick="navegar('Creditos/creditos.html', ['Administrador','Jefe'])">
     <span>📓</span>
     <h3>Créditos</h3>
     <p>Control de fiado y abonos.</p>
     </div>
-    <div class="menu-card" id="btnAuditoria" onclick="navegar('auditoria/auditoria.html', 'Administrador')">
+    <div class="menu-card" id="btnAuditoria" onclick="navegar('auditoria/auditoria.html', ['Administrador','Jefe','Consultor','Contador'])">
     <span>🕵️</span> 
     <h3>Auditoría</h3> 
     <p>Historial de cierres y ventas.</p>  <p>cierre caja</p>
@@ -78,9 +98,43 @@
 
 <button class="btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>
 
+<div id="modalProductosRapidos" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloProductosRapidos">
+    <div class="modal-content">
+        <h2 id="tituloProductosRapidos" style="margin-top:0;color:#1a73e8">🏷️ Productos rápidos</h2>
+        <p style="color:#666">Busca un producto para cambiar solamente su precio o registra uno nuevo.</p>
+        <input id="busquedaProductoRapida" type="search" placeholder="Código o nombre del producto" style="width:100%;padding:11px;border:2px solid #1a73e8;border-radius:8px;box-sizing:border-box">
+        <div id="resultadosProductosRapidos" class="quick-results"></div>
+
+        <form id="formProductoRapido" style="margin-top:18px">
+            <input id="productoRapidoId" type="hidden">
+            <div class="quick-grid">
+                <label>Código de barras
+                    <input id="productoRapidoCodigo" type="text" maxlength="80">
+                </label>
+                <label>Nombre
+                    <input id="productoRapidoNombre" type="text" maxlength="120" required>
+                </label>
+                <label>Precio RD$
+                    <input id="productoRapidoPrecio" type="number" min="0" step="0.01" required>
+                </label>
+                <label>Stock inicial
+                    <input id="productoRapidoStock" type="number" min="0" step="0.01" value="0" required>
+                </label>
+            </div>
+            <p id="estadoProductoRapido" style="min-height:20px;color:#666"></p>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button type="button" class="btn-salir" style="margin:0;background:#666" onclick="window.cerrarGestionProductosRapida()">Cancelar</button>
+                <button type="button" class="btn-salir" style="margin:0;background:#f39c12" onclick="window.limpiarProductoRapido()">Nuevo</button>
+                <button type="submit" class="btn-salir" style="margin:0;background:#34a853">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
@@ -93,6 +147,8 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
+    let productosCache = [];
 
     const userRol = localStorage.getItem("userRol");
     const userName = localStorage.getItem("userName");
@@ -104,9 +160,11 @@
 
     // REVISAR STOCK BAJO
     onSnapshot(collection(db, "productos"), (snapshot) => {
+        productosCache = [];
         let bajos = [];
         snapshot.forEach(doc => {
             const p = doc.data();
+            productosCache.push({ id: doc.id, ...p });
             if (p.stock <= 5) { bajos.push(p.nombre); }
         });
 
@@ -119,15 +177,138 @@
         }
     });
 
+    const convertirFecha = (valor) => {
+        if (!valor) return null;
+        if (typeof valor.toDate === "function") return valor.toDate();
+        const fecha = new Date(valor);
+        return Number.isNaN(fecha.getTime()) ? null : fecha;
+    };
+
+    onSnapshot(query(collection(db, "deudas_clientes"), where("estado", "==", "PENDIENTE")), (snapshot) => {
+        const vencidos = snapshot.docs
+            .map(documento => documento.data())
+            .filter(credito => {
+                const vencimiento = convertirFecha(credito.fechaVencimiento);
+                return vencimiento && vencimiento < new Date();
+            });
+        const aviso = document.getElementById("avisoCreditos");
+        if (vencidos.length) {
+            aviso.style.display = "block";
+            document.getElementById("listaCreditosVencidos").innerText = `${vencidos.length} crédito(s) pendiente(s) fuera de plazo.`;
+        } else {
+            aviso.style.display = "none";
+        }
+    });
+
     // BLOQUEO PARA CAJEROS
     if (userRol === "Cajero") {
-        ["btnAlmacen", "btnReportes", "btnPersonal"].forEach(id => {
+        ["btnAlmacen", "btnProductosRapidos", "btnControlPrecios", "btnPersonal"].forEach(id => {
+            document.getElementById(id).classList.add("locked");
+        });
+    }
+    if (userRol === "Consultor" || userRol === "Contador") {
+        ["btnAlmacen", "btnProductosRapidos", "btnControlPrecios", "btnPersonal", "btnFiado"].forEach(id => {
             document.getElementById(id).classList.add("locked");
         });
     }
 
-    window.navegar = (pagina, nivel) => {
-        if (userRol === "Administrador" || (userRol === "Cajero" && nivel === "Cajero")) {
+    const escapeHtml = (value) => String(value ?? "")
+        .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+
+    const renderProductosRapidos = () => {
+        const termino = document.getElementById("busquedaProductoRapida").value.trim().toLowerCase();
+        const resultados = productosCache.filter(producto =>
+            !termino || String(producto.codigo || "").toLowerCase().includes(termino) ||
+            String(producto.nombre || "").toLowerCase().includes(termino)
+        ).slice(0, 20);
+        const contenedor = document.getElementById("resultadosProductosRapidos");
+        contenedor.innerHTML = resultados.length ? resultados.map(producto => `
+            <div class="quick-result" data-id="${escapeHtml(producto.id)}">
+                <span><b>${escapeHtml(producto.nombre)}</b><br><small>${escapeHtml(producto.codigo || "S/C")}</small></span>
+                <strong>RD$ ${Number(producto.precio || 0).toFixed(2)}</strong>
+            </div>`).join("") : "<div style='padding:12px;color:#666'>No se encontró el producto.</div>";
+        contenedor.querySelectorAll(".quick-result").forEach(elemento => {
+            elemento.onclick = () => cargarProductoRapido(productosCache.find(producto => producto.id === elemento.dataset.id));
+        });
+    };
+
+    const cargarProductoRapido = (producto) => {
+        if (!producto) return;
+        document.getElementById("productoRapidoId").value = producto.id;
+        document.getElementById("productoRapidoCodigo").value = producto.codigo === "S/C" ? "" : producto.codigo || "";
+        document.getElementById("productoRapidoNombre").value = producto.nombre || "";
+        document.getElementById("productoRapidoPrecio").value = Number(producto.precio || 0).toFixed(2);
+        document.getElementById("productoRapidoStock").value = Number(producto.stock || 0);
+        document.getElementById("estadoProductoRapido").innerText = "Editando producto existente.";
+    };
+
+    window.abrirGestionProductosRapida = () => {
+        if (!['Administrador', 'Jefe'].includes(userRol)) return alert("Solo un administrador o jefe puede modificar productos.");
+        document.getElementById("modalProductosRapidos").style.display = "flex";
+        renderProductosRapidos();
+        document.getElementById("busquedaProductoRapida").focus();
+    };
+
+    window.cerrarGestionProductosRapida = () => {
+        document.getElementById("modalProductosRapidos").style.display = "none";
+        window.limpiarProductoRapido();
+    };
+
+    window.limpiarProductoRapido = () => {
+        document.getElementById("formProductoRapido").reset();
+        document.getElementById("productoRapidoId").value = "";
+        document.getElementById("productoRapidoStock").value = "0";
+        document.getElementById("estadoProductoRapido").innerText = "Nuevo producto.";
+    };
+
+    document.getElementById("busquedaProductoRapida").addEventListener("input", renderProductosRapidos);
+    document.getElementById("formProductoRapido").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const id = document.getElementById("productoRapidoId").value;
+        const codigo = document.getElementById("productoRapidoCodigo").value.trim() || "S/C";
+        const nombre = document.getElementById("productoRapidoNombre").value.trim();
+        const precio = Number(document.getElementById("productoRapidoPrecio").value);
+        const stock = Number(document.getElementById("productoRapidoStock").value);
+        if (!nombre || !Number.isFinite(precio) || precio < 0 || !Number.isFinite(stock) || stock < 0) {
+            return alert("Completa nombre, precio y stock con valores válidos.");
+        }
+        const duplicado = productosCache.find(producto => producto.codigo === codigo && producto.id !== id && codigo !== "S/C");
+        if (duplicado) return alert("Ese código de barras ya pertenece a otro producto.");
+
+        const datos = { codigo, nombre, precio, stock, estatus: "ACTIVO", timestamp: Date.now() };
+        try {
+            const productoAnterior = id ? productosCache.find(producto => producto.id === id) : null;
+            if (id) {
+                await updateDoc(doc(db, "productos", id), datos);
+                const diferencia = precio - Number(productoAnterior?.precio || 0);
+                if (productoAnterior && Math.abs(diferencia) > 0.009) {
+                    await addDoc(collection(db, "alertas_auditoria"), {
+                        tipo: Math.abs(diferencia) > Math.max(100, Math.abs(Number(productoAnterior.precio || 0)) * 0.2) ? "CAMBIO_PRECIO_IMPORTANTE" : "CAMBIO_PRECIO",
+                        idProducto: id, producto: nombre, precioAnterior: Number(productoAnterior.precio || 0), precioNuevo: precio,
+                        diferencia, idUsuario: auth.currentUser?.uid || "", usuarioUid: auth.currentUser?.uid || "",
+                        cajeroNombre: userName || "Desconocido", cajeroEmail: auth.currentUser?.email || "",
+                        dispositivo: navigator.userAgent, fecha: serverTimestamp(), estado: "PENDIENTE",
+                        ventasObjetivo: 5, ventasRegistradas: 0
+                    });
+                }
+            }
+            else {
+                const maxId = productosCache.reduce((maximo, producto) => Math.max(maximo, Number(producto.idSecuencial) || 0), 0);
+                await addDoc(collection(db, "productos"), { ...datos, idSecuencial: String(maxId + 1).padStart(7, "0") });
+            }
+            document.getElementById("estadoProductoRapido").innerText = "Producto guardado correctamente.";
+            window.limpiarProductoRapido();
+            renderProductosRapidos();
+        } catch (error) {
+            console.error(error);
+            alert("No se pudo guardar el producto. Revisa tu conexión y permisos.");
+        }
+    });
+
+    window.navegar = (pagina, niveles) => {
+        const rolesPermitidos = Array.isArray(niveles) ? niveles : [niveles];
+        if (rolesPermitidos.includes(userRol)) {
             window.location.href = pagina;
         } else {
             alert("Acceso denegado");

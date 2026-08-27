@@ -12,6 +12,12 @@
         .stat-card h3 { margin: 0; color: #666; font-size: 16px; }
         .stat-card p { margin: 10px 0 0; font-size: 24px; font-weight: bold; color: #6f42c1; }
         .table-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .consulta-barra { display:grid; grid-template-columns:180px 1fr auto; gap:10px; margin-bottom:18px; }
+        .consulta-barra input, .consulta-barra select { padding:11px; border:2px solid #d9dee5; border-radius:8px; font-size:1rem; box-sizing:border-box; }
+        .consulta-barra input:focus, .consulta-barra select:focus { border-color:#1a73e8; outline:none; }
+        .btn-consultar { background:#1a73e8; color:white; border:0; border-radius:8px; padding:11px 18px; font-weight:bold; cursor:pointer; }
+        .estado-consulta { color:#666; min-height:22px; }
+        @media(max-width:650px){ .consulta-barra { grid-template-columns:1fr; } }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
         th { background: #f8f9fa; color: #555; }
@@ -42,13 +48,28 @@
     </div>
 
     <div class="table-card">
-        <h3>📄 Historial de Ventas</h3>
+        <h3>🔎 Consultas y reportes</h3>
+        <div class="consulta-barra">
+            <select id="tipoConsulta" aria-label="Tipo de consulta">
+                <option value="ventas">Ventas</option>
+                <option value="creditos">Créditos pendientes</option>
+                <option value="productos">Productos</option>
+                <option value="inventario_inactivo">Productos inactivos</option>
+                <option value="inventario_negativo">Stock negativo</option>
+                <option value="inventario_bajo">Stock bajo</option>
+                <option value="ventas_precio">Ventas posteriores a cambio</option>
+                <option value="caja">Movimientos de caja</option>
+            </select>
+            <input id="textoConsulta" type="search" placeholder="Factura, cliente, crédito o código..." autocomplete="off">
+            <button id="btnConsultar" class="btn-consultar" type="button">Consultar</button>
+        </div>
+        <p id="estadoConsulta" class="estado-consulta">Escribe un filtro y presiona Enter para consultar.</p>
         <table>
             <thead>
                 <tr>
-                    <th>Fecha y Hora</th>
-                    <th>Productos Vendidos</th>
-                    <th>Total Cobrado</th>
+                    <th>Fecha</th>
+                    <th>Detalle</th>
+                    <th>Monto / Estado</th>
                 </tr>
             </thead>
             <tbody id="tablaReportes">
@@ -59,7 +80,8 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
@@ -71,38 +93,87 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
+    let accesoPermitido = false;
 
-    // ESCUCHAR LAS VENTAS EN TIEMPO REAL
-    const q = query(collection(db, "ventas_realizadas"), orderBy("timestamp", "desc"));
-    
-    onSnapshot(q, (snapshot) => {
+    const convertirFecha = (valor) => {
+        if (!valor) return "Sin fecha";
+        if (typeof valor.toDate === "function") return valor.toDate().toLocaleString();
+        return new Date(valor).toLocaleString();
+    };
+
+    const ejecutarConsulta = async () => {
+        if (!accesoPermitido) return alert('No tienes permisos para consultar reportes.');
+        const tipo = document.getElementById("tipoConsulta").value;
+        const termino = document.getElementById("textoConsulta").value.trim().toLowerCase();
+        const estado = document.getElementById("estadoConsulta");
         const tabla = document.getElementById('tablaReportes');
-        let sumaTotal = 0;
-        let contador = 0;
-        tabla.innerHTML = '';
+        estado.innerText = "Consultando Firebase...";
+        tabla.innerHTML = "";
 
-        snapshot.forEach((doc) => {
-            const venta = doc.data();
-            sumaTotal += venta.total;
-            contador++;
+        const coleccion = tipo === "creditos" ? "deudas_clientes" : tipo === "productos" || tipo.startsWith("inventario_") ? "productos" : tipo === "caja" ? "movimientos_caja" : tipo === "ventas_precio" ? "ventas_precio" : "ventas_realizadas";
+        try {
+            const snapshot = await getDocs(collection(db, coleccion));
+            const filas = snapshot.docs.map(documento => ({ id: documento.id, ...documento.data() })).filter(registro => {
+                const stock = Number(registro.stock);
+                if (tipo === "creditos" && registro.estado !== "PENDIENTE") return false;
+                if (tipo === "inventario_inactivo" && registro.estatus !== "INACTIVO") return false;
+                if (tipo === "inventario_negativo" && stock >= 0) return false;
+                if (tipo === "inventario_bajo" && (stock < 0 || stock > 5)) return false;
+                if (!termino) return true;
+                return JSON.stringify(registro).toLowerCase().includes(termino);
+            });
 
-            // Crear lista de productos para la tabla
-            const listaProd = venta.productos.map(p => `${p.cantidad}x ${p.nombre}`).join(', ');
+            filas.sort((a, b) => {
+                const fechaA = a.fecha?.toDate?.() || new Date(a.fecha || a.timestamp || 0);
+                const fechaB = b.fecha?.toDate?.() || new Date(b.fecha || b.timestamp || 0);
+                return fechaB - fechaA;
+            });
+            let sumaTotal = 0;
+            let html = filas.map(registro => {
+                const fecha = convertirFecha(registro.fecha || registro.timestamp || registro.fechaVencimiento);
+                const detalle = tipo === "ventas"
+                    ? `${registro.nroFactura || "S/N"} - ${registro.cliente || "Consumidor Final"}`
+                    : tipo === "creditos"
+                        ? `${registro.nroCredito || "Sin número"} - ${registro.nombreCliente || "Sin cliente"}`
+                        : tipo === "productos" || tipo.startsWith("inventario_")
+                            ? `${registro.codigo || "S/C"} - ${registro.nombre || "Sin nombre"}`
+                            : tipo === "ventas_precio"
+                                ? `${registro.producto || "Producto"} - ${registro.nroFactura || "S/N"} (${registro.idCambio || "Sin cambio"})`
+                            : `${registro.tipo || "Movimiento"} - ${registro.motivo || registro.descripcion || "Sin detalle"}`;
+                const monto = Number(registro.total ?? registro.montoDeuda ?? registro.precio ?? registro.monto ?? 0);
+                sumaTotal += tipo === "ventas" ? monto : 0;
+                const estadoRegistro = registro.estado || `RD$ ${monto.toLocaleString()}`;
+                return `<tr><td>${fecha}</td><td>${detalle}</td><td><strong>${tipo === "ventas" ? `RD$ ${monto.toLocaleString()}` : estadoRegistro}</strong></td></tr>`;
+            }).join("");
 
-            tabla.innerHTML += `
-                <tr>
-                    <td>${venta.fecha}</td>
-                    <td><span class="badge">${listaProd}</span></td>
-                    <td><strong>RD$ ${venta.total.toLocaleString()}</strong></td>
-                </tr>
-            `;
-        });
+            tabla.innerHTML = html || "<tr><td colspan='3'>No se encontraron resultados.</td></tr>";
+            document.getElementById('totalHistorico').innerText = tipo === "ventas" ? `RD$ ${sumaTotal.toLocaleString()}` : "RD$ 0";
+            document.getElementById('cantidadVentas').innerText = filas.length;
+            document.getElementById('promedioVenta').innerText = tipo === "ventas" && filas.length ? `RD$ ${(sumaTotal / filas.length).toFixed(2)}` : "RD$ 0";
+            estado.innerText = `${filas.length} resultado(s). Consulta ejecutada al presionar Enter.`;
+        } catch (error) {
+            console.error("Error en consulta:", error);
+            estado.innerText = "No se pudo realizar la consulta. Revisa permisos y conexión.";
+            tabla.innerHTML = "<tr><td colspan='3'>Error al consultar.</td></tr>";
+        }
+    };
 
-        // Actualizar tarjetas de arriba
-        document.getElementById('totalHistorico').innerText = `RD$ ${sumaTotal.toLocaleString()}`;
-        document.getElementById('cantidadVentas').innerText = contador;
-        document.getElementById('promedioVenta').innerText = contador > 0 ? `RD$ ${(sumaTotal / contador).toFixed(2)}` : "RD$ 0";
+    document.getElementById("btnConsultar").addEventListener("click", ejecutarConsulta);
+    document.getElementById("textoConsulta").addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            ejecutarConsulta();
+        }
+    });
+
+    onAuthStateChanged(auth, async user => {
+        if (!user) return window.location.href = 'index.html';
+        const token = await user.getIdTokenResult();
+        const rol = token.claims.rol;
+        accesoPermitido = ['Administrador', 'Jefe', 'Consultor', 'Contador'].includes(rol);
+        if (!accesoPermitido) document.getElementById('estadoConsulta').innerText = 'Tu rol no tiene acceso a reportes.';
     });
 </script>
 </body>

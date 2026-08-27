@@ -139,25 +139,26 @@ export const POSPagos = {
             btn.disabled = true;
             btn.innerText = "⏳ Procesando...";
 
-            let metodoFinal = state.pagosRealizados.length === 1 ? state.pagosRealizados[0].tipo : "Múltiple";
+            try {
+                const metodoFinal = state.pagosRealizados.length === 1 ? state.pagosRealizados[0].tipo : "Múltiple";
+                const ventaGuardada = await window.finalizarVenta(metodoFinal);
 
-            await window.finalizarVenta(metodoFinal); 
-
-            const datosVenta = {
-                nroFactura: state.nroFactura,
-                cajero: state.userDB?.nombre || "Cajero",
-                clienteNombre: state.clienteSeleccionado?.nombre || "Consumidor Final",
-                total: POSCore.calcularTotal(state.carrito),
-                metodoPago: metodoFinal
-            };
-
-            TicketSystem.imprimir(datosVenta, state.carrito);
-            state.pagosRealizados = [];
-            window.renderTablaPagos();
-            btn.innerText = "🖨️ Imprimir / Aplicar Venta";
-            
-            // Cerrar modal automáticamente tras imprimir
-            POSUI.cerrarModal('modalPago');
+                if (ventaGuardada) {
+                    TicketSystem.imprimir(ventaGuardada, ventaGuardada.items);
+                    if (ventaGuardada.nroCredito) {
+                        setTimeout(() => TicketSystem.imprimir(ventaGuardada, ventaGuardada.items, true), 1200);
+                    }
+                    state.pagosRealizados = [];
+                    window.renderTablaPagos();
+                    POSUI.cerrarModal('modalPago');
+                }
+            } catch (error) {
+                console.error('Error al completar la venta:', error);
+                alert('No se pudo completar la venta. El carrito se conservó para intentar nuevamente.');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "🖨️ Imprimir / Aplicar Venta";
+            }
         };
 
         configurarNavegacionPago();
