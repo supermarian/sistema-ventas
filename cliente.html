@@ -16,17 +16,87 @@
 <input id="email" type="email" placeholder="Correo electrónico" autocomplete="email"><input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
 <div class="actions"><button id="entrar" class="btn primary">Entrar</button><button id="crearCuenta" class="btn green">Crear cuenta</button></div><p id="authEstado" class="error"></p>
 </section>
-<section id="catalogoPanel" class="hidden"><div class="layout"><section class="catalogo"><h2>Catálogo</h2><div class="toolbar"><input id="buscarProducto" type="search" placeholder="Escribe y presiona Enter para buscar..."><button id="consultar" class="btn primary">Buscar</button></div><p id="catalogoEstado" class="muted">Presiona Enter o Buscar para consultar el catálogo.</p><div id="productos" class="products"></div></section><aside class="pedido"><h2>Mi cotización</h2><div id="carrito"></div><div id="total" class="total">RD$ 0.00</div><input id="telefono" type="tel" placeholder="Teléfono"><input id="nombre" type="text" placeholder="Nombre completo"><input id="direccion" type="text" placeholder="Dirección de entrega"><button id="enviar" class="btn green" style="width:100%">Enviar cotización</button><p id="pedidoEstado" class="notice"></p></aside></div></section>
+<section id="catalogoPanel" class="hidden"><div id="alertaDeudas" class="hidden" style="background:#fee;border-left:4px solid #c00;padding:12px;margin-bottom:16px;border-radius:6px;color:#600"><strong>⚠️ Tienes deudas pendientes</strong><div style="margin-top:8px;font-size:0.9rem"><span>Saldo pendiente: <b id="saldoDeudaAlerta">RD$ 0</b> | Deudas vencidas: <b id="countVencidas">0</b></span><br><button id="verDeudas" class="btn" style="background:#c00;color:#fff;margin-top:8px;padding:6px 12px;font-size:0.85rem">Ver detalles</button></div></div><div class="layout"><section class="catalogo"><h2>Catálogo</h2><div class="toolbar"><input id="buscarProducto" type="search" placeholder="Escribe y presiona Enter para buscar..."><button id="consultar" class="btn primary">Buscar</button></div><p id="catalogoEstado" class="muted">Presiona Enter o Buscar para consultar el catálogo.</p><div id="productos" class="products"></div></section><aside class="pedido"><h2>Mi cotización</h2><div id="carrito"></div><div id="total" class="total">RD$ 0.00</div><input id="telefono" type="tel" placeholder="Teléfono"><input id="nombre" type="text" placeholder="Nombre completo"><input id="direccion" type="text" placeholder="Dirección de entrega"><button id="enviar" class="btn green" style="width:100%">Enviar cotización</button><p id="pedidoEstado" class="notice"></p></aside></div></section>
 </main>
+<div id="modalDeudas" style="display:none;position:fixed;inset:0;background:#0008;z-index:10;align-items:center;justify-content:center;padding:15px;flex-direction:column">
+<div style="background:#fff;border-radius:12px;padding:22px;width:min(700px,100%);box-sizing:border-box;max-height:80vh;overflow:auto">
+<h2 style="margin-top:0;color:#c00">Resumen de deudas pendientes</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+<div><strong>Saldo total pendiente</strong><div style="font-size:1.3rem;color:#c00" id="totalDeudaModal">RD$ 0</div></div>
+<div><strong>Deudas vencidas</strong><div style="font-size:1.3rem;color:#d35400" id="countVencidasModal">0</div></div>
+</div>
+<table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+<thead><tr style="background:#fafafa"><th style="padding:8px;text-align:left">Factura</th><th style="padding:8px;text-align:left">Saldo</th><th style="padding:8px;text-align:left">Vencimiento</th><th style="padding:8px;text-align:left">Estado</th></tr></thead>
+<tbody id="tablaDeudas"></tbody>
+</table>
+<div style="margin-top:16px;display:flex;gap:8px"><button onclick="document.getElementById('modalDeudas').style.display='none'" class="btn primary">Cerrar</button></div>
+</div>
+</div>
 <script type="module">
-import{initializeApp}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';import{getFirestore,collection,getDocs,addDoc,doc,setDoc,serverTimestamp}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-const config={apiKey:'AIzaSyAy4En1r4frEc6a4FGLf0vupJ0AY',authDomain:'supermercado-marian.firebaseapp.com',projectId:'supermercado-marian',storageBucket:'supermercado-marian.firebasestorage.app',messagingSenderId:'627337795444',appId:'1:627337795444:web:e9a4cb48ff164b78477e21'};const app=initializeApp(config);const auth=getAuth(app);const db=getFirestore(app);let productos=[],carrito=[];
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';import{getFirestore,collection,getDocs,addDoc,doc,setDoc,serverTimestamp,query,where}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+const config={apiKey:'AIzaSyAy4En1r4frEc6a4FGLf0vupJ0AY',authDomain:'supermercado-marian.firebaseapp.com',projectId:'supermercado-marian',storageBucket:'supermercado-marian.firebasestorage.app',messagingSenderId:'627337795444',appId:'1:627337795444:web:e9a4cb48ff164b78477e21'};const app=initializeApp(config);const auth=getAuth(app);const db=getFirestore(app);let productos=[],carrito=[],deudas=[],cliente={};
 const $=id=>document.getElementById(id);const money=value=>`RD$ ${Number(value||0).toLocaleString('es-DO',{minimumFractionDigits:2})}`;const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const fechaComoDate=valor=>{if(!valor)return null;if(typeof valor.toDate==='function')return valor.toDate();const fecha=new Date(valor);return Number.isNaN(fecha.getTime())?null:fecha};
+
 async function cargarCatalogo(){ $('catalogoEstado').innerText='Consultando catálogo...';const snap=await getDocs(collection(db,'productos'));productos=snap.docs.map(item=>({id:item.id,...item.data()})).filter(item=>item.estatus!=='INACTIVO');renderProductos();$('catalogoEstado').innerText=`${productos.length} producto(s) disponible(s).`}
 function renderProductos(){const term=$('buscarProducto').value.trim().toLowerCase();const lista=productos.filter(p=>!term||String(p.nombre||'').toLowerCase().includes(term)||String(p.codigo||'').toLowerCase().includes(term));$('productos').innerHTML=lista.map(p=>`<article class="product"><h3>${esc(p.nombre)}</h3><div class="price">${money(p.precio)}</div><small>${esc(p.codigo||'Sin código')}</small><button class="btn primary" data-id="${esc(p.id)}">Agregar</button></article>`).join('')||'<p>No hay productos para esa búsqueda.</p>';$('productos').querySelectorAll('button').forEach(button=>button.onclick=()=>agregar(button.dataset.id))}
 function agregar(id){const p=productos.find(item=>item.id===id);if(!p)return;const actual=carrito.find(item=>item.id===id);if(actual)actual.cantidad++;else carrito.push({id:p.id,nombre:p.nombre,precio:Number(p.precio)||0,cantidad:1,subtotal:Number(p.precio)||0});renderCarrito()}
 function renderCarrito(){$('carrito').innerHTML=carrito.map((p,i)=>`<div class="cart-line"><span>${esc(p.nombre)} x ${p.cantidad}</span><span>${money(p.subtotal)} <button class="btn" data-index="${i}">-</button></span></div>`).join('')||'<p class="muted">Aún no has agregado productos.</p>';$('carrito').querySelectorAll('button').forEach(button=>button.onclick=()=>{const item=carrito[button.dataset.index];item.cantidad--;if(item.cantidad<=0)carrito.splice(button.dataset.index,1);else item.subtotal=item.cantidad*item.precio;renderCarrito()});$('total').innerText=money(carrito.reduce((sum,p)=>sum+p.subtotal,0))}
+
+async function cargarDeudas(uid){
+  try{
+    const q=query(collection(db,'deudas_clientes'),where('idCliente','==',uid));
+    const snap=await getDocs(q);
+    deudas=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+    mostrarAlertaDeudas();
+  }catch(error){console.error('Error cargando deudas:',error)}
+}
+
+function mostrarAlertaDeudas(){
+  const ahora=new Date();
+  const vencidas=deudas.filter(d=>{
+    const vto=fechaComoDate(d.fechaVencimiento);
+    return d.estado!=='PAGADO'&&vto&&vto<ahora
+  });
+  const saldoTotal=deudas.reduce((sum,d)=>sum+Number(d.saldoPendiente||d.montoDeuda||0),0);
+  
+  if(vencidas.length>0||saldoTotal>0){
+    $('saldoDeudaAlerta').innerText=money(saldoTotal);
+    $('countVencidas').innerText=vencidas.length;
+    $('alertaDeudas').classList.remove('hidden');
+    $('verDeudas').onclick=()=>mostrarModalDeudas();
+  }else{
+    $('alertaDeudas').classList.add('hidden');
+  }
+}
+
+function mostrarModalDeudas(){
+  const ahora=new Date();
+  let html='';
+  let totalModal=0,countVencidasModal=0;
+  
+  deudas.forEach(d=>{
+    const saldo=Number(d.saldoPendiente||d.montoDeuda||0);
+    const vto=fechaComoDate(d.fechaVencimiento);
+    const estaVencida=d.estado!=='PAGADO'&&vto&&vto<ahora;
+    if(estaVencida)countVencidasModal++;
+    totalModal+=saldo;
+    
+    const estado=d.estado==='PAGADO'?'Pagado':estaVencida?'Vencido':'Pendiente';
+    const color=d.estado==='PAGADO'?'#27ae60':estaVencida?'#c00':'#d35400';
+    
+    html+=`<tr style="border-bottom:1px solid #eee"><td style="padding:8px">${esc(d.nroFactura||'S/N')}</td><td style="padding:8px">${money(saldo)}</td><td style="padding:8px">${vto?vto.toLocaleDateString('es-DO'):'Sin fecha'}</td><td style="padding:8px;color:${color};font-weight:bold">${estado}</td></tr>`;
+  });
+  
+  $('totalDeudaModal').innerText=money(totalModal);
+  $('countVencidasModal').innerText=countVencidasModal;
+  $('tablaDeudas').innerHTML=html||'<tr><td colspan="4" style="padding:8px;text-align:center">No hay deudas registradas</td></tr>';
+  $('modalDeudas').style.display='flex';
+}
+
 $('consultar').onclick=cargarCatalogo;$('buscarProducto').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();cargarCatalogo()}};$('entrar').onclick=async()=>{try{await signInWithEmailAndPassword(auth,$('email').value.trim(),$('password').value);$('authEstado').innerText=''}catch(error){$('authEstado').innerText='Correo o contraseña incorrectos.'}};$('crearCuenta').onclick=async()=>{try{const credential=await createUserWithEmailAndPassword(auth,$('email').value.trim(),$('password').value);await setDoc(doc(db,'clientes_portal',credential.user.uid),{uid:credential.user.uid,email:credential.user.email,rol:'Cliente',fechaRegistro:serverTimestamp()},{merge:true});$('authEstado').innerText='Cuenta creada correctamente.'}catch(error){$('authEstado').innerText=error.code==='auth/invalid-email'?'Correo inválido.':'No se pudo crear la cuenta.'}};$('salir').onclick=()=>signOut(auth);
-$('enviar').onclick=async()=>{if(!carrito.length)return $('pedidoEstado').innerText='Agrega al menos un producto.';if(!$('nombre').value.trim()||!$('telefono').value.trim())return $('pedidoEstado').innerText='Completa nombre y teléfono.';try{const ref=await addDoc(collection(db,'cotizaciones'),{uidCliente:auth.currentUser.uid,emailCliente:auth.currentUser.email,nombre:$('nombre').value.trim(),telefono:$('telefono').value.trim(),direccion:$('direccion').value.trim(),items:carrito,total:carrito.reduce((sum,p)=>sum+p.subtotal,0),estado:'PENDIENTE',fecha:serverTimestamp()});carrito=[];renderCarrito();$('pedidoEstado').innerText=`Cotización enviada: ${ref.id}`;}catch(error){console.error(error);$('pedidoEstado').innerText='No se pudo enviar la cotización.'}};
-onAuthStateChanged(auth,user=>{if(user){$('authPanel').classList.add('hidden');$('catalogoPanel').classList.remove('hidden');$('salir').style.display='block';cargarCatalogo();}else{$('authPanel').classList.remove('hidden');$('catalogoPanel').classList.add('hidden');$('salir').style.display='none'}});renderCarrito();
+
+$('enviar').onclick=async()=>{if(!carrito.length)return $('pedidoEstado').innerText='Agrega al menos un producto.';if(!$('nombre').value.trim()||!$('telefono').value.trim())return $('pedidoEstado').innerText='Completa nombre y teléfono.';const totalCotizacion=carrito.reduce((sum,p)=>sum+p.subtotal,0);const saldoDeudas=deudas.reduce((sum,d)=>sum+Number(d.saldoPendiente||d.montoDeuda||0),0);if(saldoDeudas+totalCotizacion>cliente.limiteCredito&&cliente.limiteCredito>0){return $('pedidoEstado').innerText=`Límite de crédito insuficiente. Saldo: ${money(cliente.limiteCredito)}, Deudas+Cotización: ${money(saldoDeudas+totalCotizacion)}`}try{const ref=await addDoc(collection(db,'cotizaciones'),{uidCliente:auth.currentUser.uid,emailCliente:auth.currentUser.email,nombre:$('nombre').value.trim(),telefono:$('telefono').value.trim(),direccion:$('direccion').value.trim(),items:carrito,total:totalCotizacion,estado:'PENDIENTE',fecha:serverTimestamp()});carrito=[];renderCarrito();$('pedidoEstado').innerText=`Cotización enviada: ${ref.id}`;}catch(error){console.error(error);$('pedidoEstado').innerText='No se pudo enviar la cotización.'}};
+
+onAuthStateChanged(auth,user=>{if(user){$('authPanel').classList.add('hidden');$('catalogoPanel').classList.remove('hidden');$('salir').style.display='block';cargarCatalogo();cargarDeudas(user.uid)}else{$('authPanel').classList.remove('hidden');$('catalogoPanel').classList.add('hidden');$('salir').style.display='none'}});renderCarrito();
 </script></body></html>
