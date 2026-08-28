@@ -85,6 +85,14 @@ service cloud.firestore {
       allow delete: if administrador();
     }
 
+    // Compatibilidad con los créditos registrados antes de usar deudas_clientes.
+    match /clientes_fiado/{clienteId} {
+      allow read: if autenticado();
+      allow update: if autenticado();
+      allow create: if administrador();
+      allow delete: if administrador();
+    }
+
     match /pagos_creditos/{pagoId} {
       allow read: if autenticado();
       allow create: if autenticado();
@@ -123,6 +131,13 @@ service cloud.firestore {
 
     match /configuracion-venta-factura/{configuracionId} {
       allow read, write: if autenticado();
+    }
+
+    match /configuracion-sistema/{configuracionId} {
+      allow read: if autenticado();
+      allow write: if autenticado() && (
+        request.auth.token.admin == true || request.auth.token.rol == 'Administrador'
+      );
     }
 
     match /{documento=**} {

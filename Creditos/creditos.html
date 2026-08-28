@@ -19,6 +19,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:11px 8px;border-bottom:1
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 <header>📓 Créditos y cuentas por cobrar</header>
@@ -28,10 +29,14 @@ table{width:100%;border-collapse:collapse}th,td{padding:11px 8px;border-bottom:1
 <section class="card" id="nuevoClienteCard">
 <h2>Nuevo cliente</h2>
 <label>Nombre completo *<input id="nomCliente" type="text" autocomplete="name"></label>
-<label>Teléfono *<input id="telCliente" type="tel" autocomplete="tel"></label>
+<label>Teléfono *<input id="telCliente" type="tel" maxlength="12" inputmode="numeric" placeholder="809-000-0000" autocomplete="tel"></label>
 <label>Dirección<input id="dirCliente" type="text" autocomplete="street-address"></label>
-<label>Cédula<input id="cedCliente" type="text"></label>
-<label>RNC<input id="rncCliente" type="text"></label>
+<label>Cédula<input id="cedCliente" type="text" maxlength="13" inputmode="numeric" placeholder="000-0000000-0"></label>
+<label>RNC<input id="rncCliente" type="text" maxlength="9" inputmode="numeric" placeholder="000000000"></label>
+<label>Foto frontal de cédula<input id="cedulaFrontal" type="file" accept="image/*" capture="environment"></label>
+<label>Foto posterior de cédula<input id="cedulaPosterior" type="file" accept="image/*" capture="environment"></label>
+<p id="estadoCedula" class="estado">Las fotos son opcionales. Verifica los datos antes de guardar.</p>
+<div id="previewsCedula" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
 <label>Límite de crédito RD$<input id="limiteCliente" type="number" min="0" step="0.01" value="0"></label>
 <button class="btn-main" onclick="crearCliente()">Registrar cliente</button>
 <p id="estadoCliente" class="estado"></p>
@@ -55,24 +60,33 @@ table{width:100%;border-collapse:collapse}th,td{padding:11px 8px;border-bottom:1
 const firebaseConfig={apiKey:"AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",authDomain:"supermercado-marian.firebaseapp.com",projectId:"supermercado-marian"};
 firebase.initializeApp(firebaseConfig);const db=firebase.firestore();const auth=firebase.auth();
 let clientes=[],creditos=[],creditoSeleccionado=null,busquedaActiva=false,rolActual='';
+let fotosCedula={frontal:null,posterior:null};
 const escapar=valor=>String(valor??'').replace(/[&<>"']/g,caracter=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[caracter]));
 const fechaComoDate=valor=>{if(!valor)return null;if(typeof valor.toDate==='function')return valor.toDate();const fecha=new Date(valor);return Number.isNaN(fecha.getTime())?null:fecha};
 const dinero=valor=>`RD$ ${Number(valor||0).toLocaleString('es-DO',{minimumFractionDigits:2})}`;
 
 async function cargarDatos(){
-    const [clientesSnapshot, creditosSnapshot]=await Promise.all([
+    const [clientesSnapshot, creditosSnapshot, legadosSnapshot]=await Promise.all([
         db.collection('clientes').get(),
-        db.collection('deudas_clientes').get()
+        db.collection('deudas_clientes').get(),
+        db.collection('clientes_fiado').get()
     ]);
     clientes=clientesSnapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
     creditos=creditosSnapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
+    const creditosLegados=legadosSnapshot.docs.map(doc=>({id:doc.id,legacy:true,nombreCliente:doc.data().nombre,clienteDatos:doc.data(),saldoPendiente:Number(doc.data().deuda||0),montoOriginal:Number(doc.data().deuda||0),estado:Number(doc.data().deuda||0)>0?'PENDIENTE':'PAGADO',...doc.data()}));
+    creditos=[...creditos,...creditosLegados];
 }
 
 auth.onAuthStateChanged(async user=>{
     if(!user)return window.location.href='../index.html';
     const token=await user.getIdTokenResult();
     rolActual=token.claims.rol||'';
+    if(!rolActual){
+        const usuarioSnapshot=await db.collection('usuarios').where('email','==',user.email.toLowerCase()).limit(1).get();
+        if(!usuarioSnapshot.empty)rolActual=usuarioSnapshot.docs[0].data().rol||'';
+    }
     if(!['Administrador','Jefe'].includes(rolActual))document.getElementById('nuevoClienteCard').style.display='none';
+    try{await cargarDatos();busquedaActiva=true;renderizarCreditos()}catch(error){console.error(error);document.getElementById('estadoConsulta').innerText='No se pudieron cargar los créditos. Revisa las reglas de Firebase.'}
 });
 
 async function crearCliente(){
@@ -81,12 +95,26 @@ async function crearCliente(){
     const direccion=document.getElementById('dirCliente').value.trim(),cedula=document.getElementById('cedCliente').value.trim(),rnc=document.getElementById('rncCliente').value.trim();
     const limite=Number(document.getElementById('limiteCliente').value)||0;
     if(!nombre||!telefono)return alert('Nombre y teléfono son obligatorios.');
+    if(!/^(809|829|849)-\d{7}$/.test(telefono))return alert('El teléfono debe tener el formato 809-000-0000, 829-000-0000 o 849-000-0000.');
+    if(cedula&&!/^\d{3}-\d{7}-\d$/.test(cedula))return alert('La cédula debe tener el formato 000-0000000-0.');
+    if(rnc&&!/^\d{9}$/.test(rnc))return alert('El RNC debe contener exactamente 9 números.');
     if(!clientes.length)await cargarDatos();
     if(clientes.some(cliente=>cliente.telefono===telefono||(cedula&&cliente.cedula===cedula)||(rnc&&cliente.rnc===rnc)))return alert('Ya existe un cliente con ese teléfono, cédula o RNC.');
-    db.collection('clientes').add({nombre,telefono,direccion,cedula,rnc,limiteCredito:limite,permiteCredito:true,fechaRegistro:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>{
-        document.querySelectorAll('#nomCliente,#telCliente,#dirCliente,#cedCliente,#rncCliente').forEach(input=>input.value='');document.getElementById('limiteCliente').value='0';document.getElementById('estadoCliente').innerText='Cliente guardado correctamente.';
+    const clienteRef=db.collection('clientes').doc();
+    clienteRef.set({idCliente:clienteRef.id,nombre,telefono,direccion,cedula,rnc,limiteCredito:limite,permiteCredito:true,fotoCedulaFrontal:fotosCedula.frontal,fotoCedulaPosterior:fotosCedula.posterior,fechaRegistro:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>{
+        document.querySelectorAll('#nomCliente,#telCliente,#dirCliente,#cedCliente,#rncCliente,#cedulaFrontal,#cedulaPosterior').forEach(input=>input.value='');document.getElementById('limiteCliente').value='0';fotosCedula={frontal:null,posterior:null};document.getElementById('previewsCedula').innerHTML='';document.getElementById('estadoCliente').innerText=`Cliente guardado correctamente. ID: ${clienteRef.id}`;
     }).catch(error=>{console.error(error);alert('No se pudo guardar el cliente.');});
 }
+
+function formatearTelefono(valor){const digitos=valor.replace(/\D/g,'').slice(0,10);return digitos.length>3?`${digitos.slice(0,3)}-${digitos.slice(3)}`:digitos}
+function formatearCedula(valor){const digitos=valor.replace(/\D/g,'').slice(0,11);if(digitos.length<=3)return digitos;if(digitos.length<=10)return `${digitos.slice(0,3)}-${digitos.slice(3)}`;return `${digitos.slice(0,3)}-${digitos.slice(3,10)}-${digitos.slice(10)}`}
+function comprimirFoto(archivo){return new Promise((resolve,reject)=>{const lector=new FileReader();lector.onload=()=>{const imagen=new Image();imagen.onload=()=>{const max=1400,escala=Math.min(1,max/Math.max(imagen.width,imagen.height)),canvas=document.createElement('canvas');canvas.width=Math.round(imagen.width*escala);canvas.height=Math.round(imagen.height*escala);canvas.getContext('2d').drawImage(imagen,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.62))};imagen.onerror=reject;imagen.src=lector.result};lector.onerror=reject;lector.readAsDataURL(archivo)})}
+async function procesarFotoCedula(evento,lado){const archivo=evento.target.files[0];if(!archivo)return;try{fotosCedula[lado]=await comprimirFoto(archivo);document.getElementById('previewsCedula').innerHTML=Object.entries(fotosCedula).filter(([,foto])=>foto).map(([nombre,foto])=>`<div><small>${nombre==='frontal'?'Frontal':'Posterior'}</small><img src="${foto}" alt="Cédula ${nombre}" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px"></div>`).join('');document.getElementById('estadoCedula').innerText='Procesando texto de la cédula...';if(window.Tesseract){const resultado=await Tesseract.recognize(fotosCedula[lado],'spa');const encontrada=resultado.data.text.match(/\b\d{3}[- ]?\d{7}[- ]?\d\b/);if(encontrada&&!document.getElementById('cedCliente').value)document.getElementById('cedCliente').value=formatearCedula(encontrada[0]);}document.getElementById('estadoCedula').innerText='Foto cargada. Confirma o corrige los datos antes de guardar.'}catch(error){console.error(error);document.getElementById('estadoCedula').innerText='No se pudo leer la foto. Puedes escribir los datos manualmente.'}}
+document.getElementById('telCliente').addEventListener('input',event=>event.target.value=formatearTelefono(event.target.value));
+document.getElementById('cedCliente').addEventListener('input',event=>event.target.value=formatearCedula(event.target.value));
+document.getElementById('rncCliente').addEventListener('input',event=>event.target.value=event.target.value.replace(/\D/g,'').slice(0,9));
+document.getElementById('cedulaFrontal').addEventListener('change',event=>procesarFotoCedula(event,'frontal'));
+document.getElementById('cedulaPosterior').addEventListener('change',event=>procesarFotoCedula(event,'posterior'));
 
 async function ejecutarBusqueda(){
     const estado=document.getElementById('estadoConsulta');
@@ -111,8 +139,9 @@ function cerrarModal(){document.getElementById('modalAbono').style.display='none
 async function guardarAbono(){
     if(!['Administrador','Jefe'].includes(rolActual))return alert('Solo Administrador o Jefe puede registrar abonos.');
     if(!creditoSeleccionado)return;const monto=Number(document.getElementById('montoAbono').value);const saldoActual=Number(creditoSeleccionado.saldoPendiente??creditoSeleccionado.montoDeuda??0);if(!Number.isFinite(monto)||monto<=0||monto>saldoActual)return alert('El monto no es válido.');
-    const deudaRef=db.collection('deudas_clientes').doc(creditoSeleccionado.id);const pagoRef=db.collection('pagos_creditos').doc();const nuevoSaldo=Math.max(0,saldoActual-monto);
-    try{await db.runTransaction(async transaction=>{const deuda=await transaction.get(deudaRef);if(!deuda.exists)throw new Error('Crédito no encontrado');const saldo=Number(deuda.data().saldoPendiente??deuda.data().montoDeuda??0);if(monto>saldo)throw new Error('El saldo cambió. Consulta nuevamente.');transaction.update(deudaRef,{saldoPendiente:Math.max(0,saldo-monto),estado:saldo-monto<=0?'PAGADO':'PENDIENTE',fechaUltimoAbono:firebase.firestore.FieldValue.serverTimestamp()});transaction.set(pagoRef,{idCredito:creditoSeleccionado.id,nroCredito:creditoSeleccionado.nroCredito||null,nroFactura:creditoSeleccionado.nroFactura||null,idCliente:creditoSeleccionado.idCliente,monto,observacion:document.getElementById('observacionAbono').value.trim(),fecha:firebase.firestore.FieldValue.serverTimestamp(),tipo:'ABONO'});});cerrarModal();alert(`Abono registrado. Nuevo saldo: ${dinero(nuevoSaldo)}`);renderizarCreditos()}catch(error){console.error(error);alert(error.message||'No se pudo registrar el abono.')}}
+    const coleccion=creditoSeleccionado.legacy?'clientes_fiado':'deudas_clientes';const deudaRef=db.collection(coleccion).doc(creditoSeleccionado.id);const pagoRef=db.collection('pagos_creditos').doc();const nuevoSaldo=Math.max(0,saldoActual-monto);
+    try{await db.runTransaction(async transaction=>{const deuda=await transaction.get(deudaRef);if(!deuda.exists)throw new Error('Crédito no encontrado');const datos=deuda.data();const saldo=Number(datos.saldoPendiente??datos.montoDeuda??datos.deuda??0);if(monto>saldo)throw new Error('El saldo cambió. Consulta nuevamente.');const actualizacion=creditoSeleccionado.legacy?{deuda:Math.max(0,saldo-monto)}:{saldoPendiente:Math.max(0,saldo-monto),estado:saldo-monto<=0?'PAGADO':'PENDIENTE',fechaUltimoAbono:firebase.firestore.FieldValue.serverTimestamp()};transaction.update(deudaRef,actualizacion);transaction.set(pagoRef,{idCredito:creditoSeleccionado.id,nroCredito:creditoSeleccionado.nroCredito||null,nroFactura:creditoSeleccionado.nroFactura||null,idCliente:creditoSeleccionado.idCliente||null,monto,observacion:document.getElementById('observacionAbono').value.trim(),fecha:firebase.firestore.FieldValue.serverTimestamp(),tipo:'ABONO'});});cerrarModal();alert(`Abono registrado. Nuevo saldo: ${dinero(nuevoSaldo)}`);renderizarCreditos()}catch(error){console.error(error);alert(error.message||'No se pudo registrar el abono.')}}
 </script>
+<script src="../offline-status.js"></script>
 </body>
 </html>

@@ -160,8 +160,9 @@
         const rol = document.getElementById('rolEmp').value;
 
         if(nom && ema && pin) {
+            const rolSincronizado = await sincronizarRol(ema, rol);
+            if (!rolSincronizado) return;
             await addDoc(collection(db, "usuarios"), { nombre: nom, email: ema, pin: pin, rol: rol });
-            await sincronizarRol(ema, rol);
             limpiarFormulario();
             alert("Empleado registrado.");
         } else {
@@ -232,5 +233,6 @@
         }
     };
 </script>
+<script src="offline-status.js"></script>
 </body>
 </html>

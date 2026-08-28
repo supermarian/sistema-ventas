@@ -52,6 +52,15 @@
             <div><label><small>Nombre del Producto:</small></label><input type="text" id="nomProd"></div>
             <div><label><small>Precio RD$:</small></label><input type="number" id="preProd"></div>
             <div><label><small>Stock:</small></label><input type="number" id="stockProd"></div>
+            <div><label><small>Unidad:</small></label>
+                <select id="unidadProd" style="padding:10px;border:1px solid #ddd;border-radius:8px;width:100%;font-size:1rem">
+                    <option value="Und">Und</option>
+                    <option value="Lb">Lb</option>
+                    <option value="Kg">Kg</option>
+                    <option value="Caja">Caja</option>
+                    <option value="Paq">Paq</option>
+                </select>
+            </div>
         </div>
         <div>
 
@@ -61,6 +70,13 @@
                <option value="INACTIVO">❌ INACTIVO</option>
            </select>
          </div>
+        <div class="form-card" style="margin-top:15px;margin-bottom:0;background:#fff8df;border:1px solid #e3c765">
+            <label style="display:flex;align-items:center;gap:8px;margin:0;color:#6b5600;font-weight:bold">
+                <input id="permitirStockNegativo" type="checkbox" style="width:auto">
+                Permitir ventas con stock negativo
+            </label>
+            <span class="info-tag">Solo el Administrador puede cambiar esta configuración.</span>
+        </div>
         
         <button class="btn-add" id="btnGuardar">Guardar Nuevo Producto</button>
         <button class="btn-add btn-update" id="btnActualizar" onclick="window.actualizarProducto()">✅ Confirmar Cambios</button>
@@ -79,6 +95,7 @@
                     <th>Nombre</th>
                     <th>Precio</th>
                     <th>Stock</th>
+                    <th>Unidad</th>
                     <th>Estado</th>
                 </tr>
             </thead>
@@ -89,5 +106,6 @@
 
 <script type="module" src="almacen.js"></script>
 
+<script src="../offline-status.js"></script>
 </body>
 </html>
