@@ -44,6 +44,7 @@
 </div>
 </div>
 <script type="module">
+import{getFunctions,httpsCallable}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendEmailVerification}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';import{getFirestore,collection,getDocs,addDoc,doc,setDoc,serverTimestamp,query,where}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 const config={apiKey:'AIzaSyAy4En1r4frEc6a4FGLf0vupJ0AY',authDomain:'supermercado-marian.firebaseapp.com',projectId:'supermercado-marian',storageBucket:'supermercado-marian.firebasestorage.app',messagingSenderId:'627337795444',appId:'1:627337795444:web:e9a4cb48ff164b78477e21'};const app=initializeApp(config);const auth=getAuth(app);const db=getFirestore(app);let productos=[],carrito=[],deudas=[],cliente={};
 const $=id=>document.getElementById(id);const money=value=>`RD$ ${Number(value||0).toLocaleString('es-DO',{minimumFractionDigits:2})}`;const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
@@ -120,5 +121,21 @@ $('consultar').onclick=cargarCatalogo;$('buscarProducto').onkeydown=e=>{if(e.key
 
 $('enviar').onclick=async()=>{if(!carrito.length)return $('pedidoEstado').innerText='Agrega al menos un producto.';if(!$('nombre').value.trim()||!$('telefono').value.trim())return $('pedidoEstado').innerText='Completa nombre y teléfono.';const totalCotizacion=carrito.reduce((sum,p)=>sum+p.subtotal,0);const saldoDeudas=deudas.reduce((sum,d)=>sum+Number(d.saldoPendiente||d.montoDeuda||0),0);const totalSolicitud=saldoDeudas+totalCotizacion;const limite=Number(cliente.limiteCredito||0);if(limite>0&&totalSolicitud>limite){const disponible=Math.max(0,limite-saldoDeudas);return $('pedidoEstado').innerText=`Límite insuficiente. Disponible: ${money(disponible)}, Necesitas: ${money(totalCotizacion)}`}try{const ref=await addDoc(collection(db,'cotizaciones'),{uidCliente:auth.currentUser.uid,emailCliente:auth.currentUser.email,nombre:$('nombre').value.trim(),telefono:$('telefono').value.trim(),direccion:$('direccion').value.trim(),items:carrito,total:totalCotizacion,estado:'PENDIENTE',fecha:serverTimestamp()});carrito=[];renderCarrito();$('nombre').value='';$('telefono').value='';$('direccion').value='';$('pedidoEstado').innerText=`✓ Cotización enviada: ${ref.id}`;}catch(error){console.error(error);$('pedidoEstado').innerText='No se pudo enviar la cotización.'}};;
 
+$('enviar').onclick=async()=>{
+  if(!carrito.length)return $('pedidoEstado').innerText='Agrega al menos un producto.';
+  const nombre=$('nombre').value.trim(),telefono=$('telefono').value.trim();
+  if(!nombre||!telefono)return $('pedidoEstado').innerText='Completa nombre y teléfono.';
+  $('pedidoEstado').innerText='Validando productos y preparando cotización...';
+  try{
+    const crearCotizacion=httpsCallable(getFunctions(app,'us-central1'),'crearCotizacion');
+    const resultado=await crearCotizacion({nombre,telefono,direccion:$('direccion').value.trim(),items:carrito,canal:'WEB'});
+    carrito=[];renderCarrito();$('nombre').value='';$('telefono').value='';$('direccion').value='';
+    $('pedidoEstado').innerText=`✓ Cotización enviada: ${resultado.data.id}`;
+  }catch(error){
+    console.error(error);
+    $('pedidoEstado').innerText=error?.message||'No se pudo enviar la cotización.';
+  }
+};
+
 onAuthStateChanged(auth,async user=>{if(user){if(!user.emailVerified){$('authPanel').classList.remove('hidden');$('catalogoPanel').classList.add('hidden');$('salir').style.display='none';$('perfil').style.display='none';$('authEstado').innerText='';$('avisoVerificacion').style.display='block';$('btnReenviarEmail').onclick=async()=>{try{await sendEmailVerification(user);$('btnReenviarEmail').innerText='✓ Reenviado';$('btnReenviarEmail').disabled=true;setTimeout(()=>{$('btnReenviarEmail').innerText='Reenviar email';$('btnReenviarEmail').disabled=false},5000)}catch(e){alert('Error: '+e.message)}};return}$('authPanel').classList.add('hidden');$('catalogoPanel').classList.remove('hidden');$('salir').style.display='block';$('perfil').style.display='block';$('avisoVerificacion').style.display='none';cargarCatalogo();cargarDatosCliente(user.uid);cargarDeudas(user.uid)}else{$('authPanel').classList.remove('hidden');$('catalogoPanel').classList.add('hidden');$('salir').style.display='none';$('perfil').style.display='none';$('avisoVerificacion').style.display='none'}});renderCarrito();
-</script></body></html>
+</script><script src="offline-status.js"></script></body></html>

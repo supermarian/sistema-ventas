@@ -94,6 +94,9 @@
     <h3>Auditoría</h3> 
     <p>Historial de cierres y ventas.</p>  <p>cierre caja</p>
     </div>
+    <div class="menu-card" id="btnConfiguracionBot" onclick="window.abrirConfiguracionBot()">
+        <span>💬</span> <h3>Configuración del bot</h3> <p>WhatsApp y mensajes</p>
+    </div>
 
 </div>
 
@@ -132,10 +135,33 @@
     </div>
 </div>
 
+<div id="modalConfiguracionBot" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloConfiguracionBot">
+    <div class="modal-content">
+        <h2 id="tituloConfiguracionBot" style="margin-top:0;color:#1a73e8">💬 Configuración del bot</h2>
+        <p style="color:#666">Configura el teléfono público del negocio. Los tokens de WhatsApp se mantienen protegidos en el servidor.</p>
+        <label style="display:block;font-weight:600;color:#444">Teléfono de WhatsApp del negocio
+            <input id="telefonoWhatsAppBot" type="tel" value="809-573-7989" placeholder="809-000-0000" maxlength="16">
+        </label>
+        <label style="display:block;font-weight:600;color:#444">Phone Number ID de Meta
+            <input id="phoneNumberIdWhatsApp" type="text" placeholder="ID entregado por Meta" maxlength="100">
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#444">
+            <input id="botActivo" type="checkbox" style="width:auto;margin:0">
+            Bot activo
+        </label>
+        <p id="estadoConfiguracionBot" style="min-height:20px;color:#666"></p>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="btn-salir" style="margin:0;background:#666" onclick="window.cerrarConfiguracionBot()">Cancelar</button>
+            <button type="button" class="btn-salir" style="margin:0;background:#1a73e8" onclick="window.guardarConfiguracionBot()">Guardar</button>
+        </div>
+    </div>
+</div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
+    import { getFirestore, collection, onSnapshot, addDoc, doc, getDoc, updateDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
@@ -149,6 +175,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+    const functions = getFunctions(app, 'us-central1');
     let productosCache = [];
 
     const userRol = localStorage.getItem("userRol");
@@ -307,6 +334,44 @@
         }
     });
 
+    window.abrirConfiguracionBot = async () => {
+        if (!['Administrador', 'Jefe'].includes(userRol)) return alert('Solo un Administrador o Jefe puede configurar el bot.');
+        document.getElementById('estadoConfiguracionBot').innerText = 'Cargando configuración...';
+        document.getElementById('modalConfiguracionBot').style.display = 'flex';
+        try {
+            const snapshot = await getDoc(doc(db, 'configuracion-sistema', 'whatsapp'));
+            const datos = snapshot.exists() ? snapshot.data() : {};
+            document.getElementById('telefonoWhatsAppBot').value = datos.telefonoVisible || '809-573-7989';
+            document.getElementById('phoneNumberIdWhatsApp').value = datos.phoneNumberId || '';
+            document.getElementById('botActivo').checked = datos.botActivo === true;
+            document.getElementById('estadoConfiguracionBot').innerText = '';
+        } catch (error) {
+            console.error(error);
+            document.getElementById('estadoConfiguracionBot').innerText = 'No se pudo cargar la configuración.';
+        }
+    };
+
+    window.cerrarConfiguracionBot = () => {
+        document.getElementById('modalConfiguracionBot').style.display = 'none';
+    };
+
+    window.guardarConfiguracionBot = async () => {
+        const telefono = document.getElementById('telefonoWhatsAppBot').value.trim();
+        const digitos = telefono.replace(/\D/g, '');
+        if (!((digitos.length === 10) || (digitos.length === 11 && digitos.startsWith('1')))) return alert('Escribe un teléfono válido de 10 dígitos.');
+        try {
+            await httpsCallable(functions, 'guardarConfiguracionWhatsApp')({
+                telefono,
+                phoneNumberId: document.getElementById('phoneNumberIdWhatsApp').value.trim(),
+                botActivo: document.getElementById('botActivo').checked
+            });
+            document.getElementById('estadoConfiguracionBot').innerText = 'Configuración guardada.';
+        } catch (error) {
+            console.error(error);
+            document.getElementById('estadoConfiguracionBot').innerText = error?.message || 'No se pudo guardar.';
+        }
+    };
+
     window.navegar = (pagina, niveles) => {
         const rolesPermitidos = Array.isArray(niveles) ? niveles : [niveles];
         if (rolesPermitidos.includes(userRol)) {
@@ -316,7 +381,13 @@
         }
     };
 
-    window.cerrarSesion = () => { localStorage.clear(); window.location.href = "index.html"; };
+    window.cerrarSesion = () => {
+        const colaOffline = localStorage.getItem('supermarian_offline_queue');
+        localStorage.clear();
+        if (colaOffline) localStorage.setItem('supermarian_offline_queue', colaOffline);
+        window.location.href = "index.html";
+    };
 </script>
+<script src="offline-status.js"></script>
 </body>
 </html>

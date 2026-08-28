@@ -1,7 +1,34 @@
 # 📊 ESTADO DEL PROYECTO - Súper Marian Sistema ERP
 
-**Última actualización:** 2026-08-27
-**Versión:** v0.2 (En desarrollo)
+**Última actualización:** 2026-08-28
+**Versión:** v0.3 (Pre-lanzamiento técnico)
+
+## 🚀 ESTADO DE LANZAMIENTO
+
+La aplicación cuenta con una versión funcional en desarrollo que integra portal de clientes, POS, inventario, créditos, cotizaciones y controles administrativos. También se incorporó una base de funcionamiento offline para ventas de contado y una primera integración técnica para chatbot y WhatsApp Business.
+
+### Implementado en código
+- Modo offline con persistencia local de ventas de contado.
+- Sincronización idempotente con validación de stock, total y precios.
+- Prevención de duplicados cuando varios equipos sincronizan.
+- Bloqueo de créditos y abonos sin conexión.
+- Límite máximo de 3 usuarios con rol Jefe.
+- Permiso de modificación de precios para Administrador y Jefe, con auditoría.
+- Cotizaciones centralizadas desde el portal web.
+- Búsqueda conversacional de productos y cantidades.
+- Memoria básica de conversación y confirmación de cotizaciones.
+- Alertas de cotizaciones nuevas en el POS con contador, parpadeo y timbre periódico.
+- Configuración del teléfono público y activación del bot.
+- Webhook técnico de WhatsApp Business preparado.
+
+### Pendiente antes de producción
+- Autenticar Firebase CLI y desplegar Cloud Functions.
+- Configurar `phone_number_id` y credenciales secretas de Meta.
+- Verificar el webhook desde Meta WhatsApp Business.
+- Probar con dos o más equipos y usuarios reales.
+- Proteger completamente las reglas de Firestore y los PIN de empleados.
+- Migrar la cola local de `localStorage` a IndexedDB.
+- Completar notas de voz, atención humana y panel de conversaciones.
 
 ---
 
