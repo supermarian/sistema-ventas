@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { existeDuplicado } from './validaciones.js';
 
 const firebaseConfig = {
@@ -17,6 +17,24 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 let productosCache = [];
 let busquedaActiva = false; 
+const configStockRef = doc(db, 'configuracion-sistema', 'inventario');
+
+auth.onAuthStateChanged(async user => {
+    if (!user) return;
+    const token = await user.getIdTokenResult();
+    const esAdministrador = token.claims.admin === true || token.claims.rol === 'Administrador';
+    const control = document.getElementById('permitirStockNegativo');
+    if (!esAdministrador) {
+        control.disabled = true;
+        control.parentElement.style.opacity = '.6';
+    }
+    const configuracion = await getDoc(configStockRef);
+    control.checked = configuracion.exists() && configuracion.data().permitirStockNegativo === true;
+    control.addEventListener('change', async event => {
+        if (!esAdministrador) return;
+        await setDoc(configStockRef, { permitirStockNegativo: event.target.checked, actualizadoPor: user.uid, actualizadoEn: serverTimestamp() }, { merge: true });
+    });
+});
 
 // --- GESTIÓN DE BÚSQUEDA ---
 window.ejecutarBusqueda = () => {
@@ -81,12 +99,13 @@ window.renderizarTabla = () => {
         const badge = esInactivo ? "❌" : "✅";
 
         cuerpo.innerHTML += `
-            <tr ${trStyle} onclick="window.cargarEdicion('${p.idDoc}','${p.idSecuencial}','${p.codigo || ''}','${p.nombre}',${p.precio},${p.stock},'${p.estatus || 'ACTIVO'}')">
+            <tr ${trStyle} onclick="window.cargarEdicion('${p.idDoc}','${p.idSecuencial}','${p.codigo || ''}','${p.nombre}',${p.precio},${p.stock},'${p.unidad || 'Und'}','${p.estatus || 'ACTIVO'}')">
                 <td><span class="id-db">${p.idSecuencial}</span></td>
                 <td>${p.codigo || 'S/C'}</td>
                 <td><b>${p.nombre}</b></td>
                 <td>RD$ ${p.precio}</td>
                 <td>${p.stock}</td>
+                <td>${p.unidad || 'Und'}</td>
                 <td style="text-align:center;">${badge}</td>
             </tr>`;
     });
@@ -111,6 +130,7 @@ document.getElementById('btnGuardar').onclick = async () => {
         nombre: nombre,
         precio: Number(document.getElementById('preProd').value) || 0,
         stock: Number(document.getElementById('stockProd').value) || 0,
+        unidad: document.getElementById('unidadProd').value,
         estatus: "ACTIVO", // Siempre se crea activo
         timestamp: Date.now()
     });
@@ -135,6 +155,7 @@ window.actualizarProducto = async () => {
         nombre: document.getElementById('nomProd').value,
         precio: precioNuevo,
         stock: Number(document.getElementById('stockProd').value),
+        unidad: document.getElementById('unidadProd').value,
         estatus: document.getElementById('estatusProd').value // Aquí guardamos el cambio de estatus
     });
     const diferencia = precioNuevo - Number(productoAnterior?.precio || 0);
@@ -153,13 +174,14 @@ window.actualizarProducto = async () => {
 };
 
 // --- UTILIDADES ---
-window.cargarEdicion = (id, idSec, cod, nom, pre, sto, est) => {
+window.cargarEdicion = (id, idSec, cod, nom, pre, sto, unidad, est) => {
     document.getElementById('editId').value = id;
     document.getElementById('secuencialProd').value = idSec;
     document.getElementById('codBarra').value = cod;
     document.getElementById('nomProd').value = nom;
     document.getElementById('preProd').value = pre;
     document.getElementById('stockProd').value = sto;
+    document.getElementById('unidadProd').value = unidad || "Und";
     document.getElementById('estatusProd').value = est || "ACTIVO";
     
     document.getElementById('formTitulo').innerText = "📝 Editando Producto";
@@ -182,6 +204,7 @@ function limpiarForm() {
     document.getElementById('nomProd').value = "";
     document.getElementById('preProd').value = "";
     document.getElementById('stockProd').value = "";
+    document.getElementById('unidadProd').value = "Und";
     document.getElementById('estatusProd').value = "ACTIVO";
 }
 

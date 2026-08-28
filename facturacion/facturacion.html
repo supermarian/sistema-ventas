@@ -77,6 +77,11 @@ header {
 .btn-danger { background: var(--rojo); color: #fff; }
 .btn-danger:hover { background: #c1423f; }
 .aviso-credito { background: #fff3cd; color: #856404; padding: 10px; border-radius: 8px; border: 1px solid #ffeeba; text-align: center; font-weight: 700; }
+.aviso-credito.activo { display: block !important; background: #f4df91; border: 2px solid #c9a227; color: #5f4b00; padding: 18px; font-size: 1.45rem; letter-spacing: .02em; }
+.cliente-detalle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #b9d8f5; font-size: .9rem; }
+.cliente-detalle strong { color: #263238; }
+.cliente-credito-disponible { color: #16803c; font-weight: 800; }
+@media(max-width:560px){ .cliente-detalle { grid-template-columns: 1fr; } }
 .modal { display: none; position: fixed; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); z-index: 3000; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .modal-content { background: #fff; border-radius: 14px; padding: 22px; width: 420px; max-height: 85vh; overflow: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); animation: slideUp 0.3s ease-out; }
@@ -166,7 +171,7 @@ header {
     <div id="emailCajeroApertura" class="small">Cargando email...</div>
     <div id="nombreCajeroApertura" style="font-weight:700;color:var(--verde-pos)">Cargando nombre...</div>
   </div>
-  <input id="pinApertura" class="search-box" placeholder="Clave de acceso" type="password" style="text-align:center">
+    <input id="pinApertura" class="search-box" placeholder="PIN para abrir caja" type="password" style="text-align:center">
   <input id="montoInicial" class="search-box" placeholder="Monto Inicial RD$" type="number" style="margin-top:8px;text-align:center">
   <div style="display:flex;gap:10px;margin-top:14px">
     <button class="btn btn-main" onclick="window.validarPinApertura()">CONFIRMAR</button>
@@ -177,7 +182,7 @@ header {
 <div id="modalCantidad" class="modal"><div class="modal-content">
   <h3 id="nombreProdElegido">PRODUCTO</h3>
   <p class="small">Ingrese la cantidad y presione ENTER</p>
-  <input id="cantInput" class="search-box" type="number" value="1" style="font-size:1.6rem;text-align:center">
+    <input id="cantInput" class="search-box" type="number" value="1" min="1" step="1" style="font-size:1.6rem;text-align:center">
   <div style="margin-top:12px;display:flex;gap:8px">
     <button class="btn btn-main" onclick="window.agregarAlCarrito()">AGREGAR</button>
     <button class="btn" onclick="window.cerrarModal('modalCantidad')">CANCELAR</button>
@@ -201,7 +206,7 @@ header {
     <div class="form-grid">
         <div>
             <label class="small" for="ventaRapidaTelefono">Teléfono *</label>
-            <input id="ventaRapidaTelefono" class="search-box" type="tel" placeholder="809-000-0000" autocomplete="tel">
+            <input id="ventaRapidaTelefono" class="search-box" type="tel" placeholder="809-000-0000" maxlength="12" inputmode="numeric" autocomplete="tel">
         </div>
         <div>
             <label class="small" for="ventaRapidaNombre">Nombre completo *</label>
@@ -213,11 +218,11 @@ header {
         </div>
         <div>
             <label class="small" for="ventaRapidaCedula">Cédula</label>
-            <input id="ventaRapidaCedula" class="search-box" type="text" placeholder="000-0000000-0" inputmode="numeric">
+            <input id="ventaRapidaCedula" class="search-box" type="text" placeholder="000-0000000-0" maxlength="13" inputmode="numeric">
         </div>
         <div>
             <label class="small" for="ventaRapidaRnc">RNC</label>
-            <input id="ventaRapidaRnc" class="search-box" type="text" placeholder="000000000" inputmode="numeric">
+            <input id="ventaRapidaRnc" class="search-box" type="text" placeholder="000000000" maxlength="9" inputmode="numeric">
         </div>
         <div>
             <label class="small" for="ventaRapidaEmail">Correo electrónico</label>
@@ -316,6 +321,33 @@ header {
   </div>
 </div>
 
+<div id="modalPagoCredito" class="modal">
+    <div class="modal-content" style="width:420px;max-width:95%;border-top:6px solid #d39e00">
+        <h2 style="color:#8a6900;margin-top:0">Cobrar crédito</h2>
+        <p id="detalleCobroCredito" class="small"></p>
+        <label class="small">Monto a cobrar
+            <input id="montoCobroCredito" class="search-box" type="number" min="0.01" step="0.01">
+        </label>
+        <label class="small">Método de pago
+            <select id="metodoCobroCredito" class="search-box">
+                <option value="Efectivo">Efectivo</option>
+                <option value="Tarjeta">Tarjeta</option>
+                <option value="Tarjeta de crédito">Tarjeta de crédito</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Solidaridad">Tarjeta Solidaridad</option>
+                <option value="Cheque">Cheque</option>
+            </select>
+        </label>
+        <label class="small">Referencia (opcional)
+            <input id="referenciaCobroCredito" class="search-box" type="text">
+        </label>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+            <button class="btn" style="background:#666;color:#fff" onclick="window.cerrarModal('modalPagoCredito')">CANCELAR</button>
+            <button class="btn" style="background:#d39e00;color:#fff" onclick="window.confirmarCobroDeuda()">REGISTRAR COBRO</button>
+        </div>
+    </div>
+</div>
+
         <div style="min-height: 120px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; background: white;">
             <table class="cart-table" style="margin: 0;">
                 <thead style="background: #e9ecef; position: sticky; top: 0;">
@@ -368,12 +400,6 @@ header {
                 </div>
             </div>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;color:#856404;font-weight:700">
-            <input id="autorizarStockNegativo" type="checkbox" style="width:auto">
-            Autorizar venta con stock negativo (solo administrador)
-        </label>
-        <input id="pinStockNegativo" class="search-box" type="password" placeholder="PIN de administrador para autorizar" style="display:none;margin-bottom:14px">
-
         <div style="display: flex; justify-content: space-between;">
             <button class="btn btn-danger" onclick="window.cerrarModal('modalPago')">❌ Cancelar</button>
             <button id="btnFacturar" class="btn btn-main" style="padding: 12px 30px; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(40,167,69,0.3);" onclick="window.procesarFacturaMultiPago()" disabled>🖨️ Imprimir / Aplicar Venta</button>
@@ -455,14 +481,22 @@ header {
         <button id="btnBuscarCedula" class="btn" style="background:#0069d9;color:#fff">Buscar</button>
       </div>
       <div id="info-cliente-sel" style="display:none;margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:2px solid var(--verde-pos)">
-        <b id="nombre-cliente-ok" style="color:var(--verde-pos)"></b><br>
-        <span id="tel-cliente-ok" class="small"></span>
+                <b id="nombre-cliente-ok" style="color:var(--verde-pos);font-size:1.05rem"></b>
+                <div class="cliente-detalle">
+                    <span>📱 <strong id="tel-cliente-ok">Sin teléfono</strong></span>
+                    <span>🪪 <strong id="cedula-cliente-ok">Sin cédula</strong></span>
+                    <span>RNC: <strong id="rnc-cliente-ok">Sin RNC</strong></span>
+                    <span>Límite: <strong id="limite-cliente-ok">RD$ 0.00</strong></span>
+                    <span>Consumido: <strong id="consumido-cliente-ok">RD$ 0.00</strong></span>
+                    <span>Disponible: <strong id="disponible-cliente-ok" class="cliente-credito-disponible">Sin límite</strong></span>
+                      <span>Disponible para comprar: <strong id="permite-cliente-ok">No</strong></span>
+                </div>
         <button style="float:right;background:none;border:none;color:red;cursor:pointer;font-weight:700" onclick="window.deseleccionarCliente()">QUITAR</button>
       </div>
     </div>
     
     <div style="margin-top:auto">
-      <div id="mensaje-tipo-cobro" class="aviso-credito" style="display:none">⚠️ FACTURA A CRÉDITO</div>
+    <div id="mensaje-tipo-cobro" class="aviso-credito" style="display:none">⚠️ FACTURA A CRÉDITO</div>
       <div style="text-align:right;margin-top:10px">
         <small class="small">TOTAL A COBRAR</small>
         <h1 id="granTotal" style="font-size:2.5rem;margin:6px 0;color:var(--verde-pos)">RD$ 0.00</h1>
@@ -487,7 +521,7 @@ header {
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { 
         getFirestore, collection, onSnapshot, doc, runTransaction, 
-        addDoc, serverTimestamp, updateDoc, getDocs, query, where 
+        addDoc, serverTimestamp, updateDoc, getDocs, getDoc, query, where
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
  
     // 3. Configuración ÚNICA
@@ -516,7 +550,8 @@ header {
         clienteSeleccionado: JSON.parse(localStorage.getItem('marian_pos_client')) || null,
         nroFactura: "FAC-000000",
         tempProd: null,
-        cotizacionSeleccionada: null
+        cotizacionSeleccionada: null,
+        permitirStockNegativo: false
     };
     window.puedeEditarPrecios = false;
 
@@ -643,11 +678,15 @@ header {
 
 // Función para abrir el modal y cargar deudas
 window.abrirModuloCreditos = async () => {
+    document.body.appendChild(document.getElementById('modalModuloCreditos'));
     POSUI.abrirModal('modalModuloCreditos');
     document.getElementById('listaDeudasBody').innerHTML = "<tr><td colspan='5' style='text-align:center'>Cargando deudas...</td></tr>";
     try {
-        const q = query(collection(db, "deudas_clientes"), where("estado", "==", "PENDIENTE"));
-        const querySnapshot = await getDocs(q);
+        const [querySnapshot, legadosSnapshot, clientesSnapshot] = await Promise.all([
+            getDocs(query(collection(db, "deudas_clientes"), where("estado", "==", "PENDIENTE"))),
+            getDocs(collection(db, "clientes_fiado")),
+            getDocs(collection(db, "clientes"))
+        ]);
         state.deudasPendientes = [];
         
         let html = "";
@@ -662,6 +701,20 @@ window.abrirModuloCreditos = async () => {
                     <td style="color:var(--rojo); font-weight:bold">RD$ ${Number(data.saldoPendiente ?? data.montoDeuda ?? 0).toLocaleString()}</td>
                     <td><button class="btn btn-main" style="padding:5px 10px; font-size:0.8rem" onclick="window.cobrarDeuda('${doc.id}')">ABONAR</button></td>
                 </tr>`;
+        });
+            legadosSnapshot.forEach((doc) => {
+                const data = doc.data();
+                if (Number(data.deuda || 0) <= 0) return;
+                state.deudasPendientes.push({ id: doc.id, legacy: true, ...data, nombreCliente: data.nombre, saldoPendiente: Number(data.deuda || 0) });
+                const saldo = Number(data.deuda || 0);
+                html += `<tr><td><b>${data.nombre || 'Cliente'}</b></td><td class="small"><span class="fac-badge">LEGADO</span></td><td class="small">S/N</td><td style="color:${saldo > 0 ? 'var(--rojo)' : 'var(--verde-pos)'};font-weight:bold">RD$ ${saldo.toLocaleString()}</td><td>${saldo > 0 ? `<button class="btn btn-main" style="padding:5px 10px;font-size:0.8rem" onclick="window.cobrarDeuda('${doc.id}', true)">ABONAR</button>` : '<span style="color:var(--verde-pos);font-weight:bold">AL DÍA</span>'}</td></tr>`;
+            });
+        const idsConDeuda = new Set(state.deudasPendientes.filter(deuda => !deuda.legacy).map(deuda => deuda.idCliente));
+        clientesSnapshot.forEach(documento => {
+            const data = documento.data();
+            if (!data.permiteCredito || idsConDeuda.has(documento.id)) return;
+            state.deudasPendientes.push({ id: documento.id, clienteSinDeuda: true, idCliente: documento.id, nombreCliente: data.nombre, saldoPendiente: 0, ...data });
+            html += `<tr><td><b>${data.nombre || 'Cliente'}</b></td><td class="small"><span class="fac-badge">SIN DEUDA</span></td><td class="small">S/N</td><td style="color:var(--verde-pos);font-weight:bold">RD$ 0.00</td><td><span style="color:var(--verde-pos);font-weight:bold">AL DÍA</span></td></tr>`;
         });
         
         document.getElementById('listaDeudasBody').innerHTML = html || "<tr><td colspan='5' style='text-align:center'>No hay cuentas pendientes</td></tr>";
@@ -685,56 +738,81 @@ window.filtrarDeudas = () => {
 };
 
 // Función para procesar el cobro real
-window.cobrarDeuda = async (idDeuda) => {
+window.cobroCreditoSeleccionado = null;
+window.cobrarDeuda = (idDeuda, esLegado = false) => {
     const deudaActual = state.deudasPendientes.find(deuda => deuda.id === idDeuda);
-    const saldo = Number(deudaActual?.saldoPendiente ?? deudaActual?.montoDeuda ?? 0);
-    const monto = Number(prompt(`Saldo pendiente: RD$ ${saldo.toLocaleString()}\nMonto a abonar:`));
-    if (!Number.isFinite(monto) || monto <= 0 || monto > saldo) return alert('Monto de abono inválido.');
-    const confirmar = confirm(`¿Confirmas el abono de RD$ ${monto.toLocaleString()}?\nEsto se sumará al efectivo de tu caja actual.`);
-    
-    if (confirmar) {
-        try {
-            const deudaRef = doc(db, "deudas_clientes", idDeuda);
+    const saldo = Number(deudaActual?.saldoPendiente ?? deudaActual?.montoDeuda ?? deudaActual?.deuda ?? 0);
+    if (!deudaActual || saldo <= 0) return alert('Este crédito no tiene saldo pendiente.');
+    window.cobroCreditoSeleccionado = { ...deudaActual, esLegado };
+    document.getElementById('detalleCobroCredito').innerText = `${deudaActual.nombreCliente || 'Cliente'} - Saldo: RD$ ${saldo.toLocaleString()}`;
+    document.getElementById('montoCobroCredito').value = saldo;
+    document.getElementById('metodoCobroCredito').value = 'Efectivo';
+    document.getElementById('referenciaCobroCredito').value = '';
+    document.body.appendChild(document.getElementById('modalPagoCredito'));
+    POSUI.abrirModal('modalPagoCredito');
+};
+
+window.confirmarCobroDeuda = async () => {
+    const deudaActual = window.cobroCreditoSeleccionado;
+    if (!deudaActual) return;
+    const monto = Number(document.getElementById('montoCobroCredito').value);
+    const metodoPago = document.getElementById('metodoCobroCredito').value;
+    const referencia = document.getElementById('referenciaCobroCredito').value.trim();
+    const saldo = Number(deudaActual.saldoPendiente ?? deudaActual.montoDeuda ?? deudaActual.deuda ?? 0);
+    if (!Number.isFinite(monto) || monto <= 0 || monto > saldo) return alert('Monto de cobro inválido.');
+    try {
+            const deudaRef = doc(db, deudaActual.esLegado ? "clientes_fiado" : "deudas_clientes", deudaActual.id);
             const pagoRef = doc(collection(db, "pagos_creditos"));
             await runTransaction(db, async transaction => {
                 const deudaSnapshot = await transaction.get(deudaRef);
                 if (!deudaSnapshot.exists()) throw new Error('Crédito no encontrado.');
-                const saldoActual = Number(deudaSnapshot.data().saldoPendiente ?? deudaSnapshot.data().montoDeuda ?? 0);
+                const datosDeuda = deudaSnapshot.data();
+                const saldoActual = Number(datosDeuda.saldoPendiente ?? datosDeuda.montoDeuda ?? datosDeuda.deuda ?? 0);
                 if (monto > saldoActual) throw new Error('El saldo cambió. Consulta nuevamente.');
                 const nuevoSaldo = Math.max(0, saldoActual - monto);
-                transaction.update(deudaRef, {
+                transaction.update(deudaRef, deudaActual.esLegado ? { deuda: nuevoSaldo } : {
                     saldoPendiente: nuevoSaldo,
                     estado: nuevoSaldo === 0 ? "PAGADO" : "PENDIENTE",
                     fechaUltimoAbono: serverTimestamp(),
                     cobradoPor: state.userDB?.nombre || 'Desconocido'
                 });
                 transaction.set(pagoRef, {
-                    idCredito: idDeuda,
+                    idCredito: deudaActual.id,
                     nroCredito: deudaSnapshot.data().nroCredito || null,
                     nroFactura: deudaSnapshot.data().nroFactura || null,
                     idCliente: deudaSnapshot.data().idCliente || null,
                     monto,
+                    metodoPago,
+                    referencia,
                     tipo: 'ABONO',
                     cajero: state.userDB?.nombre || 'Desconocido',
                     cajeroEmail: state.userDB?.email || '',
                     fecha: serverTimestamp()
                 });
+                transaction.set(doc(collection(db, 'movimientos_caja')), {
+                    tipo: 'COBRO_CREDITO', monto, metodoPago, referencia,
+                    idCredito: deudaActual.id, nroCredito: datosDeuda.nroCredito || null,
+                    nroFactura: datosDeuda.nroFactura || null,
+                    cajero: state.userDB?.nombre || 'Desconocido',
+                    cajeroEmail: state.userDB?.email || '', fecha: serverTimestamp()
+                });
             });
 
-            // 2. Sumar el dinero al efectivo de la caja actual (Local Storage)
-            // Esto hará que aparezca en tu resumen de "Cerrar Caja"
-            let efectivoActual = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
-            localStorage.setItem('marian_ventas_efectivo', efectivoActual + monto);
+            if (metodoPago === 'Efectivo') {
+                let efectivoActual = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
+                localStorage.setItem('marian_ventas_efectivo', efectivoActual + monto);
+            }
 
-            alert("✅ Cobro procesado con éxito. El dinero ha sido ingresado a caja.");
+            window.cobroCreditoSeleccionado = null;
+            POSUI.cerrarModal('modalPagoCredito');
+            alert(`✅ Cobro procesado por ${metodoPago}. El movimiento fue registrado en caja.`);
             
             // 3. Refrescar la lista de deudas
             window.abrirModuloCreditos(); 
             
-        } catch (e) {
+    } catch (e) {
             console.error("Error al cobrar:", e);
             alert("❌ Hubo un error al procesar el cobro.");
-        }
     }
 };
 
@@ -834,7 +912,7 @@ window.cobrarDeuda = async (idDeuda) => {
     window.agregarAlCarrito = () => {
         const input = document.getElementById('cantInput');
         const cant = parseFloat(input.value);
-        if(isNaN(cant) || cant <= 0) return alert("Cantidad no válida");
+        if(!Number.isInteger(cant) || cant < 1) return alert("La cantidad debe ser un número entero mayor o igual a 1.");
         state.carrito = POSCore.agregarProducto(state.carrito, state.tempProd, cant);
         POSUI.renderCarrito(state.carrito);
         POSUI.cerrarModal('modalCantidad');
@@ -861,15 +939,48 @@ window.cobrarDeuda = async (idDeuda) => {
         POSUI.renderCarrito(state.carrito);
     };
 
+    const actualizarResumenCredito = async cliente => {
+        const limite = Number(cliente.limiteCredito || 0);
+        let consumido = 0;
+        try {
+            const [deudasSnapshot, legadosSnapshot] = await Promise.all([
+                getDocs(query(collection(db, 'deudas_clientes'), where('idCliente', '==', cliente.id))),
+                getDocs(collection(db, 'clientes_fiado'))
+            ]);
+            deudasSnapshot.forEach(documento => {
+                const deuda = documento.data();
+                if (deuda.estado !== 'PAGADO') consumido += Number(deuda.saldoPendiente ?? deuda.montoDeuda ?? 0);
+            });
+            legadosSnapshot.forEach(documento => {
+                const datos = documento.data();
+                if (datos.telefono === cliente.telefono || (cliente.cedula && datos.cedula === cliente.cedula)) {
+                    consumido += Number(datos.deuda || 0);
+                }
+            });
+        } catch (error) {
+            console.error('No se pudo cargar el resumen de crédito:', error);
+        }
+        const disponible = Math.max(0, limite - consumido);
+        document.getElementById('limite-cliente-ok').innerText = limite > 0 ? `RD$ ${limite.toLocaleString('es-DO', { minimumFractionDigits: 2 })}` : 'Sin límite';
+        document.getElementById('consumido-cliente-ok').innerText = `RD$ ${consumido.toLocaleString('es-DO', { minimumFractionDigits: 2 })}`;
+        document.getElementById('disponible-cliente-ok').innerText = limite > 0 ? `RD$ ${disponible.toLocaleString('es-DO', { minimumFractionDigits: 2 })}` : 'Sin límite';
+        document.getElementById('permite-cliente-ok').innerText = cliente.permiteCredito && (limite <= 0 || disponible > 0) ? 'Sí' : 'No';
+    };
+
     window.seleccionarCliente = (cliente) => {
         state.clienteSeleccionado = cliente;
         localStorage.setItem('marian_pos_client', JSON.stringify(cliente));
         document.getElementById('nombre-cliente-ok').innerText = cliente.nombre;
         document.getElementById('tel-cliente-ok').innerText = "📱 " + (cliente.telefono || "Sin tel.");
+        document.getElementById('cedula-cliente-ok').innerText = cliente.cedula || 'Sin cédula';
+        document.getElementById('rnc-cliente-ok').innerText = cliente.rnc || 'Sin RNC';
         document.getElementById('info-cliente-sel').style.display = 'block';
         document.getElementById('resultados-clientes').style.display = 'none';
         document.getElementById('buscadorCliente').value = "";
-        if (cliente.permiteCredito) document.getElementById('mensaje-tipo-cobro').style.display = 'block';
+        const avisoCredito = document.getElementById('mensaje-tipo-cobro');
+        avisoCredito.classList.toggle('activo', Boolean(cliente.permiteCredito));
+        avisoCredito.style.display = cliente.permiteCredito ? 'block' : 'none';
+        actualizarResumenCredito(cliente);
     };
 
     window.abrirVentaRapida = () => {
@@ -896,6 +1007,15 @@ window.cobrarDeuda = async (idDeuda) => {
         }
         if (!cedula && !rnc) {
             return alert('Ingrese la cédula o el RNC del cliente.');
+        }
+        if (cedula && !/^\d{3}-\d{7}-\d$/.test(cedula)) {
+            return alert('La cédula debe tener el formato 000-0000000-0.');
+        }
+        if (rnc && !/^\d{9}$/.test(rnc)) {
+            return alert('El RNC debe contener exactamente 9 números.');
+        }
+        if (!/^(809|829|849)-\d{7}$/.test(telefono)) {
+            return alert('El teléfono debe tener el formato dominicano 809-000-0000, 829-000-0000 o 849-000-0000.');
         }
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             return alert('El correo electrónico no es válido.');
@@ -934,11 +1054,46 @@ window.cobrarDeuda = async (idDeuda) => {
         }
     };
 
+    const formatearTelefono = valor => {
+        const digitos = valor.replace(/\D/g, '').slice(0, 10);
+        return digitos.length > 3 ? `${digitos.slice(0, 3)}-${digitos.slice(3)}` : digitos;
+    };
+    const formatearCedula = valor => {
+        const digitos = valor.replace(/\D/g, '').slice(0, 11);
+        if (digitos.length <= 3) return digitos;
+        if (digitos.length <= 10) return `${digitos.slice(0, 3)}-${digitos.slice(3)}`;
+        return `${digitos.slice(0, 3)}-${digitos.slice(3, 10)}-${digitos.slice(10)}`;
+    };
+    const autocompletarClientePorTelefono = telefono => {
+        const cliente = state.clientes.find(item => item.telefono === telefono);
+        if (!cliente) return;
+        document.getElementById('ventaRapidaNombre').value = cliente.nombre || '';
+        document.getElementById('ventaRapidaDireccion').value = cliente.direccion || '';
+        document.getElementById('ventaRapidaCedula').value = cliente.cedula || '';
+        document.getElementById('ventaRapidaRnc').value = cliente.rnc || '';
+        document.getElementById('ventaRapidaEmail').value = cliente.email || '';
+        document.getElementById('ventaRapidaCredito').value = cliente.permiteCredito ? 'true' : 'false';
+        const estado = document.getElementById('estadoVentaRapida');
+        if (estado) estado.innerText = `Cliente encontrado: ${cliente.nombre}. Verifica los datos.`;
+    };
+    document.getElementById('ventaRapidaTelefono').addEventListener('input', event => {
+        event.target.value = formatearTelefono(event.target.value);
+        if (event.target.value.length === 12) autocompletarClientePorTelefono(event.target.value);
+    });
+    document.getElementById('ventaRapidaCedula').addEventListener('input', event => {
+        event.target.value = formatearCedula(event.target.value);
+    });
+    document.getElementById('ventaRapidaRnc').addEventListener('input', event => {
+        event.target.value = event.target.value.replace(/\D/g, '').slice(0, 9);
+    });
+
     window.deseleccionarCliente = () => {
         state.clienteSeleccionado = null;
         localStorage.removeItem('marian_pos_client');
         document.getElementById('info-cliente-sel').style.display = 'none';
-        document.getElementById('mensaje-tipo-cobro').style.display = 'none';
+        const avisoCredito = document.getElementById('mensaje-tipo-cobro');
+        avisoCredito.classList.remove('activo');
+        avisoCredito.style.display = 'none';
     };
 
 window.abrirModalPago = () => {
@@ -989,6 +1144,25 @@ window.abrirModalPago = () => {
 };
 
 // --- FINALIZAR VENTA (CORREGIDA PARA ACTUALIZAR TOTALES) ---
+const obtenerCreditoConsumido = async cliente => {
+    let consumido = 0;
+    const [deudasSnapshot, legadosSnapshot] = await Promise.all([
+        getDocs(query(collection(db, 'deudas_clientes'), where('idCliente', '==', cliente.id))),
+        getDocs(collection(db, 'clientes_fiado'))
+    ]);
+    deudasSnapshot.forEach(documento => {
+        const deuda = documento.data();
+        if (deuda.estado !== 'PAGADO') consumido += Number(deuda.saldoPendiente ?? deuda.montoDeuda ?? 0);
+    });
+    legadosSnapshot.forEach(documento => {
+        const datos = documento.data();
+        if (datos.telefono === cliente.telefono || (cliente.cedula && datos.cedula === cliente.cedula)) {
+            consumido += Number(datos.deuda || 0);
+        }
+    });
+    return consumido;
+};
+
 window.finalizarVenta = async (metodo) => {
     if (state.carrito.length === 0) return;
     if (metodo === 'Credito' && !state.clienteSeleccionado) {
@@ -1002,6 +1176,16 @@ window.finalizarVenta = async (metodo) => {
         subtotal: Number(item.subtotal) || 0
     }));
     const totalVenta = POSCore.calcularTotal(carritoVenta);
+
+    if (metodo === 'Credito') {
+        const limite = Number(state.clienteSeleccionado.limiteCredito || 0);
+        if (limite > 0) {
+            const consumido = await obtenerCreditoConsumido(state.clienteSeleccionado);
+            if (consumido + totalVenta > limite) {
+                throw new Error(`Límite de crédito excedido. Disponible: RD$ ${Math.max(0, limite - consumido).toLocaleString('es-DO', { minimumFractionDigits: 2 })}.`);
+            }
+        }
+    }
 
     try {
         const correlativoRef = doc(db, "configuracion-venta-factura", "correlativo");
@@ -1055,11 +1239,9 @@ window.finalizarVenta = async (metodo) => {
             const documentosProductos = await Promise.all(referenciasProductos.map(referencia => transaction.get(referencia)));
             const cambiosPrecio = [];
             const ventasPosteriores = [];
-            const autorizaStockNegativo = document.getElementById('autorizarStockNegativo')?.checked === true;
-            const pinStockNegativo = document.getElementById('pinStockNegativo')?.value || '';
-            const puedeAutorizarStockNegativo = autorizaStockNegativo && state.userDB?.rol === 'Administrador' && pinStockNegativo === state.userDB?.pin;
-            if (autorizaStockNegativo && !puedeAutorizarStockNegativo) {
-                throw new Error('La venta con stock negativo requiere autorización válida de un administrador.');
+            const puedeAutorizarStockNegativo = state.permitirStockNegativo && state.userDB?.rol === 'Administrador';
+            if (state.permitirStockNegativo && !puedeAutorizarStockNegativo) {
+                throw new Error('El Administrador no está autorizado para vender con stock negativo.');
             }
             documentosProductos.forEach((documento, indice) => {
                 if (!documento.exists()) throw new Error(`El producto ${carritoVenta[indice].nombre || 'seleccionado'} ya no existe.`);
@@ -1334,14 +1516,6 @@ document.addEventListener('keydown', (e) => {
    POSPagos.init(state, POSCore, POSUI, TicketSystem, db, addDoc, collection, serverTimestamp, doc, runTransaction);
     POSUI.renderCarrito(state.carrito);
 
-    document.getElementById('autorizarStockNegativo')?.addEventListener('change', event => {
-        const pin = document.getElementById('pinStockNegativo');
-        if (pin) {
-            pin.style.display = event.target.checked ? 'block' : 'none';
-            if (!event.target.checked) pin.value = '';
-        }
-    });
-
     onSnapshot(collection(db, "productos"), snap => {
         state.productos = snap.docs
             .map(d => ({id: d.id, ...d.data()}))
@@ -1357,11 +1531,9 @@ document.addEventListener('keydown', (e) => {
         if (user) {
             document.getElementById('emailCajeroApertura').innerText = user.email;
             state.userDB = await POSCore.obtenerUsuario(db, user.email);
+            const configuracionStock = await getDoc(doc(db, 'configuracion-sistema', 'inventario'));
+            state.permitirStockNegativo = configuracionStock.exists() && configuracionStock.data().permitirStockNegativo === true;
             window.puedeEditarPrecios = state.userDB?.rol === 'Administrador';
-            if (state.userDB?.rol !== 'Administrador') {
-                const autorizacion = document.getElementById('autorizarStockNegativo');
-                if (autorizacion) autorizacion.closest('label').style.display = 'none';
-            }
             if (state.userDB) document.getElementById('nombreCajeroApertura').innerText = state.userDB.nombre;
             if (state.clienteSeleccionado) window.seleccionarCliente(state.clienteSeleccionado);
             
