@@ -129,6 +129,7 @@ export const POSPagos = {
         };
 
         window.eliminarPago = (index) => {
+            if (!state.pagosRealizados[index] || !confirm('¿Eliminar este pago?')) return;
             state.pagosRealizados.splice(index, 1);
             window.renderTablaPagos();
         };

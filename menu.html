@@ -61,41 +61,44 @@
 </div>
 
 <div class="grid-menu">
-    <div class="menu-card" id="btnAlmacen" onclick="navegar('Almacen/Almacen.html', ['Administrador','Jefe'])">
+    <div class="menu-card" id="btnAlmacen" data-acceso="almacen" onclick="navegar('Almacen/Almacen.html', ['Administrador','Jefe'])">
         <span>📦</span> <h3>Almacén</h3> <p>Stock y Precios</p>
     </div>
 
 <div id="avisoCreditos" class="alerta-stock" style="background:#f8d7da;color:#721c24;border-color:#f5c6cb;display:none">
     <strong>⚠️ CRÉDITOS VENCIDOS:</strong> <span id="listaCreditosVencidos"></span>
 </div>
-    <div class="menu-card" id="btnProductosRapidos" onclick="window.abrirGestionProductosRapida()">
+    <div class="menu-card" id="btnProductosRapidos" data-acceso="productos" onclick="window.abrirGestionProductosRapida()">
         <span>🏷️</span> <h3>Productos rápidos</h3> <p>Crear producto o ajustar precio</p>
     </div>
-    <div class="menu-card" id="btnControlPrecios" onclick="navegar('auditoria/auditoria.html', ['Administrador','Jefe'])">
+    <div class="menu-card" id="btnControlPrecios" data-acceso="precios" onclick="navegar('auditoria/auditoria.html', ['Administrador','Jefe'])">
         <span>🔐</span> <h3>Control de precios</h3> <p>Alertas y cambios administrativos</p>
     </div>
-  <div class="menu-card" id="btnFacturacion" onclick="navegar('facturacion/facturacion.html', 'Cajero')">
+    <div class="menu-card" id="btnFacturacion" data-acceso="facturacion" onclick="navegar('facturacion/facturacion.html', 'Cajero')">
         <span>🧾</span> <h3>Facturación</h3> <p>Ventas rápidas</p>
-    </div>    <div class="menu-card" id="btnDashboard" onclick="navegar('dashboard.html', ['Administrador','Jefe'])">
+    </div>    <div class="menu-card" id="btnDashboard" data-acceso="dashboard" onclick="navegar('dashboard.html', ['Administrador','Jefe'])">
         <span>📊</span> <h3>Dashboard</h3> <p>Ventas y métricas</p>
-    </div>    <div class="menu-card" id="btnReportes" onclick="navegar('reportes.html', ['Administrador','Jefe','Consultor','Contador'])">
+    </div>    <div class="menu-card" id="btnReportes" data-acceso="reportes" onclick="navegar('reportes.html', ['Administrador','Jefe','Consultor','Contador'])">
         <span>📈</span> <h3>Reportes y consultas</h3> <p>Ventas, créditos, caja e inventario</p>
     </div>
-    <div class="menu-card" id="btnPersonal" onclick="navegar('personal.html', 'Administrador')">
+    <div class="menu-card" id="btnPersonal" data-acceso="personal" onclick="navegar('personal.html', 'Administrador')">
         <span>👥</span> <h3>Personal</h3> <p>Usuarios</p>
     </div>
-    <div class="menu-card" id="btnFiado" onclick="navegar('Creditos/creditos.html', ['Administrador','Jefe'])">
+    <div class="menu-card" id="btnFiado" data-acceso="creditos" onclick="navegar('Creditos/creditos.html', ['Administrador','Jefe'])">
     <span>📓</span>
     <h3>Créditos</h3>
     <p>Control de fiado y abonos.</p>
     </div>
-    <div class="menu-card" id="btnAuditoria" onclick="navegar('auditoria/auditoria.html', ['Administrador','Jefe','Consultor','Contador'])">
+    <div class="menu-card" id="btnAuditoria" data-acceso="auditoria" onclick="navegar('auditoria/auditoria.html', ['Administrador','Jefe','Consultor','Contador'])">
     <span>🕵️</span> 
     <h3>Auditoría</h3> 
     <p>Historial de cierres y ventas.</p>  <p>cierre caja</p>
     </div>
-    <div class="menu-card" id="btnConfiguracionBot" onclick="window.abrirConfiguracionBot()">
+    <div class="menu-card" id="btnConfiguracionBot" data-acceso="bot" onclick="window.abrirConfiguracionBot()">
         <span>💬</span> <h3>Configuración del bot</h3> <p>WhatsApp y mensajes</p>
+    </div>
+    <div class="menu-card" id="btnConfiguracion" data-acceso="configuracion" onclick="navegar('configuracion.html', ['Administrador','Jefe'])">
+        <span>⚙️</span> <h3>Configuración</h3> <p>Comprobantes y numeración</p>
     </div>
 
 </div>
@@ -228,17 +231,17 @@
         }
     });
 
-    // BLOQUEO PARA CAJEROS
-    if (userRol === "Cajero") {
-        ["btnAlmacen", "btnProductosRapidos", "btnControlPrecios", "btnPersonal"].forEach(id => {
-            document.getElementById(id).classList.add("locked");
-        });
-    }
-    if (userRol === "Consultor" || userRol === "Contador") {
-        ["btnAlmacen", "btnProductosRapidos", "btnControlPrecios", "btnPersonal", "btnFiado"].forEach(id => {
-            document.getElementById(id).classList.add("locked");
-        });
-    }
+    const permisosPorRol = {
+        Administrador: ['almacen','productos','precios','facturacion','dashboard','reportes','personal','creditos','auditoria','bot','configuracion'],
+        Jefe: ['almacen','productos','precios','facturacion','dashboard','reportes','creditos','auditoria','bot','configuracion'],
+        Cajero: ['facturacion'], Consultor: ['reportes','auditoria'], Contador: ['reportes','auditoria']
+    };
+    let permisosGuardados = {};
+    try { permisosGuardados = JSON.parse(localStorage.getItem('userPermisos') || '{}'); } catch (error) { permisosGuardados = {}; }
+    const permisos = Object.keys(permisosGuardados).length ? permisosGuardados : Object.fromEntries((permisosPorRol[userRol] || []).map(permiso => [permiso, true]));
+    document.querySelectorAll('[data-acceso]').forEach(card => {
+        if (permisos[card.dataset.acceso] !== true) card.remove();
+    });
 
     const escapeHtml = (value) => String(value ?? "")
         .replaceAll("&", "&amp;").replaceAll("<", "&lt;")

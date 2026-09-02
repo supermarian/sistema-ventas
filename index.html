@@ -56,25 +56,25 @@
 
     // FUNCIÓN PARA VERIFICAR SI EL USUARIO EXISTE EN TU LISTA DE PERSONAL
     async function verificarAccesoYRedirigir(email) {
-        const q = query(collection(db, "usuarios"), where("email", "==", email));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            querySnapshot.forEach((doc) => {
-                const datos = doc.data();
-                if (datos.rol === 'Cliente') {
-                    window.location.href = 'cliente.html';
-                    return;
-                }
-                // Guardamos en la memoria del navegador para usarlo en el menú
-                localStorage.setItem("userRol", datos.rol);
-                localStorage.setItem("userName", datos.nombre);
-                window.location.href = "menu.html";
-            });
-        } else {
-            alert("Acceso Denegado: Este correo no está registrado como personal de Súper Marian.");
-            auth.signOut(); // Lo desconectamos de Firebase si no está en nuestra lista
+        const usuario = auth.currentUser;
+        const token = await usuario.getIdTokenResult();
+        const rol = token.claims.rol;
+        if (rol && rol !== 'Cliente') {
+            const perfilEmpleado = await getDocs(query(collection(db, "usuarios"), where("email", "==", email)));
+            const datosEmpleado = perfilEmpleado.empty ? {} : perfilEmpleado.docs[0].data();
+            localStorage.setItem("userRol", rol);
+            localStorage.setItem("userName", datosEmpleado.nombre || usuario.displayName || email);
+            localStorage.setItem("userPermisos", JSON.stringify(datosEmpleado.permisos || {}));
+            window.location.href = "menu.html";
+            return;
         }
+        const perfil = await getDocs(query(collection(db, "clientes"), where("uid", "==", usuario.uid)));
+        if (!perfil.empty) {
+            window.location.href = 'cliente.html';
+            return;
+        }
+        alert("Acceso denegado: tu cuenta no tiene un perfil autorizado.");
+        await auth.signOut();
     }
 
     // ENTRAR CON CLAVE

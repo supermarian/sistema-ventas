@@ -67,6 +67,21 @@
                 <option value="Contador">Contador (Solo consultas)</option>
                 <option value="Administrador">Administrador (Todo)</option>
             </select>
+
+            <label>Accesos visibles:</label>
+            <div id="permisosEmp" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:5px 0 15px">
+                <label><input type="checkbox" data-permiso="almacen" style="width:auto"> Almacén</label>
+                <label><input type="checkbox" data-permiso="productos" style="width:auto"> Productos rápidos</label>
+                <label><input type="checkbox" data-permiso="precios" style="width:auto"> Control de precios</label>
+                <label><input type="checkbox" data-permiso="facturacion" style="width:auto"> Facturación</label>
+                <label><input type="checkbox" data-permiso="dashboard" style="width:auto"> Dashboard</label>
+                <label><input type="checkbox" data-permiso="reportes" style="width:auto"> Reportes</label>
+                <label><input type="checkbox" data-permiso="personal" style="width:auto"> Personal</label>
+                <label><input type="checkbox" data-permiso="creditos" style="width:auto"> Créditos</label>
+                <label><input type="checkbox" data-permiso="auditoria" style="width:auto"> Auditoría</label>
+                <label><input type="checkbox" data-permiso="bot" style="width:auto"> Configuración bot</label>
+                <label><input type="checkbox" data-permiso="configuracion" style="width:auto"> Comprobantes</label>
+            </div>
             
             <button class="btn-save" id="btnGuardar">Registrar Empleado</button>
             <button class="btn-update" id="btnActualizar">Actualizar Cambios</button>
@@ -120,6 +135,17 @@
     };
 
     let usuariosData = {}; 
+    const permisosPorRol = {
+        Administrador: ['almacen','productos','precios','facturacion','dashboard','reportes','personal','creditos','auditoria','bot','configuracion'],
+        Jefe: ['almacen','productos','precios','facturacion','dashboard','reportes','creditos','auditoria','bot','configuracion'],
+        Cajero: ['facturacion'],
+        Consultor: ['reportes','auditoria'],
+        Contador: ['reportes','auditoria']
+    };
+    const leerPermisos = () => Object.fromEntries([...document.querySelectorAll('[data-permiso]')].map(caja => [caja.dataset.permiso, caja.checked]));
+    const cargarPermisos = (permisos, rol) => document.querySelectorAll('[data-permiso]').forEach(caja => { caja.checked = permisos ? permisos[caja.dataset.permiso] === true : permisosPorRol[rol]?.includes(caja.dataset.permiso); });
+    document.getElementById('rolEmp').addEventListener('change', event => cargarPermisos(null, event.target.value));
+    cargarPermisos(null, document.getElementById('rolEmp').value);
 
     // 1. ESCUCHAR CAMBIOS Y MOSTRAR TABLA
     onSnapshot(collection(db, "usuarios"), (snapshot) => {
@@ -158,11 +184,12 @@
         const ema = document.getElementById('emailEmp').value.trim();
         const pin = document.getElementById('pinEmp').value.trim();
         const rol = document.getElementById('rolEmp').value;
+        const permisos = leerPermisos();
 
         if(nom && ema && pin) {
             const rolSincronizado = await sincronizarRol(ema, rol);
             if (!rolSincronizado) return;
-            await addDoc(collection(db, "usuarios"), { nombre: nom, email: ema, pin: pin, rol: rol });
+            await addDoc(collection(db, "usuarios"), { nombre: nom, email: ema, pin: pin, rol: rol, permisos });
             limpiarFormulario();
             alert("Empleado registrado.");
         } else {
@@ -178,6 +205,7 @@
         document.getElementById('emailEmp').value = u.email;
         document.getElementById('pinEmp').value = u.pin;
         document.getElementById('rolEmp').value = u.rol;
+        cargarPermisos(u.permisos, u.rol);
 
         document.getElementById('formTitle').innerText = "📝 Editando Usuario";
         document.getElementById('formCard').classList.add('editando');
@@ -194,13 +222,15 @@
         const ema = document.getElementById('emailEmp').value;
         const pin = document.getElementById('pinEmp').value;
         const rol = document.getElementById('rolEmp').value;
+        const permisos = leerPermisos();
 
         if(id && nom && ema && pin) {
             await updateDoc(doc(db, "usuarios", id), {
                 nombre: nom,
                 email: ema,
                 pin: pin,
-                rol: rol
+                rol: rol,
+                permisos
             });
             await sincronizarRol(ema, rol);
             alert("Actualizado.");
@@ -224,6 +254,7 @@
         document.getElementById('emailEmp').value = '';
         document.getElementById('pinEmp').value = '';
         document.getElementById('rolEmp').selectedIndex = 0;
+        cargarPermisos(null, document.getElementById('rolEmp').value);
     }
 
     // 6. BORRAR

@@ -1,8 +1,7 @@
 const CACHE_NAME = 'supermarian-app-v2';
 const APP_FILES = [
     './', './index.html', './menu.html', './facturacion/facturacion.html',
-    './Creditos/creditos.html', './Almacen/Almacen.html', './Almacen/almacen.js',
-    './Almacen/validaciones.js', './facturacion/pos-core.js', './facturacion/pos-ui.js',
+    './facturacion/pos-core.js', './facturacion/pos-ui.js',
     './facturacion/pos-events.js', './facturacion/pos-pagos.js', './facturacion/ticket-system.js',
     './offline-status.js'
 ];

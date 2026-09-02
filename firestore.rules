@@ -6,11 +6,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function empleado() {
+      return autenticado() && request.auth.token.rol in ['Administrador', 'Jefe', 'Cajero', 'Consultor', 'Contador'];
+    }
+
+    function administradorOJefe() {
+      return autenticado() && request.auth.token.rol in ['Administrador', 'Jefe'];
+    }
+
     // Preparado para cuando cada documento usuarios/{uid} tenga el rol.
     function administrador() {
       return autenticado()
-        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'Administrador';
+        && (request.auth.token.admin == true || request.auth.token.rol == 'Administrador');
     }
 
     function gestorPrecios() {
@@ -32,7 +39,7 @@ service cloud.firestore {
     }
 
     match /usuarios/{usuarioId} {
-      allow read: if autenticado();
+      allow read: if administrador() || (empleado() && resource.data.email == request.auth.token.email);
       allow create, update, delete: if administrador();
     }
 
@@ -47,15 +54,17 @@ service cloud.firestore {
     }
 
     match /clientes/{clienteId} {
-      allow read: if autenticado();
-      allow create, update: if autenticado();
+      allow read: if empleado() || (autenticado() && resource.data.uid == request.auth.uid);
+      allow create: if empleado() || (autenticado() && request.resource.data.uid == request.auth.uid);
+      allow update: if empleado() || (autenticado() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'telefono', 'direccion', 'cedula', 'rnc']));
       allow delete: if administrador();
     }
 
     // Una venta se crea desde el POS, pero nunca se edita ni se elimina.
     match /ventas_realizadas/{ventaId} {
-      allow read: if autenticado();
-      allow create: if autenticado();
+      allow read: if empleado() || (autenticado() && resource.data.uidCliente == request.auth.uid);
+      allow create: if empleado();
       allow update, delete: if false;
     }
 
@@ -79,9 +88,9 @@ service cloud.firestore {
     }
 
     match /deudas_clientes/{deudaId} {
-      allow read: if autenticado();
-      allow create: if autenticado();
-      allow update: if autenticado();
+      allow read: if empleado() || (autenticado() && resource.data.idCliente == request.auth.uid);
+      allow create: if empleado();
+      allow update: if empleado();
       allow delete: if administrador();
     }
 
@@ -94,8 +103,8 @@ service cloud.firestore {
     }
 
     match /pagos_creditos/{pagoId} {
-      allow read: if autenticado();
-      allow create: if autenticado();
+      allow read: if empleado();
+      allow create: if empleado();
       allow update, delete: if false;
     }
 
@@ -138,6 +147,10 @@ service cloud.firestore {
       allow write: if autenticado() && (
         request.auth.token.admin == true || request.auth.token.rol == 'Administrador'
       );
+    }
+
+    match /configuracion-sistema/comprobantes {
+      allow read, write: if administradorOJefe();
     }
 
     match /{documento=**} {

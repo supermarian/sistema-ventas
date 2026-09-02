@@ -15,6 +15,7 @@
 <h2>Acceso de cliente</h2><p class="muted">Consulta productos, hace pedidos y revisa tus deudas. Este acceso no abre el panel de empleados.</p>
 <input id="email" type="email" placeholder="Correo electrónico" autocomplete="email" required><input id="password" type="password" placeholder="Contraseña" autocomplete="current-password" required>
 <div class="actions"><button id="entrar" class="btn primary">Entrar</button><button id="crearCuenta" class="btn green">Crear cuenta</button></div><p id="authEstado" class="error"></p>
+<a href="reset-password.html" class="muted" style="display:block;margin-top:10px">¿Olvidaste tu contraseña?</a>
 <div id="avisoVerificacion" class="notice" style="display:none;background:#e7f3ff;border-left-color:#007bff;color:#004085">
 <strong>📧 Pendiente verificar email</strong><p style="margin:8px 0 0;font-size:0.9rem">Se envió un enlace a tu correo. Haz click para confirmar tu cuenta.</p>
 <button id="btnReenviarEmail" class="btn primary" style="margin-top:10px;padding:6px 12px;font-size:0.85rem">Reenviar email</button>
@@ -47,13 +48,16 @@
 import{getFunctions,httpsCallable}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendEmailVerification}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';import{getFirestore,collection,getDocs,addDoc,doc,setDoc,serverTimestamp,query,where}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 const config={apiKey:'AIzaSyAy4En1r4frEc6a4FGLf0vupJ0AY',authDomain:'supermercado-marian.firebaseapp.com',projectId:'supermercado-marian',storageBucket:'supermercado-marian.firebasestorage.app',messagingSenderId:'627337795444',appId:'1:627337795444:web:e9a4cb48ff164b78477e21'};const app=initializeApp(config);const auth=getAuth(app);const db=getFirestore(app);let productos=[],carrito=[],deudas=[],cliente={};
+const carritoKey=uid=>`supermarian_carrito_cliente_${uid}`;
+const guardarCarrito=()=>{if(auth.currentUser)localStorage.setItem(carritoKey(auth.currentUser.uid),JSON.stringify(carrito))};
+const cargarCarrito=uid=>{try{const guardado=JSON.parse(localStorage.getItem(carritoKey(uid))||'[]');carrito=Array.isArray(guardado)?guardado:[]}catch(error){carrito=[]}};
 const $=id=>document.getElementById(id);const money=value=>`RD$ ${Number(value||0).toLocaleString('es-DO',{minimumFractionDigits:2})}`;const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const fechaComoDate=valor=>{if(!valor)return null;if(typeof valor.toDate==='function')return valor.toDate();const fecha=new Date(valor);return Number.isNaN(fecha.getTime())?null:fecha};
 
 async function cargarCatalogo(){ $('catalogoEstado').innerText='Consultando catálogo...';const snap=await getDocs(collection(db,'productos'));productos=snap.docs.map(item=>({id:item.id,...item.data()})).filter(item=>item.estatus!=='INACTIVO');renderProductos();$('catalogoEstado').innerText=`${productos.length} producto(s) disponible(s).`}
 function renderProductos(){const term=$('buscarProducto').value.trim().toLowerCase();const lista=productos.filter(p=>!term||String(p.nombre||'').toLowerCase().includes(term)||String(p.codigo||'').toLowerCase().includes(term));$('productos').innerHTML=lista.map(p=>`<article class="product"><h3>${esc(p.nombre)}</h3><div class="price">${money(p.precio)}</div><small>${esc(p.codigo||'Sin código')}</small><button class="btn primary" data-id="${esc(p.id)}">Agregar</button></article>`).join('')||'<p>No hay productos para esa búsqueda.</p>';$('productos').querySelectorAll('button').forEach(button=>button.onclick=()=>agregar(button.dataset.id))}
 function agregar(id){const p=productos.find(item=>item.id===id);if(!p)return;const actual=carrito.find(item=>item.id===id);if(actual)actual.cantidad++;else carrito.push({id:p.id,nombre:p.nombre,precio:Number(p.precio)||0,cantidad:1,subtotal:Number(p.precio)||0});renderCarrito()}
-function renderCarrito(){$('carrito').innerHTML=carrito.map((p,i)=>`<div class="cart-line"><span>${esc(p.nombre)} x ${p.cantidad}</span><span>${money(p.subtotal)} <button class="btn" data-index="${i}">-</button></span></div>`).join('')||'<p class="muted">Aún no has agregado productos.</p>';$('carrito').querySelectorAll('button').forEach(button=>button.onclick=()=>{const item=carrito[button.dataset.index];item.cantidad--;if(item.cantidad<=0)carrito.splice(button.dataset.index,1);else item.subtotal=item.cantidad*item.precio;renderCarrito()});$('total').innerText=money(carrito.reduce((sum,p)=>sum+p.subtotal,0))}
+function renderCarrito(){guardarCarrito();$('carrito').innerHTML=carrito.map((p,i)=>`<div class="cart-line"><span>${esc(p.nombre)} x ${p.cantidad}</span><span>${money(p.subtotal)} <button class="btn" data-action="menos" data-index="${i}" aria-label="Reducir cantidad">−</button><button class="btn" data-action="mas" data-index="${i}" aria-label="Aumentar cantidad">+</button></span></div>`).join('')||'<p class="muted">Aún no has agregado productos.</p>';$('carrito').querySelectorAll('button').forEach(button=>button.onclick=()=>{const item=carrito[button.dataset.index];if(button.dataset.action==='mas')item.cantidad++;else item.cantidad--;if(item.cantidad<=0)carrito.splice(button.dataset.index,1);else item.subtotal=item.cantidad*item.precio;renderCarrito()});$('total').innerText=money(carrito.reduce((sum,p)=>sum+p.subtotal,0))}
 
 async function cargarDeudas(uid){
   try{
@@ -69,6 +73,9 @@ async function cargarDatosCliente(uid){
     const clienteDoc=await getDocs(query(collection(db,'clientes'),where('uid','==',uid)));
     if(clienteDoc.docs.length>0){
       cliente={...clienteDoc.docs[0].data(),id:clienteDoc.docs[0].id};
+      $('nombre').value=cliente.nombre||'';
+      $('telefono').value=cliente.telefono||'';
+      $('direccion').value=cliente.direccion||'';
     }else{
       cliente={uid,limiteCredito:0,permiteCredito:false,nombre:'',telefono:''};
     }
@@ -137,5 +144,5 @@ $('enviar').onclick=async()=>{
   }
 };
 
-onAuthStateChanged(auth,async user=>{if(user){if(!user.emailVerified){$('authPanel').classList.remove('hidden');$('catalogoPanel').classList.add('hidden');$('salir').style.display='none';$('perfil').style.display='none';$('authEstado').innerText='';$('avisoVerificacion').style.display='block';$('btnReenviarEmail').onclick=async()=>{try{await sendEmailVerification(user);$('btnReenviarEmail').innerText='✓ Reenviado';$('btnReenviarEmail').disabled=true;setTimeout(()=>{$('btnReenviarEmail').innerText='Reenviar email';$('btnReenviarEmail').disabled=false},5000)}catch(e){alert('Error: '+e.message)}};return}$('authPanel').classList.add('hidden');$('catalogoPanel').classList.remove('hidden');$('salir').style.display='block';$('perfil').style.display='block';$('avisoVerificacion').style.display='none';cargarCatalogo();cargarDatosCliente(user.uid);cargarDeudas(user.uid)}else{$('authPanel').classList.remove('hidden');$('catalogoPanel').classList.add('hidden');$('salir').style.display='none';$('perfil').style.display='none';$('avisoVerificacion').style.display='none'}});renderCarrito();
+onAuthStateChanged(auth,async user=>{if(user){if(!user.emailVerified){$('authPanel').classList.remove('hidden');$('catalogoPanel').classList.add('hidden');$('salir').style.display='none';$('perfil').style.display='none';$('authEstado').innerText='';$('avisoVerificacion').style.display='block';$('btnReenviarEmail').onclick=async()=>{try{await sendEmailVerification(user);$('btnReenviarEmail').innerText='✓ Reenviado';$('btnReenviarEmail').disabled=true;setTimeout(()=>{$('btnReenviarEmail').innerText='Reenviar email';$('btnReenviarEmail').disabled=false},5000)}catch(e){alert('Error: '+e.message)}};return}$('authPanel').classList.add('hidden');$('catalogoPanel').classList.remove('hidden');$('salir').style.display='block';$('perfil').style.display='block';$('avisoVerificacion').style.display='none';cargarCarrito(user.uid);renderCarrito();cargarCatalogo();cargarDatosCliente(user.uid);cargarDeudas(user.uid)}else{$('authPanel').classList.remove('hidden');$('catalogoPanel').classList.add('hidden');$('salir').style.display='none';$('perfil').style.display='none';$('avisoVerificacion').style.display='none'}});renderCarrito();
 </script><script src="offline-status.js"></script></body></html>

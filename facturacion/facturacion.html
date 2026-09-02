@@ -44,6 +44,7 @@ header {
     align-items: center;
     box-shadow: 0 2px 10px rgba(0,0,0,.2);
     z-index: 1000;
+    flex-wrap: wrap;
 }
 
 .status-pill { padding: 5px 15px; border-radius: 20px; font-weight: 700; }
@@ -61,7 +62,7 @@ header {
     letter-spacing: 1px;
 }
 .main-container { display: grid; grid-template-columns: 1.2fr .8fr; gap: 20px; padding: 20px; flex: 1; overflow: hidden; }
-.card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; overflow: hidden; transition: box-shadow 0.2s ease; }
+.card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; overflow: hidden; transition: box-shadow 0.2s ease; min-width: 0; }
 .card:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
 .search-box { padding: 12px; width: 100%; border-radius: 10px; border: 2px solid #eee; outline: none; font-size: 1.05rem; box-sizing: border-box; transition: all 0.2s; }
 .search-box:focus { border-color: var(--verde-pos); box-shadow: 0 0 0 3px rgba(40,167,69,0.1); }
@@ -81,6 +82,11 @@ header {
 .btn-method:hover { background: #eef7ee; border-color: var(--verde-pos); }
 .btn-danger { background: var(--rojo); color: #fff; }
 .btn-danger:hover { background: #c1423f; }
+.btn:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+.card > h3 { margin: 0 0 12px; color: var(--verde-dark); letter-spacing: .02em; }
+.card .cart-table thead { position: sticky; top: 0; background: #fff; z-index: 1; }
+#granTotal { background: #eef8f0; border: 1px solid #c9e7ce; border-radius: 10px; padding: 8px 12px; }
+#carritoBody:empty::after { content: 'Agrega productos para comenzar la venta'; display: block; padding: 28px 12px; color: #7b8790; text-align: center; }
 .aviso-credito { background: #fff3cd; color: #856404; padding: 10px; border-radius: 8px; border: 1px solid #ffeeba; text-align: center; font-weight: 700; }
 .aviso-credito.activo { display: block !important; background: #f4df91; border: 2px solid #c9a227; color: #5f4b00; padding: 18px; font-size: 1.45rem; letter-spacing: .02em; }
 .cliente-detalle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #b9d8f5; font-size: .9rem; }
@@ -90,6 +96,10 @@ header {
 .modal { display: none; position: fixed; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); z-index: 3000; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .modal-content { background: #fff; border-radius: 14px; padding: 22px; width: 420px; max-height: 85vh; overflow: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); animation: slideUp 0.3s ease-out; }
+.desglose-caja { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:7px; margin:12px 0; padding:10px; background:#f7f9fb; border:1px solid #dce3e8; border-radius:8px; }
+.desglose-caja label { display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:.82rem; font-weight:700; color:#46515a; }
+.desglose-caja input { width:72px; padding:6px; margin:0; text-align:center; }
+@media(max-width:500px) { .desglose-caja { grid-template-columns:1fr; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 .small { font-size: .9rem; color: #666; }
 .grid-cols { display: grid; grid-template-columns: 1fr 120px; gap: 8px; align-items: center; }
@@ -102,8 +112,11 @@ header {
 .venta-rapida-btn > span:not(.venta-rapida-icon) { display: block; margin-top: 3px; color: #46627a; font-size: .85rem; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .form-grid .full { grid-column: 1 / -1; }
+.pago-grid { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr auto; gap: 10px; margin-bottom: 15px; align-items: end; background: #f0f7f0; padding: 15px; border-radius: 8px; }
 @media(max-width:560px){ .form-grid { grid-template-columns: 1fr; } .form-grid .full { grid-column: auto; } }
-@media(max-width:980px){ .main-container { grid-template-columns: 1fr; } }
+@media(max-width:980px){ .main-container { grid-template-columns: 1fr; overflow:auto; } body { overflow:auto; height:auto; min-height:100vh; } }
+@media(max-width:720px){ header { padding: 10px 12px; gap: 8px; } header > div { max-width:100%; flex-wrap:wrap; } header .reimprimir-container { order:3; width:100%; } header .reimprimir-container input { flex:1; min-width:0; } .main-container { padding:12px; gap:12px; } .card { padding:13px; } .card > div[style*="display:flex"] { flex-wrap:wrap; } }
+@media(max-width:720px){ .pago-grid { grid-template-columns: 1fr 1fr; padding:12px; } .pago-grid > div:first-child { grid-column:1 / -1; } .pago-grid > div:last-child { grid-column:1 / -1; } }
 
 /* Estilo Premium para el Resumen de Cierre */
 #resumenCierre {
@@ -182,6 +195,7 @@ header {
   </div>
     <input id="pinApertura" class="search-box" placeholder="PIN para abrir caja" type="password" style="text-align:center">
   <input id="montoInicial" class="search-box" placeholder="Monto Inicial RD$" type="number" style="margin-top:8px;text-align:center">
+    <div class="desglose-caja" data-desglose="apertura"></div>
   <div style="display:flex;gap:10px;margin-top:14px">
     <button class="btn btn-main" onclick="window.validarPinApertura()">CONFIRMAR</button>
     <button class="btn" onclick="window.cerrarModal('modalApertura')">CANCELAR</button>
@@ -269,7 +283,12 @@ header {
         
 
         
-        <div style="display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr auto; gap: 10px; margin-bottom: 15px; align-items: end; background: #f0f7f0; padding: 15px; border-radius: 8px;">
+        <div class="pago-grid">
+            <div>
+                <label class="small">Tipo de comprobante</label>
+                <select id="tipoComprobante" class="search-box"></select>
+                <small id="descripcionComprobante" class="small">Factura de consumidor final</small>
+            </div>
             <div>
                 <label class="small">Tipo de Pago</label>
                 <select id="pagoTipo" class="search-box">
@@ -429,6 +448,8 @@ header {
     <div id="resumenCierre" style="background:#f9f9f9; padding:15px; border-radius:10px; margin:15px 0; line-height:1.6; border:1px solid #ddd; font-family: monospace; font-size: 0.9rem;">
       </div>
 
+        <div class="desglose-caja" data-desglose="cierre"></div>
+
         <label class="small" for="montoRealContado">Efectivo contado físicamente</label>
         <input id="montoRealContado" class="search-box" type="number" min="0" step="0.01" placeholder="RD$ 0.00" style="text-align:center; margin-bottom:10px;">
     <input id="pinCierre" class="search-box" placeholder="PIN para confirmar cierre" type="password" style="text-align:center; margin-bottom: 10px;">
@@ -530,8 +551,8 @@ header {
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
     import { 
-        getFirestore, collection, onSnapshot, doc, runTransaction, 
-        addDoc, serverTimestamp, updateDoc, getDocs, getDoc, query, where
+        getFirestore, enableIndexedDbPersistence, collection, onSnapshot, doc, runTransaction,
+        addDoc, serverTimestamp, updateDoc, getDocs, getDocsFromCache, getDoc, query, where
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
  
     // 3. Configuración ÚNICA
@@ -549,6 +570,9 @@ header {
     const auth = getAuth(app);
     const db = getFirestore(app);
     const functions = getFunctions(app, 'us-central1');
+    enableIndexedDbPersistence(db).catch(error => {
+        if (!['failed-precondition', 'unimplemented'].includes(error.code)) console.warn('Persistencia offline no disponible:', error);
+    });
 
  
     // 5. Estado del sistema
@@ -562,9 +586,70 @@ header {
         nroFactura: "FAC-000000",
         tempProd: null,
         cotizacionSeleccionada: null,
-        permitirStockNegativo: false
+        permitirStockNegativo: false,
+        tiposComprobante: []
     };
     window.puedeEditarPrecios = false;
+    const comprobantesBase = [
+        { codigo: 'B02', descripcion: 'Factura de consumidor final', activo: true, siguienteNumero: 1 },
+        { codigo: 'B01', descripcion: 'Factura de credito fiscal', activo: false, siguienteNumero: 1 },
+        { codigo: 'B03', descripcion: 'Nota de debito', activo: false, siguienteNumero: 1 },
+        { codigo: 'B04', descripcion: 'Nota de credito', activo: false, siguienteNumero: 1 },
+        { codigo: 'B13', descripcion: 'Factura de regimen especial', activo: false, siguienteNumero: 1 },
+        { codigo: 'B14', descripcion: 'Factura gubernamental', activo: false, siguienteNumero: 1 },
+        { codigo: 'B15', descripcion: 'Factura de exportacion', activo: false, siguienteNumero: 1 },
+        { codigo: 'B16', descripcion: 'Factura de compras', activo: false, siguienteNumero: 1 },
+        { codigo: 'E31', descripcion: 'e-CF de credito fiscal', activo: false, siguienteNumero: 1 },
+        { codigo: 'E32', descripcion: 'e-CF de consumidor final', activo: false, siguienteNumero: 1 },
+        { codigo: 'E33', descripcion: 'e-CF nota de debito', activo: false, siguienteNumero: 1 },
+        { codigo: 'E34', descripcion: 'e-CF nota de credito', activo: false, siguienteNumero: 1 },
+        { codigo: 'E41', descripcion: 'e-CF de compras', activo: false, siguienteNumero: 1 },
+        { codigo: 'E43', descripcion: 'e-CF gubernamental', activo: false, siguienteNumero: 1 },
+        { codigo: 'E44', descripcion: 'e-CF de exportacion', activo: false, siguienteNumero: 1 },
+        { codigo: 'E45', descripcion: 'e-CF de regimen especial', activo: false, siguienteNumero: 1 },
+        { codigo: 'E46', descripcion: 'e-CF para consumidor final especial', activo: false, siguienteNumero: 1 }
+    ];
+    const cargarTiposComprobante = async () => {
+        const snap = await getDoc(doc(db, 'configuracion-sistema', 'comprobantes'));
+        const guardados = snap.exists() ? snap.data().tipos || [] : [];
+        state.tiposComprobante = comprobantesBase.map(base => ({ ...base, ...guardados.find(item => item.codigo === base.codigo) })).filter(item => item.activo);
+        if (!state.tiposComprobante.length) state.tiposComprobante = [comprobantesBase[0]];
+        const selector = document.getElementById('tipoComprobante');
+        selector.innerHTML = state.tiposComprobante.map(item => `<option value="${item.codigo}">${item.codigo} - ${item.descripcion}</option>`).join('');
+        selector.onchange = () => { const tipo = state.tiposComprobante.find(item => item.codigo === selector.value); document.getElementById('descripcionComprobante').innerText = tipo?.descripcion || ''; document.getElementById('nro-factura-display').innerText = `${tipo?.codigo || 'B02'}${String(Number(tipo?.siguienteNumero) || 1).padStart(8, '0')}`; };
+        selector.dispatchEvent(new Event('change'));
+    };
+
+    const denominacionesCaja = [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000];
+    const renderDesgloseCaja = () => document.querySelectorAll('.desglose-caja').forEach(contenedor => {
+        const tipo = contenedor.dataset.desglose;
+        contenedor.innerHTML = denominacionesCaja.map(valor => `
+            <label>RD$ ${valor}<input type="number" min="0" step="1" value="0" data-denominacion="${valor}" data-tipo="${tipo}"></label>
+        `).join('');
+        contenedor.insertAdjacentHTML('beforeend', '<strong style="grid-column:1/-1;text-align:right">Total: <span class="total-desglose">RD$ 0.00</span></strong>');
+    });
+    const leerDesglose = tipo => {
+        const contenedor = document.querySelector(`[data-desglose="${tipo}"]`);
+        if (!contenedor) return { total: 0, cantidades: {} };
+        const cantidades = {};
+        let total = 0;
+        contenedor.querySelectorAll('input[data-denominacion]').forEach(input => {
+            const cantidad = Math.max(0, Number(input.value) || 0);
+            const denominacion = Number(input.dataset.denominacion);
+            cantidades[denominacion] = cantidad;
+            total += denominacion * cantidad;
+        });
+        const totalLabel = contenedor.querySelector('.total-desglose');
+        if (totalLabel) totalLabel.innerText = `RD$ ${total.toLocaleString('es-DO', { minimumFractionDigits: 2 })}`;
+        return { total, cantidades };
+    };
+    document.addEventListener('input', event => {
+        if (!event.target.matches('.desglose-caja input')) return;
+        const tipo = event.target.dataset.tipo;
+        const desglose = leerDesglose(tipo);
+        const destino = document.getElementById(tipo === 'apertura' ? 'montoInicial' : 'montoRealContado');
+        if (destino) destino.value = desglose.total ? desglose.total.toFixed(2) : '';
+    });
 
     const guardarCarritoTemporal = () => {
         localStorage.setItem('marian_pos_cart', JSON.stringify(state.carrito));
@@ -631,13 +716,74 @@ header {
         actualizarAlertaCotizaciones();
     };
 
+    let detenerEscuchaCotizaciones = null;
     const iniciarEscuchaCotizaciones = () => {
+        if (!navigator.onLine || detenerEscuchaCotizaciones) return;
         if (escuchaCotizacionesIniciada) return;
         escuchaCotizacionesIniciada = true;
-        onSnapshot(query(collection(db, 'cotizaciones'), where('estado', '==', 'PENDIENTE')), snapshot => {
+        detenerEscuchaCotizaciones = onSnapshot(query(collection(db, 'cotizaciones'), where('estado', '==', 'PENDIENTE')), snapshot => {
             cotizacionesPendientes = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
             actualizarAlertaCotizaciones();
         }, error => console.error('No se pudo escuchar cotizaciones:', error));
+    };
+
+    let detenerEscuchaProductos = null;
+    let detenerEscuchaClientes = null;
+    let detenerEscuchaCorrelativo = null;
+    const iniciarEscuchaCorrelativo = () => {
+        if (!navigator.onLine || detenerEscuchaCorrelativo) return;
+        detenerEscuchaCorrelativo = onSnapshot(doc(db, 'configuracion-venta-factura', 'correlativo'), snapshot => {
+            if (!snapshot.exists()) return;
+            const siguiente = Number(snapshot.data().ultimoNumeroFactura || 0) + 1;
+            const display = document.getElementById('nro-factura-display');
+            if (display && !document.getElementById('tipoComprobante')?.value) display.innerText = `FAC-${String(siguiente).padStart(12, '0')}`;
+        });
+    };
+    const iniciarEscuchasPOS = () => {
+        if (!navigator.onLine || detenerEscuchaProductos || detenerEscuchaClientes) return;
+        detenerEscuchaProductos = onSnapshot(collection(db, 'productos'), snap => {
+            state.productos = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(producto => producto.estatus !== 'INACTIVO');
+        });
+        detenerEscuchaClientes = onSnapshot(collection(db, 'clientes'), snap => {
+            state.clientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        });
+    };
+    const detenerEscuchasNoEsenciales = () => {
+        detenerEscuchaProductos?.();
+        detenerEscuchaClientes?.();
+        detenerEscuchaCotizaciones?.();
+        detenerEscuchaCorrelativo?.();
+        detenerEscuchaProductos = null;
+        detenerEscuchaClientes = null;
+        detenerEscuchaCotizaciones = null;
+        detenerEscuchaCorrelativo = null;
+        escuchaCotizacionesIniciada = false;
+    };
+    const cargarCatalogoDesdeCache = async () => {
+        if (navigator.onLine) return;
+        try {
+            const [productosCache, clientesCache] = await Promise.all([
+                getDocsFromCache(collection(db, 'productos')),
+                getDocsFromCache(collection(db, 'clientes'))
+            ]);
+            state.productos = productosCache.docs.map(d => ({ id: d.id, ...d.data() })).filter(producto => producto.estatus !== 'INACTIVO');
+            state.clientes = clientesCache.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (error) {
+            console.warn('No hay catalogo local disponible:', error);
+        }
+    };
+    const sincronizarCatalogoDiario = async () => {
+        if (!navigator.onLine) return;
+        const hoy = new Date().toISOString().slice(0, 10);
+        if (localStorage.getItem('supermarian_catalogo_offline_fecha')?.slice(0, 10) === hoy) return;
+        try {
+            const snap = await getDocs(collection(db, 'productos'));
+            const activos = snap.docs.filter(item => item.data().estatus !== 'INACTIVO');
+            localStorage.setItem('supermarian_catalogo_offline_cantidad', String(activos.length));
+            localStorage.setItem('supermarian_catalogo_offline_fecha', new Date().toISOString());
+        } catch (error) {
+            console.warn('No se pudo actualizar el catalogo diario:', error);
+        }
     };
 
     const modoOffline = document.getElementById('modoOffline');
@@ -670,7 +816,16 @@ header {
         }
     };
 
-    window.addEventListener('online', sincronizarVentasOffline);
+    window.addEventListener('online', () => {
+        iniciarEscuchasPOS();
+        iniciarEscuchaCotizaciones();
+        iniciarEscuchaCorrelativo();
+        sincronizarVentasOffline();
+    });
+    window.addEventListener('offline', () => {
+        detenerEscuchasNoEsenciales();
+        cargarCatalogoDesdeCache();
+    });
 
     let lectorCodigo = null;
     let codigoBloqueado = null;
@@ -1042,6 +1197,7 @@ window.confirmarCobroDeuda = async () => {
 
     window.eliminar = (indice) => {
         if (!Number.isInteger(indice) || !state.carrito[indice]) return;
+        if (!confirm(`¿Eliminar ${state.carrito[indice].nombre} del carrito?`)) return;
         state.carrito.splice(indice, 1);
         guardarCarritoTemporal();
         POSUI.renderCarrito(state.carrito);
@@ -1286,6 +1442,9 @@ const guardarVentaOffline = (metodo, carritoVenta, totalVenta) => {
     if (metodo === 'Credito' || !window.offlineQueue) return null;
 
     const idOperacion = `venta-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+    const tipo = state.tiposComprobante.find(item => item.codigo === document.getElementById('tipoComprobante')?.value) || { codigo: 'B02', descripcion: 'Factura de consumidor final' };
+    const numeroOffline = Number(localStorage.getItem('marian_offline_factura')) + 1 || 1;
+    localStorage.setItem('marian_offline_factura', String(numeroOffline));
     const operacion = window.offlineQueue.enqueue({
         tipo: 'VENTA_CONTADO',
         estado: 'PENDIENTE',
@@ -1299,6 +1458,9 @@ const guardarVentaOffline = (metodo, carritoVenta, totalVenta) => {
         } : { id: 'anonimo', nombre: 'Consumidor Final' },
         items: carritoVenta,
         total: totalVenta,
+        tipoComprobante: tipo.codigo,
+        descripcionComprobante: tipo.descripcion,
+        nroFactura: `PEND-${tipo.codigo}-${String(numeroOffline).padStart(6, '0')}`,
         metodoPago: metodo,
         pagos: state.pagosRealizados || [],
         creadaEn: new Date().toISOString()
@@ -1330,7 +1492,7 @@ window.finalizarVenta = async (metodo) => {
         return alert('Las ventas a crédito requieren conexión a internet.');
     }
 
-    if (modoOffline.checked && metodo !== 'Credito') {
+    if ((!navigator.onLine || modoOffline.checked) && metodo !== 'Credito') {
         const operacion = guardarVentaOffline(metodo, carritoVenta, totalVenta);
         if (operacion) {
             alert(`VENTA GUARDADA SIN CONEXIÓN: ${operacion.idOperacion}. Se asignará la factura al sincronizar.`);
@@ -1350,10 +1512,18 @@ window.finalizarVenta = async (metodo) => {
 
     try {
         const correlativoRef = doc(db, "configuracion-venta-factura", "correlativo");
+        const comprobantesRef = doc(db, 'configuracion-sistema', 'comprobantes');
         const resultadoVenta = await runTransaction(db, async (transaction) => {
             const sfDoc = await transaction.get(correlativoRef);
+            const comprobantesDoc = await transaction.get(comprobantesRef);
             const nuevoNumero = (sfDoc.exists() ? sfDoc.data().ultimoNumeroFactura || 0 : 0) + 1;
-            const idFactura = `FAC-${nuevoNumero.toString().padStart(12, '0')}`;
+            const codigoComprobante = document.getElementById('tipoComprobante')?.value || 'B02';
+            const configuracionTipos = comprobantesDoc.exists() ? comprobantesDoc.data().tipos || [] : [];
+            const tipoComprobante = configuracionTipos.find(item => item.codigo === codigoComprobante) || { codigo: codigoComprobante, descripcion: 'Factura de consumidor final', activo: true, siguienteNumero: 1 };
+            const secuenciaRef = doc(db, 'configuracion-venta-factura', `secuencia-${codigoComprobante}`);
+            const secuenciaDoc = await transaction.get(secuenciaRef);
+            const numeroComprobante = secuenciaDoc.exists() ? Number(secuenciaDoc.data().siguienteNumero) || 1 : Number(tipoComprobante.siguienteNumero) || 1;
+            const idFactura = `${codigoComprobante}${numeroComprobante.toString().padStart(8, '0')}`;
             let creditoNumero = null;
             let plazoDias = null;
             let vencimiento = null;
@@ -1380,6 +1550,8 @@ window.finalizarVenta = async (metodo) => {
             const ventaRef = doc(collection(db, "ventas_realizadas"));
             const ventaData = {
                 nroFactura: idFactura,
+                tipoComprobante: codigoComprobante,
+                descripcionComprobante: tipoComprobante.descripcion,
                 fecha: serverTimestamp(),
                 idCliente: state.clienteSeleccionado ? state.clienteSeleccionado.id : "anonimo",
                 cliente: state.clienteSeleccionado ? state.clienteSeleccionado.nombre : "Consumidor Final",
@@ -1433,6 +1605,7 @@ window.finalizarVenta = async (metodo) => {
                 if (stockActual < cantidadSolicitada && !puedeAutorizarStockNegativo) throw new Error(`Stock insuficiente para ${carritoVenta[indice].nombre || 'el producto'}. Disponible: ${stockActual}.`);
             });
             transaction.set(correlativoRef, { ultimoNumeroFactura: nuevoNumero }, { merge: true });
+            transaction.set(secuenciaRef, { siguienteNumero: numeroComprobante + 1, codigo: codigoComprobante }, { merge: true });
             if (metodo === 'Credito') {
                 const nuevoNumeroCredito = Number(creditoNumero.replace('CRD-', ''));
                 transaction.set(correlativoCreditoRef, { ultimoNumeroCredito: nuevoNumeroCredito }, { merge: true });
@@ -1513,6 +1686,10 @@ window.finalizarVenta = async (metodo) => {
             return { ventaRef, ventaData, deudaRef };
         });
         const { ventaRef, ventaData } = resultadoVenta;
+        const siguiente = state.tiposComprobante.find(item => item.codigo === ventaData.tipoComprobante);
+        if (siguiente) { siguiente.siguienteNumero = Number(String(ventaData.nroFactura).replace(ventaData.tipoComprobante, '')) + 1; document.getElementById('nro-factura-display').innerText = `${siguiente.codigo}${String(siguiente.siguienteNumero).padStart(8, '0')}`; }
+        const facturasTurno = Number(localStorage.getItem('marian_facturas_turno') || 0);
+        localStorage.setItem('marian_facturas_turno', String(facturasTurno + 1));
 
         if (metodo === 'Credito' && state.clienteSeleccionado) {
             // Acumular crédito localmente
@@ -1553,8 +1730,8 @@ window.finalizarVenta = async (metodo) => {
     }
 };
 
-    // --- LÓGICA DE CIERRE DE CAJA ---
-window.cerrarCaja = async () => {
+    // --- LÓGICA DE CIERRE DE CAJA LEGACY ---
+window.prepararResumenCierreLegacy = async () => {
     if (!state.userDB) return alert("Error: Usuario no identificado");
     
     const montoInicial = parseFloat(localStorage.getItem('marian_monto_inicial') || "0");
@@ -1662,7 +1839,8 @@ document.addEventListener('keydown', (e) => {
 
     window.validarPinApertura = () => {
         const pin = document.getElementById('pinApertura').value;
-        const monto = Number(document.getElementById('montoInicial').value);
+        const desgloseApertura = leerDesglose('apertura');
+        const monto = desgloseApertura.total || Number(document.getElementById('montoInicial').value);
         if (state.userDB && pin === state.userDB.pin) {
             if(!Number.isFinite(monto) || monto < 0) return alert("Ingrese un monto inicial válido");
             localStorage.setItem('marian_pos_open', 'true');
@@ -1680,32 +1858,30 @@ document.addEventListener('keydown', (e) => {
     };
 
     // 3. INICIALIZAR EVENTOS Y FIREBASE
+    renderDesgloseCaja();
     POSEvents.init(state, POSCore, POSUI);
     // Inicializar módulo de pagos
    POSPagos.init(state, POSCore, POSUI, TicketSystem, db, addDoc, collection, serverTimestamp, doc, runTransaction);
     POSUI.renderCarrito(state.carrito);
 
-    onSnapshot(collection(db, "productos"), snap => {
-        state.productos = snap.docs
-            .map(d => ({id: d.id, ...d.data()}))
-            .filter(producto => producto.estatus !== 'INACTIVO');
-    });
-
-    onSnapshot(collection(db, "clientes"), snap => {
-        state.clientes = snap.docs.map(d => ({id: d.id, ...d.data()}));
-    });
+    if (navigator.onLine) {
+        iniciarEscuchasPOS();
+        iniciarEscuchaCorrelativo();
+    } else cargarCatalogoDesdeCache();
 
  // --- MANEJO DE SESIÓN ---
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             document.getElementById('emailCajeroApertura').innerText = user.email;
             state.userDB = await POSCore.obtenerUsuario(db, user.email);
+            sincronizarCatalogoDiario();
+            try { await cargarTiposComprobante(); } catch (error) { console.error('No se pudo cargar comprobantes:', error); }
             const configuracionStock = await getDoc(doc(db, 'configuracion-sistema', 'inventario'));
             state.permitirStockNegativo = configuracionStock.exists() && configuracionStock.data().permitirStockNegativo === true;
             window.puedeEditarPrecios = ['Administrador', 'Jefe'].includes(state.userDB?.rol);
             if (state.userDB) document.getElementById('nombreCajeroApertura').innerText = state.userDB.nombre;
             if (state.clienteSeleccionado) window.seleccionarCliente(state.clienteSeleccionado);
-            iniciarEscuchaCotizaciones();
+            if (navigator.onLine) iniciarEscuchaCotizaciones();
             await sincronizarVentasOffline();
             
             const turnoAbierto = localStorage.getItem('marian_pos_open') === 'true';
@@ -1738,18 +1914,6 @@ document.addEventListener('keydown', (e) => {
     });
 
     // --- 1. ESCUCHAR EL CONTADOR MAESTRO (CORRELATIVO) ---
-    onSnapshot(doc(db, "configuracion-venta-factura", "correlativo"), (snapshot) => {
-        if (snapshot.exists()) {
-            const data = snapshot.data();
-            const siguiente = (data.ultimoNumeroFactura || 0) + 1;
-            state.nroFactura = `FAC-${siguiente.toString().padStart(12, '0')}`;
-            
-            const display = document.getElementById('nro-factura-display');
-            if (display) display.innerText = state.nroFactura;
-            console.log("Número de factura actualizado a: ", state.nroFactura);
-        }
-    });
-
     // --- 2. LÓGICA DE REIMPRESIÓN (BOTÓN LUPA) ---
     const btnReimprimir = document.getElementById('btnReimprimir');
     const inputReimprimir = document.getElementById('inputReimprimir');
@@ -1821,6 +1985,7 @@ document.addEventListener('keydown', (e) => {
         const vEfectivo = parseFloat(localStorage.getItem('marian_ventas_efectivo') || "0");
         const vCredito = parseFloat(localStorage.getItem('marian_ventas_credito') || "0");
         const egresos = parseFloat(localStorage.getItem('marian_egresos_caja') || "0");
+        const facturasTurno = Number(localStorage.getItem('marian_facturas_turno') || 0);
         const esperado = montoApe + vEfectivo - egresos;
         
         const resumen = document.getElementById('resumenCierre');
@@ -1838,6 +2003,9 @@ document.addEventListener('keydown', (e) => {
                 <div class="linea-cierre" style="display:flex; justify-content:space-between; color:#8e44ad;">
                     <span>(-) Egresos:</span> <b>RD$ ${egresos.toFixed(2)}</b>
                 </div>
+                <div class="linea-cierre" style="display:flex; justify-content:space-between;">
+                    <span>Facturas generadas:</span> <b>${facturasTurno}</b>
+                </div>
                 <div class="total-linea" style="margin-top:10px; border-top:2px solid #2d3436; padding-top:8px; font-weight:bold; font-size:1.1rem; display:flex; justify-content:space-between;">
                     <span>TOTAL ESPERADO:</span> <span>RD$ ${esperado.toFixed(2)}</span>
                 </div>
@@ -1846,6 +2014,8 @@ document.addEventListener('keydown', (e) => {
 
         POSUI.abrirModal('modalCierre');
         document.getElementById('montoRealContado').value = '';
+        document.querySelectorAll('[data-desglose="cierre"] input').forEach(input => { input.value = '0'; });
+        leerDesglose('cierre');
     };
 
    // --- 5. VALIDACIÓN DE CONTRASEÑA PARA CERRAR ---
@@ -1857,7 +2027,9 @@ document.addEventListener('keydown', (e) => {
                 const ventasEfectivo = Number(localStorage.getItem('marian_ventas_efectivo') || 0);
                 const ventasCredito = Number(localStorage.getItem('marian_ventas_credito') || 0);
                 const egresos = Number(localStorage.getItem('marian_egresos_caja') || 0);
-                const montoRealContado = Number(document.getElementById('montoRealContado').value);
+                const desgloseEfectivo = leerDesglose('cierre');
+                const montoRealContado = desgloseEfectivo.total || Number(document.getElementById('montoRealContado').value);
+                const facturasTurno = Number(localStorage.getItem('marian_facturas_turno') || 0);
                 const montoEsperadoEnCaja = montoInicial + ventasEfectivo - egresos;
                 if (!Number.isFinite(montoRealContado) || montoRealContado < 0) return alert('Ingrese el efectivo contado físicamente.');
                 const diferencia = montoRealContado - montoEsperadoEnCaja;
@@ -1873,6 +2045,8 @@ document.addEventListener('keydown', (e) => {
                     egresos,
                     montoEsperadoEnCaja,
                     montoRealContado,
+                    desgloseEfectivo: desgloseEfectivo.cantidades,
+                    totalFacturas: facturasTurno,
                     diferencia,
                     umbralDiferencia,
                     alertaDiferencia: Math.abs(diferencia) > umbralDiferencia,
@@ -1887,7 +2061,11 @@ document.addEventListener('keydown', (e) => {
                         dispositivo: navigator.userAgent, fecha: serverTimestamp(), estado: 'PENDIENTE'
                     });
                 }
-                ['marian_pos_open', 'marian_monto_inicial', 'marian_pos_open_at', 'marian_pos_open_email', 'marian_pos_open_name', 'marian_ventas_efectivo', 'marian_ventas_credito', 'marian_egresos_caja', 'marian_pos_cart'].forEach(clave => localStorage.removeItem(clave));
+                const efectivoItems = Object.entries(desgloseEfectivo.cantidades)
+                    .filter(([, cantidad]) => cantidad > 0)
+                    .map(([denominacion, cantidad]) => ({ nombre: `Efectivo RD$ ${denominacion}`, cantidad, precio: Number(denominacion), subtotal: Number(denominacion) * cantidad }));
+                TicketSystem.imprimir({ nroFactura: `CIERRE-${Date.now()}`, tipoComprobante: 'CIERRE', descripcionComprobante: 'Desglose de cierre de caja', total: montoRealContado, cajero: state.userDB.nombre }, efectivoItems);
+                ['marian_pos_open', 'marian_monto_inicial', 'marian_pos_open_at', 'marian_pos_open_email', 'marian_pos_open_name', 'marian_ventas_efectivo', 'marian_ventas_credito', 'marian_egresos_caja', 'marian_facturas_turno', 'marian_pos_cart'].forEach(clave => localStorage.removeItem(clave));
                 alert("✅ Caja cerrada exitosamente. El cierre fue registrado.");
                 location.reload();
             } catch (error) {
@@ -1896,11 +2074,11 @@ document.addEventListener('keydown', (e) => {
             }
         } else {
             alert("⚠️ PIN Incorrecto. No se puede cerrar la caja.");
-            document.getElementById('pinCierre').value = ""; 
+            document.getElementById('pinCierre').value = "";
         }
     };
 
- 
+
 
 </script>
 <script src="../offline-status.js"></script>

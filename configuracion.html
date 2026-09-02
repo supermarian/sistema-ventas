@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuracion de comprobantes</title>
+<style>
+body{font-family:'Segoe UI',sans-serif;margin:0;background:#f0f2f5;color:#263238}header{background:#1a73e8;color:#fff;padding:20px;text-align:center;font-size:24px;font-weight:bold}.container{max-width:900px;margin:24px auto;padding:0 18px}.card{background:#fff;padding:24px;border-radius:12px;box-shadow:0 4px 12px #00000012}table{width:100%;border-collapse:collapse;margin-top:15px}th,td{padding:12px;text-align:left;border-bottom:1px solid #eee}input{padding:8px;border:1px solid #ccd2d8;border-radius:6px;width:100px}.btn{border:0;border-radius:7px;padding:10px 15px;cursor:pointer;font-weight:bold}.primary{background:#1a73e8;color:#fff}.muted{color:#65727a}.acciones{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}.firebase-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.firebase-link{display:block;padding:14px;border:1px solid #dbe3ea;border-radius:8px;color:#174a7a;text-decoration:none;font-weight:700;background:#f7fbff}.firebase-link:hover{background:#eaf4ff}@media(max-width:600px){th:nth-child(3),td:nth-child(3){display:none}.firebase-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>Configuracion de comprobantes</header>
+<main class="container">
+<button class="btn" onclick="location.href='menu.html'">Volver al menu</button>
+<section class="card" style="margin-top:18px">
+<h2 style="margin-top:0">Tipos disponibles para Caja</h2>
+<p class="muted">Activa solo los comprobantes que tu negocio tenga autorizados. El siguiente numero se reserva al emitir la venta.</p>
+<table><thead><tr><th>Codigo</th><th>Descripcion</th><th>Siguiente numero</th><th>Activo</th></tr></thead><tbody id="tablaComprobantes"></tbody></table>
+<p id="estado" class="muted"></p><div class="acciones"><button id="guardar" class="btn primary">Guardar configuracion</button><button class="btn" onclick="location.href='menu.html'">Cancelar</button></div>
+</section>
+<section class="card" style="margin-top:18px">
+<h2 style="margin-top:0">Administracion de Firebase</h2>
+<p class="muted">Proyecto conectado: <strong>supermercado-marian</strong>. Desde estos accesos puedes revisar consumo, usuarios y ampliar el plan con una cuenta autorizada.</p>
+<div class="firebase-grid">
+<a class="firebase-link" href="https://console.firebase.google.com/project/supermercado-marian/overview" target="_blank" rel="noopener">Panel general de Firebase</a>
+<a class="firebase-link" href="https://console.firebase.google.com/project/supermercado-marian/firestore/databases/-default-/data" target="_blank" rel="noopener">Datos de Firestore</a>
+<a class="firebase-link" href="https://console.firebase.google.com/project/supermercado-marian/usage" target="_blank" rel="noopener">Uso y cuotas</a>
+<a class="firebase-link" href="https://console.firebase.google.com/project/supermercado-marian/authentication/users" target="_blank" rel="noopener">Usuarios y autenticacion</a>
+<a class="firebase-link" href="https://console.cloud.google.com/billing?project=supermercado-marian" target="_blank" rel="noopener">Facturacion y cambio de plan</a>
+</div>
+<p class="muted" style="font-size:.85rem;margin-bottom:0">El cambio de plan requiere permisos de propietario o administrador de facturacion en Google Cloud. La aplicacion no guarda ni solicita datos de tarjeta.</p>
+</section>
+<section class="card" style="margin-top:18px">
+<h2 style="margin-top:0">Catalogo para trabajar sin internet</h2>
+<p class="muted">Caja actualiza automáticamente el catálogo una vez al día cuando se abre con internet. Se conserva una sola caché local: los productos modificados se actualizan y no se crean archivos diarios.</p>
+<p id="estadoCatalogoOffline" class="muted">Aún no se ha preparado el catálogo offline.</p>
+<button id="descargarCatalogoOffline" class="btn primary">Actualizar catálogo offline ahora</button>
+</section>
+</main>
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import{getAuth,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+import{getFirestore,enableIndexedDbPersistence,collection,doc,getDoc,getDocs,setDoc}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+const config={apiKey:'AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY',authDomain:'supermercado-marian.firebaseapp.com',projectId:'supermercado-marian',storageBucket:'supermercado-marian.firebasestorage.app',messagingSenderId:'627337795444',appId:'1:627337795444:web:e9a4cb48ff164b78477e21'};
+const app=initializeApp(config),auth=getAuth(app),db=getFirestore(app);
+enableIndexedDbPersistence(db).catch(error=>{if(!['failed-precondition','unimplemented'].includes(error.code))console.warn('Persistencia offline no disponible:',error)});
+const tiposBase=[
+ {codigo:'B01',descripcion:'Factura de credito fiscal',activo:false,siguienteNumero:1},
+ {codigo:'B02',descripcion:'Factura de consumidor final',activo:true,siguienteNumero:1},
+ {codigo:'B03',descripcion:'Nota de debito',activo:false,siguienteNumero:1},
+ {codigo:'B04',descripcion:'Nota de credito',activo:false,siguienteNumero:1},
+ {codigo:'B13',descripcion:'Factura de regimen especial',activo:false,siguienteNumero:1},
+ {codigo:'B14',descripcion:'Factura gubernamental',activo:false,siguienteNumero:1},
+ {codigo:'B15',descripcion:'Factura de exportacion',activo:false,siguienteNumero:1},
+ {codigo:'B16',descripcion:'Factura de compras',activo:false,siguienteNumero:1},
+ {codigo:'E31',descripcion:'e-CF de credito fiscal',activo:false,siguienteNumero:1},
+ {codigo:'E32',descripcion:'e-CF de consumidor final',activo:false,siguienteNumero:1},
+ {codigo:'E33',descripcion:'e-CF nota de debito',activo:false,siguienteNumero:1},
+ {codigo:'E34',descripcion:'e-CF nota de credito',activo:false,siguienteNumero:1},
+ {codigo:'E41',descripcion:'e-CF de compras',activo:false,siguienteNumero:1},
+ {codigo:'E43',descripcion:'e-CF gubernamental',activo:false,siguienteNumero:1},
+ {codigo:'E44',descripcion:'e-CF de exportacion',activo:false,siguienteNumero:1},
+ {codigo:'E45',descripcion:'e-CF de regimen especial',activo:false,siguienteNumero:1},
+ {codigo:'E46',descripcion:'e-CF para consumidor final especial',activo:false,siguienteNumero:1}
+];
+let tipos=[];
+const estadoCatalogoOffline=document.getElementById('estadoCatalogoOffline');
+const actualizarEstadoCatalogo=()=>{const cantidad=Number(localStorage.getItem('supermarian_catalogo_offline_cantidad')||0);const fecha=localStorage.getItem('supermarian_catalogo_offline_fecha');if(cantidad&&fecha)estadoCatalogoOffline.innerText=`${cantidad} producto(s) preparados. Ultima descarga: ${new Date(fecha).toLocaleString('es-DO')}`};
+const escapar=valor=>String(valor??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const render=()=>{document.getElementById('tablaComprobantes').innerHTML=tipos.map((tipo,index)=>`<tr><td><strong>${escapar(tipo.codigo)}</strong></td><td>${escapar(tipo.descripcion)}</td><td><input type="number" min="1" step="1" data-numero="${index}" value="${Number(tipo.siguienteNumero)||1}"></td><td><input type="checkbox" data-activo="${index}" ${tipo.activo?'checked':''}></td></tr>`).join('')};
+const cargar=async()=>{const snap=await getDoc(doc(db,'configuracion-sistema','comprobantes'));const guardados=snap.exists()?snap.data().tipos||[]:[];tipos=await Promise.all(tiposBase.map(async base=>{const guardado=guardados.find(item=>item.codigo===base.codigo);const secuencia=await getDoc(doc(db,'configuracion-venta-factura',`secuencia-${base.codigo}`));return {...base,...guardado,...(secuencia.exists()?secuencia.data():{})}}));render()};
+onAuthStateChanged(auth,async user=>{if(!user)return location.href='index.html';const token=await user.getIdTokenResult();if(token.claims.rol!=='Jefe'&&token.claims.rol!=='Administrador')return location.href='menu.html';try{await cargar()}catch(error){console.error(error);document.getElementById('estado').innerText='No se pudo cargar la configuracion.'}});
+document.getElementById('guardar').onclick=async()=>{const filas=tipos.map((tipo,index)=>({...tipo,siguienteNumero:Math.max(1,Math.floor(Number(document.querySelector(`[data-numero="${index}"]`).value)||1)),activo:document.querySelector(`[data-activo="${index}"]`).checked}));if(!filas.some(tipo=>tipo.activo))return document.getElementById('estado').innerText='Activa al menos un comprobante.';try{await setDoc(doc(db,'configuracion-sistema','comprobantes'),{tipos:filas,actualizadoPor:auth.currentUser.uid,actualizadoEn:new Date()});await Promise.all(filas.map(tipo=>setDoc(doc(db,'configuracion-venta-factura',`secuencia-${tipo.codigo}`),{codigo:tipo.codigo,siguienteNumero:tipo.siguienteNumero},{merge:true})));tipos=filas;render();document.getElementById('estado').innerText='Configuracion guardada.'}catch(error){console.error(error);document.getElementById('estado').innerText=error.message||'No se pudo guardar.'}};
+document.getElementById('descargarCatalogoOffline').onclick=async()=>{const boton=document.getElementById('descargarCatalogoOffline');boton.disabled=true;estadoCatalogoOffline.innerText='Descargando productos...';try{const snap=await getDocs(collection(db,'productos'));const activos=snap.docs.filter(item=>item.data().estatus!=='INACTIVO');localStorage.setItem('supermarian_catalogo_offline_cantidad',String(activos.length));localStorage.setItem('supermarian_catalogo_offline_fecha',new Date().toISOString());estadoCatalogoOffline.innerText=`${activos.length} producto(s) preparados para Caja offline.`}catch(error){console.error(error);estadoCatalogoOffline.innerText='No se pudo descargar el catálogo. Verifica la conexión.'}finally{boton.disabled=false}};
+actualizarEstadoCatalogo();
+</script>
+<script src="offline-status.js"></script>
+</body>
+</html>

@@ -66,6 +66,7 @@ export const TicketSystem = {
 
                 <div>
                     <b>${esCopia ? '*** REIMPRESIÓN / COPIA ***' : 'FACTURA ORIGINAL'}</b><br>
+                    <b>Tipo:</b> ${venta.tipoComprobante || 'B02'} - ${venta.descripcionComprobante || 'Factura de consumidor final'}<br>
                     <b>No:</b> ${venta.nroFactura || 'S/N'}<br>
                     ${venta.nroCredito ? `<b>No. Crédito:</b> ${venta.nroCredito}<br><b>Vence:</b> ${venta.fechaVencimientoCredito ? new Date(venta.fechaVencimientoCredito).toLocaleDateString() : 'Pendiente'}<br>` : ''}
                     <b>Fecha:</b> ${fechaHoy}<br>

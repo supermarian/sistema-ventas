@@ -129,7 +129,7 @@ export const POSUI = {
                 div.innerHTML = `
                     <div style="flex:1; pointer-events:none;">
                         <b style="display:block; color:black;">${prod.nombre}</b>
-                        <small style="color:#666;">${prod.codigo || 'Sin código'}</small>
+                        <small style="color:#666;">${prod.codigo || 'Sin código'} · Stock: ${Number(prod.stock ?? 0)}</small>
                     </div>
                     <div style="text-align:right; pointer-events:none;">
                         <span style="color:green; font-weight:bold; font-size:1.1rem;">
