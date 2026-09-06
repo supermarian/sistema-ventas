@@ -12,11 +12,12 @@
         .stat-card h3 { margin: 0; color: #666; font-size: 16px; }
         .stat-card p { margin: 10px 0 0; font-size: 24px; font-weight: bold; color: #6f42c1; }
         .table-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .consulta-barra { display:grid; grid-template-columns:180px 1fr auto; gap:10px; margin-bottom:18px; }
+        .consulta-barra { display:grid; grid-template-columns:180px 1fr 160px 160px auto; gap:10px; margin-bottom:18px; }
         .consulta-barra input, .consulta-barra select { padding:11px; border:2px solid #d9dee5; border-radius:8px; font-size:1rem; box-sizing:border-box; }
         .consulta-barra input:focus, .consulta-barra select:focus { border-color:#1a73e8; outline:none; }
         .btn-consultar { background:#1a73e8; color:white; border:0; border-radius:8px; padding:11px 18px; font-weight:bold; cursor:pointer; }
         .estado-consulta { color:#666; min-height:22px; }
+        @media(max-width:900px){ .consulta-barra { grid-template-columns:1fr 1fr; } }
         @media(max-width:650px){ .consulta-barra { grid-template-columns:1fr; } }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
@@ -61,6 +62,8 @@
                 <option value="caja">Movimientos de caja</option>
             </select>
             <input id="textoConsulta" type="search" placeholder="Factura, cliente, crédito o código..." autocomplete="off">
+            <input id="fechaDesde" type="date" aria-label="Fecha desde">
+            <input id="fechaHasta" type="date" aria-label="Fecha hasta">
             <button id="btnConsultar" class="btn-consultar" type="button">Consultar</button>
         </div>
         <p id="estadoConsulta" class="estado-consulta">Escribe un filtro y presiona Enter para consultar.</p>
@@ -81,7 +84,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
@@ -103,10 +106,22 @@
         return new Date(valor).toLocaleString();
     };
 
+    const fechaLocal = (fecha) => {
+        const año = fecha.getFullYear();
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        return `${año}-${mes}-${dia}`;
+    };
+    const hoy = new Date();
+    document.getElementById('fechaDesde').value = fechaLocal(hoy);
+    document.getElementById('fechaHasta').value = fechaLocal(hoy);
+
     const ejecutarConsulta = async () => {
         if (!accesoPermitido) return alert('No tienes permisos para consultar reportes.');
         const tipo = document.getElementById("tipoConsulta").value;
         const termino = document.getElementById("textoConsulta").value.trim().toLowerCase();
+        const desde = document.getElementById('fechaDesde').value;
+        const hasta = document.getElementById('fechaHasta').value;
         const estado = document.getElementById("estadoConsulta");
         const tabla = document.getElementById('tablaReportes');
         estado.innerText = "Consultando Firebase...";
@@ -116,6 +131,10 @@
         try {
             const snapshot = await getDocs(collection(db, coleccion));
             const filas = snapshot.docs.map(documento => ({ id: documento.id, ...documento.data() })).filter(registro => {
+                const fechaRegistro = registro.fecha?.toDate?.() || new Date(registro.fecha || registro.timestamp || registro.fechaVencimiento || 0);
+                const fechaRegistroTexto = Number.isNaN(fechaRegistro.getTime()) ? '' : fechaLocal(fechaRegistro);
+                if (desde && fechaRegistroTexto && fechaRegistroTexto < desde) return false;
+                if (hasta && fechaRegistroTexto && fechaRegistroTexto > hasta) return false;
                 const stock = Number(registro.stock);
                 if (tipo === "creditos" && registro.estado !== "PENDIENTE") return false;
                 if (tipo === "inventario_inactivo" && registro.estatus !== "INACTIVO") return false;
@@ -171,7 +190,8 @@
     onAuthStateChanged(auth, async user => {
         if (!user) return window.location.href = 'index.html';
         const token = await user.getIdTokenResult();
-        const rol = token.claims.rol;
+        const perfiles = await getDocs(query(collection(db, 'usuarios'), where('email', '==', user.email)));
+        const rol = token.claims.rol || perfiles.docs[0]?.data()?.rol;
         accesoPermitido = ['Administrador', 'Jefe', 'Consultor', 'Contador'].includes(rol);
         if (!accesoPermitido) document.getElementById('estadoConsulta').innerText = 'Tu rol no tiene acceso a reportes.';
     });

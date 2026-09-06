@@ -47,10 +47,10 @@
 <script type="module">
 import{getFunctions,httpsCallable}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendEmailVerification}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';import{getFirestore,collection,getDocs,addDoc,doc,setDoc,serverTimestamp,query,where}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-const config={apiKey:'AIzaSyAy4En1r4frEc6a4FGLf0vupJ0AY',authDomain:'supermercado-marian.firebaseapp.com',projectId:'supermercado-marian',storageBucket:'supermercado-marian.firebasestorage.app',messagingSenderId:'627337795444',appId:'1:627337795444:web:e9a4cb48ff164b78477e21'};const app=initializeApp(config);const auth=getAuth(app);const db=getFirestore(app);let productos=[],carrito=[],deudas=[],cliente={};
 const carritoKey=uid=>`supermarian_carrito_cliente_${uid}`;
 const guardarCarrito=()=>{if(auth.currentUser)localStorage.setItem(carritoKey(auth.currentUser.uid),JSON.stringify(carrito))};
 const cargarCarrito=uid=>{try{const guardado=JSON.parse(localStorage.getItem(carritoKey(uid))||'[]');carrito=Array.isArray(guardado)?guardado:[]}catch(error){carrito=[]}};
+  const config={apiKey:'AIzaSyAy4En1r4frEc6a4FGLf0vupJ0AY',authDomain:'supermercado-marian.firebaseapp.com',projectId:'supermercado-marian',storageBucket:'supermercado-marian.firebasestorage.app',messagingSenderId:'627337795444',appId:'1:627337795444:web:e9a4cb48ff164b78477e21'};const app=initializeApp(config);const auth=getAuth(app);const db=getFirestore(app);let productos=[],carrito=[],deudas=[],cliente={};
 const $=id=>document.getElementById(id);const money=value=>`RD$ ${Number(value||0).toLocaleString('es-DO',{minimumFractionDigits:2})}`;const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const fechaComoDate=valor=>{if(!valor)return null;if(typeof valor.toDate==='function')return valor.toDate();const fecha=new Date(valor);return Number.isNaN(fecha.getTime())?null:fecha};
 

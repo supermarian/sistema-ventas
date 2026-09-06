@@ -122,10 +122,16 @@
     const db = getFirestore(app);
     const functions = getFunctions(app, 'us-central1');
     const asignarRolRemoto = httpsCallable(functions, 'asignarRol');
+    const userRol = localStorage.getItem('userRol');
+    if (userRol === 'Jefe') {
+        document.querySelectorAll('#rolEmp option').forEach(opcion => {
+            if (!['Cajero', 'Consultor', 'Contador'].includes(opcion.value)) opcion.remove();
+        });
+    }
 
-    const sincronizarRol = async (email, rol) => {
+    const sincronizarRol = async (email, rol, nombre, pin) => {
         try {
-            await asignarRolRemoto({ email, rol });
+            await asignarRolRemoto({ email, rol, nombre, pin });
             return true;
         } catch (error) {
             console.error('No se pudo sincronizar el rol:', error);
@@ -187,7 +193,7 @@
         const permisos = leerPermisos();
 
         if(nom && ema && pin) {
-            const rolSincronizado = await sincronizarRol(ema, rol);
+            const rolSincronizado = await sincronizarRol(ema, rol, nom, pin);
             if (!rolSincronizado) return;
             await addDoc(collection(db, "usuarios"), { nombre: nom, email: ema, pin: pin, rol: rol, permisos });
             limpiarFormulario();

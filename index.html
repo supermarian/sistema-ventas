@@ -58,10 +58,10 @@
     async function verificarAccesoYRedirigir(email) {
         const usuario = auth.currentUser;
         const token = await usuario.getIdTokenResult();
-        const rol = token.claims.rol;
+        const perfilEmpleado = await getDocs(query(collection(db, "usuarios"), where("email", "==", email)));
+        const datosEmpleado = perfilEmpleado.empty ? {} : perfilEmpleado.docs[0].data();
+        const rol = token.claims.rol || datosEmpleado.rol;
         if (rol && rol !== 'Cliente') {
-            const perfilEmpleado = await getDocs(query(collection(db, "usuarios"), where("email", "==", email)));
-            const datosEmpleado = perfilEmpleado.empty ? {} : perfilEmpleado.docs[0].data();
             localStorage.setItem("userRol", rol);
             localStorage.setItem("userName", datosEmpleado.nombre || usuario.displayName || email);
             localStorage.setItem("userPermisos", JSON.stringify(datosEmpleado.permisos || {}));

@@ -27,13 +27,19 @@ const esAdministrador = async uid => {
 
 exports.asignarRol = onCall(async request => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
-    if (!(await esAdministrador(request.auth.uid))) {
-        throw new HttpsError('permission-denied', 'Solo un administrador puede asignar roles.');
+    const rolSolicitante = request.auth.token.rol;
+    const esAdminSolicitante = request.auth.token.admin === true || rolSolicitante === 'Administrador';
+    const esJefeSolicitante = rolSolicitante === 'Jefe';
+    if (!esAdminSolicitante && !esJefeSolicitante) {
+        throw new HttpsError('permission-denied', 'Solo un Administrador o Jefe puede gestionar usuarios.');
     }
 
-    const { email, rol } = request.data || {};
+    const { email, rol, nombre, pin } = request.data || {};
     if (!email || !ROLES.has(rol)) {
         throw new HttpsError('invalid-argument', 'Correo o rol inválido.');
+    }
+    if (esJefeSolicitante && !['Cajero', 'Consultor', 'Contador'].includes(rol)) {
+        throw new HttpsError('permission-denied', 'Un Jefe solo puede asignar Cajero, Consultor o Contador.');
     }
 
     let usuario;
@@ -67,14 +73,14 @@ exports.asignarRol = onCall(async request => {
             ultimaAsignacion: admin.firestore.FieldValue.serverTimestamp(),
             limiteJefes: 3
         }, { merge: true });
-        if (perfilSnapshot.exists) {
-            transaction.set(perfilRef, {
-                uid: usuario.uid,
-                email: usuario.email,
-                rol,
-                actualizadoEn: admin.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-        }
+        transaction.set(perfilRef, {
+            uid: usuario.uid,
+            email: usuario.email,
+            nombre: String(nombre || perfilSnapshot.data()?.nombre || usuario.displayName || usuario.email),
+            ...(pin ? { pin: String(pin) } : {}),
+            rol,
+            actualizadoEn: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
     });
 
     const claims = { ...(usuario.customClaims || {}), rol, admin: rol === 'Administrador' };

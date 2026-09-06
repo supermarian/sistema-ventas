@@ -655,6 +655,25 @@ header {
         localStorage.setItem('marian_pos_cart', JSON.stringify(state.carrito));
     };
 
+    const fechaLocalJornada = (fecha = new Date()) => {
+        const año = fecha.getFullYear();
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        return `${año}-${mes}-${dia}`;
+    };
+
+    let vigilanciaMedianocheIniciada = false;
+    const verificarCambioDeJornada = () => {
+        if (localStorage.getItem('marian_pos_open') !== 'true'
+            || localStorage.getItem('marian_pos_must_close') === 'true') return;
+        const fechaApertura = localStorage.getItem('marian_pos_open_date');
+        if (!fechaApertura || fechaApertura === fechaLocalJornada()) return;
+        localStorage.setItem('marian_pos_must_close', 'true');
+        POSUI.bloquearSistema();
+        alert('La jornada terminó a medianoche. Complete el cierre para generar el reporte antes de continuar.');
+        window.cerrarCaja();
+    };
+
     const COTIZACIONES_VISTAS_KEY = 'marian_cotizaciones_vistas';
     let cotizacionesPendientes = [];
     let intervaloTimbreCotizaciones = null;
@@ -1732,6 +1751,7 @@ window.finalizarVenta = async (metodo) => {
 
     // --- LÓGICA DE CIERRE DE CAJA LEGACY ---
 window.prepararResumenCierreLegacy = async () => {
+window.mostrarResumenCierreLegacy = async () => {
     if (!state.userDB) return alert("Error: Usuario no identificado");
     
     const montoInicial = parseFloat(localStorage.getItem('marian_monto_inicial') || "0");
@@ -1838,6 +1858,9 @@ document.addEventListener('keydown', (e) => {
 
 
     window.validarPinApertura = () => {
+        if (localStorage.getItem('marian_pos_must_close') === 'true') {
+            return alert('La caja pertenece a una jornada anterior. Debe completar el cierre antes de abrir una nueva.');
+        }
         const pin = document.getElementById('pinApertura').value;
         const desgloseApertura = leerDesglose('apertura');
         const monto = desgloseApertura.total || Number(document.getElementById('montoInicial').value);
@@ -1846,6 +1869,7 @@ document.addEventListener('keydown', (e) => {
             localStorage.setItem('marian_pos_open', 'true');
             localStorage.setItem('marian_monto_inicial', String(monto));
             localStorage.setItem('marian_pos_open_at', String(Date.now()));
+            localStorage.setItem('marian_pos_open_date', fechaLocalJornada());
             localStorage.setItem('marian_pos_open_email', state.userDB.email || auth.currentUser?.email || '');
             localStorage.setItem('marian_pos_open_name', state.userDB.nombre || '');
             document.getElementById('pinApertura').value = '';
@@ -1883,11 +1907,26 @@ document.addEventListener('keydown', (e) => {
             if (state.clienteSeleccionado) window.seleccionarCliente(state.clienteSeleccionado);
             if (navigator.onLine) iniciarEscuchaCotizaciones();
             await sincronizarVentasOffline();
+            if (!vigilanciaMedianocheIniciada) {
+                vigilanciaMedianocheIniciada = true;
+                setInterval(verificarCambioDeJornada, 30 * 1000);
+            }
             
             const turnoAbierto = localStorage.getItem('marian_pos_open') === 'true';
             const fechaApertura = Number(localStorage.getItem('marian_pos_open_at') || 0);
+            const fechaJornada = localStorage.getItem('marian_pos_open_date') || fechaLocalJornada(new Date(fechaApertura));
             const mismoCajero = localStorage.getItem('marian_pos_open_email') === user.email;
-            const turnoVigente = fechaApertura > 0 && Date.now() - fechaApertura < 12 * 60 * 60 * 1000;
+            const turnoVigente = fechaApertura > 0 && Date.now() - fechaApertura < 12 * 60 * 60 * 1000
+                && fechaJornada === fechaLocalJornada();
+
+            if (turnoAbierto && fechaJornada !== fechaLocalJornada()) {
+                localStorage.setItem('marian_pos_must_close', 'true');
+                POSUI.bloquearSistema();
+                setTimeout(() => {
+                    alert('La jornada anterior terminó a medianoche. Complete ahora el cierre de caja para generar el reporte.');
+                    window.cerrarCaja();
+                }, 300);
+            }
 
             // Recuperar una caja abierta por el mismo cajero durante el turno vigente.
             if (turnoAbierto && mismoCajero && turnoVigente) {
@@ -1905,6 +1944,7 @@ document.addEventListener('keydown', (e) => {
                 localStorage.removeItem('marian_pos_open');
                 localStorage.removeItem('marian_monto_inicial');
                 localStorage.removeItem('marian_pos_open_at');
+                localStorage.removeItem('marian_pos_open_date');
                 localStorage.removeItem('marian_pos_open_email');
                 localStorage.removeItem('marian_pos_open_name');
             }
@@ -2036,6 +2076,8 @@ document.addEventListener('keydown', (e) => {
                 const umbralDiferencia = Math.max(100, Math.abs(montoEsperadoEnCaja) * 0.05);
                 await addDoc(collection(db, 'cierres_caja'), {
                     fechaCierre: serverTimestamp(),
+                    fechaJornada: localStorage.getItem('marian_pos_open_date') || fechaLocalJornada(),
+                    cierreAutomaticoPorMedianoche: localStorage.getItem('marian_pos_must_close') === 'true',
                     cajeroNombre: state.userDB.nombre,
                     cajeroEmail: state.userDB.email,
                     montoInicial,
@@ -2066,6 +2108,7 @@ document.addEventListener('keydown', (e) => {
                     .map(([denominacion, cantidad]) => ({ nombre: `Efectivo RD$ ${denominacion}`, cantidad, precio: Number(denominacion), subtotal: Number(denominacion) * cantidad }));
                 TicketSystem.imprimir({ nroFactura: `CIERRE-${Date.now()}`, tipoComprobante: 'CIERRE', descripcionComprobante: 'Desglose de cierre de caja', total: montoRealContado, cajero: state.userDB.nombre }, efectivoItems);
                 ['marian_pos_open', 'marian_monto_inicial', 'marian_pos_open_at', 'marian_pos_open_email', 'marian_pos_open_name', 'marian_ventas_efectivo', 'marian_ventas_credito', 'marian_egresos_caja', 'marian_facturas_turno', 'marian_pos_cart'].forEach(clave => localStorage.removeItem(clave));
+                ['marian_pos_open', 'marian_monto_inicial', 'marian_pos_open_at', 'marian_pos_open_date', 'marian_pos_must_close', 'marian_pos_open_email', 'marian_pos_open_name', 'marian_ventas_efectivo', 'marian_ventas_credito', 'marian_egresos_caja', 'marian_pos_cart'].forEach(clave => localStorage.removeItem(clave));
                 alert("✅ Caja cerrada exitosamente. El cierre fue registrado.");
                 location.reload();
             } catch (error) {

@@ -79,7 +79,7 @@ import{initializeApp}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-app
 import{getAuth,onAuthStateChanged,signOut}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import{getFirestore,collection,getDocs,query,where}from'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-const config={apiKey:'AIzaSyAy4En1r4frEc6a4FGLf0vupJ0AY',authDomain:'supermercado-marian.firebaseapp.com',projectId:'supermercado-marian',storageBucket:'supermercado-marian.firebasestorage.app',messagingSenderId:'627337795444',appId:'1:627337795444:web:e9a4cb48ff164b78477e21'};
+const config={apiKey:'AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY',authDomain:'supermercado-marian.firebaseapp.com',projectId:'supermercado-marian',storageBucket:'supermercado-marian.firebasestorage.app',messagingSenderId:'627337795444',appId:'1:627337795444:web:e9a4cb48ff164b78477e21'};
 const app=initializeApp(config);const auth=getAuth(app);const db=getFirestore(app);
 
 const $=id=>document.getElementById(id);
@@ -186,8 +186,8 @@ function cargarTopProductos(ventas){
 function cargarTopClientes(ventas,clientes){
   const clienteDatos={};
   ventas.forEach(v=>{
-    const cid=v.uidCliente||v.nombreCliente||'Anónimo';
-    if(!clienteDatos[cid])clienteDatos[cid]={nombre:v.nombreCliente||'Anónimo',compras:0,total:0};
+    const cid=v.idCliente||v.uidCliente||v.cliente||'Anónimo';
+    if(!clienteDatos[cid])clienteDatos[cid]={nombre:v.cliente||v.nombreCliente||'Anónimo',compras:0,total:0};
     clienteDatos[cid].compras++;
     clienteDatos[cid].total+=Number(v.total||0);
   });
@@ -219,7 +219,7 @@ function cargarUltimasVentas(ventas,clientes){
   
   $('ultimasVentas').innerHTML=ordenadas.map(v=>{
     const fecha=fechaComoDate(v.fecha);
-    return `<tr><td>${esc(v.nroFactura||v.id.substring(0,8))}</td><td>${fecha?fecha.toLocaleDateString('es-DO'):'--'}</td><td>${esc(v.nombreCliente||'--')}</td><td>${money(v.total)}</td><td>${esc(v.metodoPago||'--')}</td></tr>`;
+    return `<tr><td>${esc(v.nroFactura||v.id.substring(0,8))}</td><td>${fecha?fecha.toLocaleDateString('es-DO'):'--'}</td><td>${esc(v.cliente||v.nombreCliente||'Consumidor Final')}</td><td>${money(v.total)}</td><td>${esc(v.metodoPago||'--')}</td></tr>`;
   }).join('')||'<tr><td colspan="5">Sin ventas</td></tr>';
 }
 
@@ -231,7 +231,10 @@ onAuthStateChanged(auth,async user=>{
   try{
     const q=query(collection(db,'usuarios'),where('email','==',user.email));
     const snap=await getDocs(q);
-    if(snap.empty||!['Administrador','Jefe'].includes(snap.docs[0].data().rol)){
+    const token=await user.getIdTokenResult();
+    const rolFirestore = snap.docs[0]?.data()?.rol;
+    const rol = token.claims.rol || rolFirestore;
+    if(!['Administrador','Jefe'].includes(rol)){
       alert('Solo administrador y jefe pueden ver dashboard');
       window.location.href='menu.html';
       return;
