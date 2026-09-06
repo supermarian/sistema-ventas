@@ -1,5 +1,6 @@
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 
@@ -8,6 +9,11 @@ setGlobalOptions({ region: 'us-central1' });
 
 const ROLES = new Set(['Administrador', 'Jefe', 'Cajero', 'Consultor', 'Contador']);
 const db = admin.firestore();
+const COLECCIONES_COPIA = [
+    'clientes', 'clientes_portal', 'deudas_clientes', 'productos', 'usuarios',
+    'cotizaciones', 'ventas_realizadas', 'pagos_creditos', 'recepciones_compras',
+    'movimientos_inventario', 'configuracion-sistema', 'configuracion-venta-factura'
+];
 const TELEFONO_WHATSAPP_POR_DEFECTO = '809-573-7989';
 const WHATSAPP_TOKEN = defineSecret('WHATSAPP_TOKEN');
 const WHATSAPP_VERIFY_TOKEN = defineSecret('WHATSAPP_VERIFY_TOKEN');
@@ -24,6 +30,76 @@ const esAdministrador = async uid => {
     const token = await admin.auth().getUser(uid);
     return token.customClaims?.admin === true || token.customClaims?.rol === 'Administrador';
 };
+
+const puedeGestionarCopias = request => request.auth && (
+    request.auth.token.admin === true || ['Administrador', 'Jefe'].includes(request.auth.token.rol)
+);
+
+const prepararDatoCopia = dato => {
+    if (dato && typeof dato.toDate === 'function') return { tipo: 'timestamp', valor: dato.toDate().toISOString() };
+    if (Array.isArray(dato)) return dato.map(prepararDatoCopia);
+    if (dato && typeof dato === 'object') return Object.fromEntries(Object.entries(dato).map(([clave, valor]) => [clave, prepararDatoCopia(valor)]));
+    return dato;
+};
+
+const crearCopiaBaseDatos = async (tipo, creadoPor = 'sistema') => {
+    const colecciones = {};
+    let cantidadDocumentos = 0;
+    for (const nombreColeccion of COLECCIONES_COPIA) {
+        const snapshot = await db.collection(nombreColeccion).get();
+        colecciones[nombreColeccion] = snapshot.docs.map(documento => ({
+            id: documento.id,
+            datos: prepararDatoCopia(documento.data())
+        }));
+        cantidadDocumentos += snapshot.size;
+    }
+
+    const creadoEn = new Date();
+    const contenido = JSON.stringify({
+        version: 1,
+        proyecto: process.env.GCLOUD_PROJECT || 'supermercado-marian',
+        tipo,
+        creadoEn: creadoEn.toISOString(),
+        colecciones
+    });
+    const nombreArchivo = `backups/${creadoEn.toISOString().slice(0, 10)}/${tipo}-${creadoEn.getTime()}.json`;
+    const archivo = admin.storage().bucket().file(nombreArchivo);
+    await archivo.save(contenido, {
+        resumable: false,
+        metadata: { contentType: 'application/json', metadata: { tipo, creadoPor } }
+    });
+    const registro = await db.collection('copias_seguridad').add({
+        tipo,
+        estado: 'completada',
+        ruta: nombreArchivo,
+        colecciones: COLECCIONES_COPIA,
+        cantidadDocumentos,
+        tamanoBytes: Buffer.byteLength(contenido),
+        creadoPor,
+        creadoEn: admin.firestore.Timestamp.fromDate(creadoEn)
+    });
+    return { copiaId: registro.id, ruta: nombreArchivo, cantidadDocumentos };
+};
+
+exports.crearCopiaManual = onCall(async request => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+    if (!puedeGestionarCopias(request)) throw new HttpsError('permission-denied', 'Solo un Administrador o Jefe puede crear copias.');
+    try {
+        return await crearCopiaBaseDatos('manual', request.auth.uid);
+    } catch (error) {
+        console.error('Error creando copia manual:', error);
+        throw new HttpsError('internal', 'No se pudo crear la copia de seguridad.');
+    }
+});
+
+exports.copiaAutomaticaDiaria = onSchedule({ schedule: 'every day 02:00', timeZone: 'America/Santo_Domingo' }, async () => {
+    try {
+        await crearCopiaBaseDatos('automatica');
+    } catch (error) {
+        console.error('Error creando copia automática:', error);
+        throw error;
+    }
+});
 
 exports.asignarRol = onCall(async request => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');

@@ -59,22 +59,26 @@ table{width:100%;border-collapse:collapse}th,td{padding:11px 8px;border-bottom:1
 <script>
 const firebaseConfig={apiKey:"AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",authDomain:"supermercado-marian.firebaseapp.com",projectId:"supermercado-marian"};
 firebase.initializeApp(firebaseConfig);const db=firebase.firestore();const auth=firebase.auth();
-let clientes=[],creditos=[],creditoSeleccionado=null,busquedaActiva=false,rolActual='';
+let clientes=[],creditos=[],creditoSeleccionado=null,busquedaActiva=false,rolActual='',fallosLectura=[];
 let fotosCedula={frontal:null,posterior:null};
 const escapar=valor=>String(valor??'').replace(/[&<>"']/g,caracter=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[caracter]));
 const fechaComoDate=valor=>{if(!valor)return null;if(typeof valor.toDate==='function')return valor.toDate();const fecha=new Date(valor);return Number.isNaN(fecha.getTime())?null:fecha};
 const dinero=valor=>`RD$ ${Number(valor||0).toLocaleString('es-DO',{minimumFractionDigits:2})}`;
 
 async function cargarDatos(){
-    const [clientesSnapshot, creditosSnapshot, legadosSnapshot]=await Promise.all([
+    const resultados=await Promise.allSettled([
         db.collection('clientes').get(),
         db.collection('deudas_clientes').get(),
         db.collection('clientes_fiado').get()
     ]);
-    clientes=clientesSnapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
-    creditos=creditosSnapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
-    const creditosLegados=legadosSnapshot.docs.map(doc=>({id:doc.id,legacy:true,nombreCliente:doc.data().nombre,clienteDatos:doc.data(),saldoPendiente:Number(doc.data().deuda||0),montoOriginal:Number(doc.data().deuda||0),estado:Number(doc.data().deuda||0)>0?'PENDIENTE':'PAGADO',...doc.data()}));
+    const [clientesResultado,creditosResultado,legadosResultado]=resultados;
+    const fallos=resultados.map((resultado,indice)=>resultado.status==='rejected'?['clientes','deudas_clientes','clientes_fiado'][indice]:null).filter(Boolean);
+    if(clientesResultado.status==='fulfilled')clientes=clientesResultado.value.docs.map(doc=>({id:doc.id,...doc.data()}));
+    else clientes=[];
+    creditos=creditosResultado.status==='fulfilled'?creditosResultado.value.docs.map(doc=>({id:doc.id,...doc.data()})):[];
+    const creditosLegados=legadosResultado.status==='fulfilled'?legadosResultado.value.docs.map(doc=>({id:doc.id,legacy:true,nombreCliente:doc.data().nombre,clienteDatos:doc.data(),saldoPendiente:Number(doc.data().deuda||0),montoOriginal:Number(doc.data().deuda||0),estado:Number(doc.data().deuda||0)>0?'PENDIENTE':'PAGADO',...doc.data()})):[];
     creditos=[...creditos,...creditosLegados];
+    fallosLectura=fallos;
 }
 
 auth.onAuthStateChanged(async user=>{
@@ -86,7 +90,7 @@ auth.onAuthStateChanged(async user=>{
         if(!usuarioSnapshot.empty)rolActual=usuarioSnapshot.docs[0].data().rol||'';
     }
     if(!['Administrador','Jefe'].includes(rolActual))document.getElementById('nuevoClienteCard').style.display='none';
-    try{await cargarDatos();busquedaActiva=true;renderizarCreditos()}catch(error){console.error(error);document.getElementById('estadoConsulta').innerText='No se pudieron cargar los créditos. Revisa las reglas de Firebase.'}
+    try{await cargarDatos();busquedaActiva=true;renderizarCreditos();if(fallosLectura.length)document.getElementById('estadoConsulta').innerText=`Mostrando datos disponibles. Sin permiso para: ${fallosLectura.join(', ')}. Usuario: ${user.email} | UID: ${user.uid}`;}catch(error){console.error(error);document.getElementById('estadoConsulta').innerText=`No se pudieron cargar los créditos. Usuario: ${user.email} | UID: ${user.uid}`}
 });
 
 async function crearCliente(){
@@ -119,7 +123,7 @@ document.getElementById('cedulaPosterior').addEventListener('change',event=>proc
 async function ejecutarBusqueda(){
     const estado=document.getElementById('estadoConsulta');
     estado.innerText='Consultando Firebase...';
-    try{await cargarDatos();busquedaActiva=true;renderizarCreditos()}catch(error){console.error(error);estado.innerText='No se pudo consultar. Revisa la conexión y los permisos.'}
+    try{await cargarDatos();busquedaActiva=true;renderizarCreditos();if(fallosLectura.length)estado.innerText=`Mostrando datos disponibles. Sin permiso para: ${fallosLectura.join(', ')}.`}catch(error){console.error(error);estado.innerText=`No se pudo consultar. UID: ${auth.currentUser?.uid || 'sin UID'}.`}
 }
 document.getElementById('busquedaCredito').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();ejecutarBusqueda()}});
 
@@ -130,7 +134,7 @@ function renderizarCreditos(){
     const ahora=new Date();let saldoTotal=0,vencidos=0;
     lista.forEach(credito=>{saldoTotal+=Number(credito.saldoPendiente??credito.montoDeuda??0);const vencimiento=fechaComoDate(credito.fechaVencimiento);if(credito.estado!=='PAGADO'&&vencimiento&&vencimiento<ahora)vencidos++});
     document.getElementById('totalPendiente').innerText=dinero(saldoTotal);document.getElementById('totalVencidos').innerText=vencidos;document.getElementById('estadoConsulta').innerText=`${lista.length} crédito(s) encontrado(s).`;
-    document.getElementById('listaCreditos').innerHTML=lista.map(credito=>{const saldo=Number(credito.saldoPendiente??credito.montoDeuda??0),vencimiento=fechaComoDate(credito.fechaVencimiento);const estaVencido=credito.estado!=='PAGADO'&&vencimiento&&vencimiento<ahora;const estado=credito.estado==='PAGADO'?'pagado':estaVencido?'vencido':'pendiente';const accion=saldo>0&&['Administrador','Jefe'].includes(rolActual)?`<button class="btn-abono" onclick="abrirAbono('${credito.id}')">Abonar</button>`:'<span class="pagado">Solo lectura</span>';return `<tr><td><b>${escapar(credito.nombreCliente||'Sin cliente')}</b></td><td><span class="badge">${escapar(credito.nroCredito||'Sin número')}</span></td><td>${escapar(credito.nroFactura||'S/N')}</td><td class="${estado}">${dinero(saldo)}<br><small>${credito.estado||'PENDIENTE'}</small></td><td class="${estaVencido?'vencido':''}">${vencimiento?vencimiento.toLocaleDateString('es-DO'):'Sin fecha'}</td><td>${accion}</td></tr>`}).join('')||'<tr><td colspan="6">No hay resultados.</td></tr>';
+    document.getElementById('listaCreditos').innerHTML=lista.map(credito=>{const saldo=Number(credito.saldoPendiente??credito.montoDeuda??0),vencimiento=fechaComoDate(credito.fechaVencimiento);const estaVencido=credito.estado!=='PAGADO'&&vencimiento&&vencimiento<ahora;const estado=credito.estado==='PAGADO'?'pagado':estaVencido?'vencido':'pendiente';const idNegocio=credito.idCredito||credito.nroCredito||credito.id;const accion=saldo>0&&['Administrador','Jefe'].includes(rolActual)?`<button class="btn-abono" onclick="abrirAbono('${credito.id}')">Abonar</button>`:'<span class="pagado">Solo lectura</span>';return `<tr><td><b>${escapar(credito.nombreCliente||'Sin cliente')}</b><br><small>Firebase: ${escapar(credito.id)}</small></td><td><span class="badge">${escapar(idNegocio||'Sin número')}</span></td><td>${escapar(credito.nroFactura||'S/N')}</td><td class="${estado}">${dinero(saldo)}<br><small>${credito.estado||'PENDIENTE'}</small></td><td class="${estaVencido?'vencido':''}">${vencimiento?vencimiento.toLocaleDateString('es-DO'):'Sin fecha'}</td><td>${accion}</td></tr>`}).join('')||'<tr><td colspan="6">No hay resultados.</td></tr>';
 }
 
 function abrirAbono(id){creditoSeleccionado=creditos.find(credito=>credito.id===id);if(!creditoSeleccionado)return;const saldo=Number(creditoSeleccionado.saldoPendiente??creditoSeleccionado.montoDeuda??0);document.getElementById('detalleAbono').innerText=`${creditoSeleccionado.nroCredito||'Crédito'} - ${creditoSeleccionado.nombreCliente||'Cliente'} - Saldo: ${dinero(saldo)}`;document.getElementById('montoAbono').value='';document.getElementById('observacionAbono').value='';document.getElementById('modalAbono').style.display='flex'}

@@ -1,7 +1,20 @@
 # 📊 ESTADO DEL PROYECTO - Súper Marian Sistema ERP
 
-**Última actualización:** 2026-08-28
-**Versión:** v0.3 (Pre-lanzamiento técnico)
+**Última actualización:** 2026-09-06
+**Versión:** v0.4 (MVP funcional en validación)
+
+## 📌 ESTIMACIÓN GLOBAL
+
+**Avance estimado: 40% del proyecto completo.**
+
+El 40% representa un MVP funcional en desarrollo, no un porcentaje de código ni una autorización para producción. El núcleo de acceso, portal de clientes, POS, créditos, inventario básico, cotizaciones y administración ya existe. Todavía faltan pruebas con usuarios reales, endurecimiento de reglas y PIN, recepción de compras, respaldos automáticos, pagos online, notificaciones y validación operativa de extremo a extremo.
+
+### Estado por área
+- **Operación diaria:** ⚠️ funcional en desarrollo (POS, créditos, productos y cotizaciones).
+- **Acceso y roles:** ⚠️ implementado, pendiente de validar cuentas y reglas en Firebase.
+- **Administración y reportes:** ⚠️ implementado parcialmente; faltan exportaciones y validación de métricas.
+- **Integraciones externas:** ⏳ preparadas técnicamente, pendientes de despliegue y credenciales.
+- **Producción:** 🔴 no recomendada todavía.
 
 ## 🚀 ESTADO DE LANZAMIENTO
 
@@ -20,6 +33,14 @@ La aplicación cuenta con una versión funcional en desarrollo que integra porta
 - Alertas de cotizaciones nuevas en el POS con contador, parpadeo y timbre periódico.
 - Configuración del teléfono público y activación del bot.
 - Webhook técnico de WhatsApp Business preparado.
+- Login de empleados y clientes, recuperación de contraseña y cierre real de sesión.
+- Control de acceso por rol en menú, dashboard, configuración y módulos administrativos.
+- Dashboard y reportes básicos de ventas, caja, créditos e inventario.
+- CRUD de productos con códigos de barras, stock y alertas de bajo inventario.
+- Gestión básica de empleados, roles y permisos.
+- Copia manual de datos y configuración de comprobantes.
+- Correcciones administrativas de facturas con edición controlada de tipo, número, fecha, cliente y total.
+- Auditoría de valores anteriores y nuevos; no se permite anular ni borrar facturas desde este flujo.
 
 ### Pendiente antes de producción
 - Autenticar Firebase CLI y desplegar Cloud Functions.
@@ -74,6 +95,17 @@ La aplicación cuenta con una versión funcional en desarrollo que integra porta
 - [x] Firebase integrado
 - [x] Servidor local para desarrollo
 
+### **Módulos administrativos**
+- [x] Login dual de empleados/clientes y recuperación de contraseña
+- [x] Cierre de sesión de Firebase y regreso al login para cambiar de cuenta
+- [x] Menú principal con permisos por rol
+- [x] Dashboard inicial con métricas y gráficos
+- [x] Reportes operativos iniciales
+- [x] Personal/empleados con roles y permisos básicos
+- [x] Inventario básico: productos, stock, búsqueda y códigos de barras
+- [x] Configuración de comprobantes, numeración, bot y copia manual
+- [x] Correcciones administrativas y devoluciones registradas para Administrador/Jefe
+
 ---
 
 ## ⚠️ EN PROGRESO
@@ -88,44 +120,51 @@ La aplicación cuenta con una versión funcional en desarrollo que integra porta
 - [ ] Vincular UID de cliente con deudas
 - [ ] Actualizar límite de crédito desde panel admin
 
+### **Acceso y sesión**
+- [x] Login con email/contraseña y Google
+- [x] Redirección por rol hacia cliente o menú administrativo
+- [x] Recuperación de contraseña
+- [x] Cierre de sesión real con Firebase desde el menú
+- [ ] Validar el flujo completo con cuentas reales de empleado y cliente
+
 ---
 
-## 🔴 NO INICIADO (CRÍTICO)
+## 🔴 PENDIENTE / EN VALIDACIÓN
 
-### **FASE 1 - Recuperación de Contraseña**
+### **FASE 1 - Recuperación de Contraseña** ✅ IMPLEMENTADA
 ```
 PRIORIDAD: ALTA
 ESFUERZO: 2-3 horas
 ```
-- [ ] Botón "¿Olvidaste tu contraseña?" en login
-- [ ] Email de reset con link
-- [ ] Pantalla de nueva contraseña
-- [ ] Validación de seguridad
+- [x] Botón "¿Olvidaste tu contraseña?" en login
+- [x] Email de reset con link
+- [x] Pantalla de nueva contraseña
+- [x] Validación de seguridad básica
 
-### **FASE 2 - Panel de Perfil de Cliente**
+### **FASE 2 - Panel de Perfil de Cliente** ⚠️ PARCIALMENTE IMPLEMENTADA
 ```
 PRIORIDAD: ALTA
 ESFUERZO: 3-4 horas
 ```
-- [ ] Ver perfil personal
-- [ ] Editar datos (nombre, teléfono, dirección, cédula, RNC)
-- [ ] Ver historial de cotizaciones
+- [x] Ver perfil personal
+- [x] Editar datos (nombre, teléfono, dirección, cédula, RNC)
+- [x] Ver historial de cotizaciones
 - [ ] Ver historial de compras/facturas
 - [ ] Descargar recibos en PDF
-- [ ] Ver estado de deudas individual
+- [x] Mostrar información de crédito y deudas disponibles
 
 ### **FASE 3 - Dashboard/Reportes de Ventas**
 ```
 PRIORIDAD: ALTA
 ESFUERZO: 5-6 horas
 ```
-- [ ] Dashboard con métricas principales
-- [ ] Total de ventas (día/mes/año)
-- [ ] Top productos vendidos
-- [ ] Clientes más activos
-- [ ] Ingresos vs egresos
-- [ ] Deudas vencidas alertas
-- [ ] Gráficos (Chart.js o similar)
+- [x] Dashboard con métricas principales
+- [x] Total de ventas y deudas visibles en el panel
+- [x] Top productos y clientes
+- [ ] Ingresos vs egresos con conciliación completa
+- [x] Alertas de deudas vencidas
+- [x] Gráficos básicos con Chart.js
+- [ ] Validar métricas con datos reales y agregar exportación
 
 ### **FASE 4 - Notificaciones**
 ```
@@ -143,13 +182,13 @@ ESFUERZO: 4-5 horas
 PRIORIDAD: MEDIA
 ESFUERZO: 6-8 horas
 ```
-- [ ] CRUD completo de productos
-- [ ] Control de stock (cantidad mínima/máxima)
+- [x] CRUD básico de productos
+- [x] Control de stock y alertas de bajo inventario
 - [ ] Entrada de mercancía
 - [ ] Ajustes de inventario
-- [ ] Alertas de bajo stock
-- [ ] Categorías de productos
-- [ ] Códigos de barras
+- [ ] Categorías y niveles mínimo/máximo configurables
+- [x] Códigos de barras
+- [ ] Recepción de facturas de proveedores y movimientos auditables
 
 ### **FASE 6 - Sistema de Pagos Online**
 ```
@@ -168,11 +207,12 @@ ESFUERZO: 8-10 horas
 PRIORIDAD: MEDIA
 ESFUERZO: 4-5 horas
 ```
-- [ ] CRUD de empleados
-- [ ] Asignación de roles (Admin, Jefe, Cajero)
-- [ ] Permisos por rol
+- [x] CRUD básico de empleados
+- [x] Asignación de roles (Admin, Jefe, Cajero)
+- [x] Permisos por rol en la interfaz
 - [ ] Historial de acceso
-- [ ] Cambio de contraseña
+- [x] Cambio de contraseña mediante recuperación de Firebase
+- [ ] Validación definitiva de claims y reglas por UID
 
 ### **FASE 8 - Sistema de Cotizaciones Avanzado**
 ```
@@ -191,9 +231,9 @@ ESFUERZO: 4-5 horas
 PRIORIDAD: BAJA
 ESFUERZO: 6-8 horas
 ```
-- [ ] Reporte de ventas por período
-- [ ] Reporte de deudas por cliente
-- [ ] Reporte de caja
+- [x] Consultas iniciales de ventas, deudas, caja e inventario
+- [ ] Reporte de ventas por período con exportación
+- [ ] Reporte de deudas por cliente con exportación
 - [ ] Análisis de rentabilidad
 - [ ] Exportar a Excel/PDF
 - [ ] Gráficos estadísticos
@@ -203,6 +243,8 @@ ESFUERZO: 6-8 horas
 PRIORIDAD: BAJA
 ESFUERZO: 3-4 horas
 ```
+- [x] Configuración de comprobantes y numeración
+- [x] Configuración inicial del bot y catálogo offline
 - [ ] Configuración de negocio (nombre, RNC, dirección)
 - [ ] Configurar impuestos (ITBIS)
 - [ ] Configurar métodos de pago
@@ -220,15 +262,15 @@ ESFUERZO: 3-4 horas
 4. [ ] Arreglar relacionamiento UID en deudas_clientes
 
 ### **Día 3-4: Recuperación de Contraseña**
-1. [ ] Agregar botón en login
-2. [ ] Implementar Firebase sendPasswordResetEmail
-3. [ ] Página de reset de contraseña
-4. [ ] Validaciones
+1. [x] Agregar botón en login
+2. [x] Implementar Firebase sendPasswordResetEmail
+3. [x] Página de reset de contraseña
+4. [x] Validaciones
 
 ### **Día 5: Panel de Perfil Básico**
-1. [ ] Nueva ruta: /perfil.html
-2. [ ] Mostrar datos del cliente
-3. [ ] Opción de editar datos básicos
+1. [x] Nueva ruta: /perfil.html
+2. [x] Mostrar datos del cliente
+3. [x] Opción de editar datos básicos
 4. [ ] Mostrar historial de cotizaciones
 
 ---
@@ -375,8 +417,8 @@ Pendiente Agregar:
 - [x] Clientes pueden hacer cotizaciones
 - [x] Sistema ve deudas del cliente
 - [x] Empleados registran ventas
-- [ ] Recuperación de contraseña funcional
-- [ ] Panel de perfil básico
+- [x] Recuperación de contraseña funcional
+- [x] Panel de perfil básico
 - [ ] Reportes de ventas diarias
 
 ### **v1.0 (Producción)**
@@ -393,7 +435,7 @@ Pendiente Agregar:
 - **Repositorio:** https://github.com/supermarian/sistema-ventas
 - **Rama actual:** main
 - **Último commit:** feat: verificación de email y mejoras visuales
-- **Siguiente milestone:** Recuperación de contraseña
+- **Siguiente milestone:** Historial de cotizaciones y validación con cuentas reales
 
 ---
 

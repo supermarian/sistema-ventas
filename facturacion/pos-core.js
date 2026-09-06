@@ -1,5 +1,5 @@
 import { 
-    collection, addDoc, getDocs, query, where, 
+    collection, addDoc, getDoc, getDocs, query, where,
     updateDoc, doc, increment, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -48,11 +48,16 @@ export const POSCore = {
     },
 
     // 5. Operaciones con Base de Datos (Firebase)
-    obtenerUsuario: async (db, email) => {
+    obtenerUsuario: async (db, email, uid) => {
         try {
+            if (uid) {
+                const perfilPorUid = await getDoc(doc(db, "usuarios", uid));
+                if (perfilPorUid.exists()) return { id: perfilPorUid.id, ...perfilPorUid.data() };
+            }
             const q = query(collection(db, "usuarios"), where("email", "==", email));
             const snap = await getDocs(q);
-            return !snap.empty ? { id: snap.docs[0].id, ...snap.docs[0].data() } : null;
+            const perfil = snap.docs.find(documento => documento.data().uid === uid) || snap.docs[0];
+            return perfil ? { id: perfil.id, ...perfil.data() } : null;
         } catch (e) {
             console.error("Error obteniendo usuario:", e);
             return null;

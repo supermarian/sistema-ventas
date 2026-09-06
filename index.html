@@ -33,11 +33,12 @@
         Entrar con Google
     </button>
     <a href="cliente.html" style="display:block;margin-top:18px;color:#1a73e8;font-weight:bold;text-decoration:none">👤 Soy cliente / Crear cuenta</a>
+    <p id="estadoAcceso" style="min-height:18px;color:#b42318;font-size:13px"></p>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     // Importamos Firestore para verificar el rol
     import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -53,29 +54,53 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const estadoAcceso = document.getElementById('estadoAcceso');
+    let procesandoAcceso = false;
+
+    function mostrarErrorAcceso(error) {
+        console.error('Error durante el acceso:', error);
+        estadoAcceso.innerText = `No se pudo completar el acceso: ${error?.message || 'verifica tu conexión y permisos.'}`;
+    }
 
     // FUNCIÓN PARA VERIFICAR SI EL USUARIO EXISTE EN TU LISTA DE PERSONAL
     async function verificarAccesoYRedirigir(email) {
+        if (procesandoAcceso) return;
+        procesandoAcceso = true;
         const usuario = auth.currentUser;
-        const token = await usuario.getIdTokenResult();
-        const perfilEmpleado = await getDocs(query(collection(db, "usuarios"), where("email", "==", email)));
-        const datosEmpleado = perfilEmpleado.empty ? {} : perfilEmpleado.docs[0].data();
-        const rol = token.claims.rol || datosEmpleado.rol;
-        if (rol && rol !== 'Cliente') {
-            localStorage.setItem("userRol", rol);
-            localStorage.setItem("userName", datosEmpleado.nombre || usuario.displayName || email);
-            localStorage.setItem("userPermisos", JSON.stringify(datosEmpleado.permisos || {}));
-            window.location.href = "menu.html";
-            return;
+        try {
+            if (!usuario) return;
+            const token = await usuario.getIdTokenResult(true);
+            const perfilEmpleado = await getDocs(query(collection(db, "usuarios"), where("email", "==", email)));
+            const datosEmpleado = perfilEmpleado.empty ? {} : perfilEmpleado.docs[0].data();
+            const rol = token.claims.rol || datosEmpleado.rol;
+            if (rol && rol !== 'Cliente') {
+                localStorage.setItem("userRol", rol);
+                localStorage.setItem("userName", datosEmpleado.nombre || usuario.displayName || email);
+                localStorage.setItem("userPermisos", JSON.stringify(datosEmpleado.permisos || {}));
+                window.location.href = "menu.html";
+                return;
+            }
+            const perfil = await getDocs(query(collection(db, "clientes"), where("uid", "==", usuario.uid)));
+            if (!perfil.empty) {
+                window.location.href = 'cliente.html';
+                return;
+            }
+            throw new Error('Tu cuenta de Google no tiene un perfil autorizado en el sistema.');
+        } catch (error) {
+            procesandoAcceso = false;
+            throw error;
         }
-        const perfil = await getDocs(query(collection(db, "clientes"), where("uid", "==", usuario.uid)));
-        if (!perfil.empty) {
-            window.location.href = 'cliente.html';
-            return;
-        }
-        alert("Acceso denegado: tu cuenta no tiene un perfil autorizado.");
-        await auth.signOut();
     }
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) verificarAccesoYRedirigir(user.email).catch(mostrarErrorAcceso);
+    });
+
+    getRedirectResult(auth)
+        .then((result) => {
+            if (result?.user) return verificarAccesoYRedirigir(result.user.email);
+        })
+        .catch((error) => mostrarErrorAcceso(error));
 
     // ENTRAR CON CLAVE
     document.getElementById('btnManual').addEventListener('click', () => {
@@ -83,20 +108,24 @@
         const pass = document.getElementById('pass').value;
         
         signInWithEmailAndPassword(auth, email, pass)
-            .then((userCredential) => {
-                verificarAccesoYRedirigir(userCredential.user.email);
-            })
-            .catch((error) => { alert("Error: Usuario o clave incorrectos"); });
+            .then((userCredential) => verificarAccesoYRedirigir(userCredential.user.email))
+            .catch((error) => mostrarErrorAcceso(error));
     });
 
     // ENTRAR CON GOOGLE
     const provider = new GoogleAuthProvider();
     document.getElementById('loginBtn').addEventListener('click', () => {
+        estadoAcceso.innerText = 'Abriendo Google...';
         signInWithPopup(auth, provider)
-            .then((result) => {
-                verificarAccesoYRedirigir(result.user.email);
+            .then((result) => verificarAccesoYRedirigir(result.user.email))
+            .catch((error) => {
+                if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(error.code)) {
+                    estadoAcceso.innerText = 'Usando redirección de Google...';
+                    return signInWithRedirect(auth, provider);
+                }
+                mostrarErrorAcceso(error);
             })
-            .catch((err) => { alert("Error con Google: " + err.message); });
+            .catch((error) => mostrarErrorAcceso(error));
     });
 </script>
 

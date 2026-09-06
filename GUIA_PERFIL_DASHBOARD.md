@@ -40,12 +40,9 @@ Tabla mostrando:
 - Botón Ver detalles
 
 #### **4. Mis Compras/Facturas**
-Tabla con:
-- Número de factura
-- Fecha
-- Cantidad de productos
-- Monto total
-- Estado (Pagada)
+**Estado actual:** pendiente de completar en el portal.
+
+La estructura está contemplada, pero la pantalla todavía no debe considerarse una consulta completa de facturas hasta validar la colección `ventas_realizadas`, sus permisos y el filtro por UID.
 
 #### **5. Mis Deudas**
 Tabla con:
@@ -57,8 +54,8 @@ Tabla con:
 ### **Funcionalidades:**
 - ✅ Ver y editar datos personales
 - ✅ Ver histórico de cotizaciones
-- ✅ Ver facturas de compras
-- ✅ Ver deudas con color rojo si vencidas
+- ⚠️ Ver facturas de compras: pendiente de completar
+- ⚠️ Ver deudas: disponible según la colección y permisos configurados
 - ✅ Guardar cambios automáticamente
 
 ### **Datos que se sincronizan:**
@@ -152,8 +149,8 @@ Carga: datosCliente ← colección 'clientes' (uid)
        ↓
 Muestra:
   ├─ Cotizaciones ← 'cotizaciones' (uidCliente)
-  ├─ Facturas ← 'ventas_realizadas' (uidCliente)
-  └─ Deudas ← 'deudas_clientes' (idCliente = uid)
+       ├─ Facturas ← 'ventas_realizadas' (pendiente de validar en portal)
+       └─ Deudas ← 'deudas_clientes' (UID o relación configurada)
        ↓
 Cliente edita datos
        ↓
@@ -179,7 +176,7 @@ Procesa datos:
   ├─ Top clientes
   └─ Deudas vencidas (alerta)
        ↓
-Renderiza dashboards con Chart.js
+Renderiza dashboards con Chart.js al cargar o recargar la página
 ```
 
 ---
@@ -190,6 +187,7 @@ Renderiza dashboards con Chart.js
 - ✅ Solo ve datos propios (filtrado por uid)
 - ✅ Email no editable
 - ✅ Redirige a login si no autenticado
+- ✅ El menú administrativo cierra la sesión Firebase antes de volver al login
 
 ### **Dashboard:**
 - ✅ Solo Admin/Jefe pueden acceder

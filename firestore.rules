@@ -7,17 +7,46 @@ service cloud.firestore {
     }
 
     function empleado() {
-      return autenticado() && request.auth.token.rol in ['Administrador', 'Jefe', 'Cajero', 'Consultor', 'Contador'];
+      return autenticado() && (
+        request.auth.token.rol in ['Administrador', 'Jefe', 'Cajero', 'Consultor', 'Contador']
+        || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'Jefe', 'Cajero', 'Consultor', 'Contador'])
+        || (exists(/databases/$(database)/documents/accesos_admin/$(request.auth.uid))
+          && get(/databases/$(database)/documents/accesos_admin/$(request.auth.uid)).data.activo == true)
+      );
     }
 
     function administradorOJefe() {
-      return autenticado() && request.auth.token.rol in ['Administrador', 'Jefe'];
+      return autenticado() && (
+        request.auth.token.rol in ['Administrador', 'Jefe']
+        || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'Jefe'])
+        || (exists(/databases/$(database)/documents/accesos_admin/$(request.auth.uid))
+          && get(/databases/$(database)/documents/accesos_admin/$(request.auth.uid)).data.activo == true)
+      );
+    }
+
+    function administradorOJefePorToken() {
+      return autenticado() && (
+        request.auth.token.admin == true || request.auth.token.rol in ['Administrador', 'Jefe']
+        || (exists(/databases/$(database)/documents/accesos_admin/$(request.auth.uid))
+          && get(/databases/$(database)/documents/accesos_admin/$(request.auth.uid)).data.activo == true)
+      );
+    }
+
+    function accesoAdministrativo() {
+      return administradorOJefePorToken();
     }
 
     // Preparado para cuando cada documento usuarios/{uid} tenga el rol.
     function administrador() {
-      return autenticado()
-        && (request.auth.token.admin == true || request.auth.token.rol == 'Administrador');
+      return autenticado() && (
+        request.auth.token.admin == true || request.auth.token.rol == 'Administrador'
+        || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'Administrador')
+        || (exists(/databases/$(database)/documents/accesos_admin/$(request.auth.uid))
+          && get(/databases/$(database)/documents/accesos_admin/$(request.auth.uid)).data.activo == true)
+      );
     }
 
     function gestorPrecios() {
@@ -25,6 +54,8 @@ service cloud.firestore {
         request.auth.token.admin == true
         || request.auth.token.rol == 'Administrador'
         || request.auth.token.rol == 'Jefe'
+        || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'Jefe'])
       );
     }
 
@@ -39,8 +70,13 @@ service cloud.firestore {
     }
 
     match /usuarios/{usuarioId} {
-      allow read: if administrador() || (empleado() && resource.data.email == request.auth.token.email);
+      allow read: if accesoAdministrativo() || (autenticado() && resource.data.email == request.auth.token.email);
       allow create, update, delete: if administrador();
+    }
+
+    match /accesos_admin/{usuarioId} {
+      allow read: if autenticado() && request.auth.uid == usuarioId;
+      allow write: if request.auth.token.admin == true || request.auth.token.rol == 'Administrador';
     }
 
     match /productos/{productoId} {
@@ -65,6 +101,21 @@ service cloud.firestore {
     match /ventas_realizadas/{ventaId} {
       allow read: if empleado() || (autenticado() && resource.data.uidCliente == request.auth.uid);
       allow create: if empleado();
+      allow update: if administradorOJefe()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'tipoComprobante', 'nroFactura', 'fecha', 'cliente', 'total',
+          'ultimaCorreccionId', 'ultimaCorreccionPor', 'ultimaCorreccionEn'
+        ])
+        && request.resource.data.ultimaCorreccionPor == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /correcciones_facturas/{correccionId} {
+      allow read: if administradorOJefe();
+      allow create: if administradorOJefe()
+        && request.resource.data.usuarioUid == request.auth.uid
+        && request.resource.data.motivo is string
+        && request.resource.data.motivo.size() > 0;
       allow update, delete: if false;
     }
 
@@ -78,11 +129,11 @@ service cloud.firestore {
       allow create: if autenticado() && request.resource.data.uidCliente == request.auth.uid;
       allow read: if autenticado() && (
         resource.data.uidCliente == request.auth.uid || request.auth.token.admin == true
-        || request.auth.token.rol == 'Administrador' || request.auth.token.rol == 'Jefe'
+        || administradorOJefe()
       );
       allow update: if autenticado() && (
         resource.data.uidCliente == request.auth.uid || request.auth.token.admin == true
-        || request.auth.token.rol == 'Administrador' || request.auth.token.rol == 'Jefe'
+        || administradorOJefe()
       );
       allow delete: if false;
     }
@@ -144,9 +195,7 @@ service cloud.firestore {
 
     match /configuracion-sistema/{configuracionId} {
       allow read: if autenticado();
-      allow write: if autenticado() && (
-        request.auth.token.admin == true || request.auth.token.rol == 'Administrador'
-      );
+      allow write: if administradorOJefe();
     }
 
     match /configuracion-sistema/comprobantes {

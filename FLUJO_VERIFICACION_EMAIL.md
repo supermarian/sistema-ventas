@@ -174,12 +174,23 @@ Usar Cloud Functions + SendGrid para:
 Costo: ~$29/mes SendGrid
 ```
 
-### **Fase 3: Recuperación de Contraseña**
+### **Fase 3: Recuperación de Contraseña** ✅ IMPLEMENTADA
 ```
 Agregar botón: "¿Olvidaste tu contraseña?"
 - Firebase Auth envía email de reset
 - Usuario elige contraseña nueva
 ```
+
+La recuperación está disponible desde `index.html` y utiliza `reset-password.html` con Firebase Authentication.
+
+## 🔐 ESTADO ACTUAL DEL ACCESO
+
+- [x] Login con email y contraseña para empleados y clientes.
+- [x] Login con Google con alternativa de redirección.
+- [x] Redirección por rol hacia el menú administrativo o el portal de cliente.
+- [x] Recuperación de contraseña.
+- [x] Cierre de sesión real desde el menú, con regreso al login para cambiar de cuenta.
+- [ ] Validar todos los flujos con cuentas reales y reglas publicadas en Firebase.
 
 ---
 

@@ -151,7 +151,7 @@ header {
 <header>
   <div style="display:flex;gap:12px;align-items:center">
     <div style="font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:10px">🛒 SÚPER MARIAN</div>
-    <div id="nro-factura-display" class="fac-badge">FAC-000000</div>
+    <div id="nro-factura-display" class="fac-badge">B0200000001</div>
     <div id="txt-status" class="status-pill" style="background:var(--rojo); margin-left:8px">SISTEMA CERRADO</div>
         <label class="modo-offline" title="Guarda la venta localmente y la sincroniza después">
             <input type="checkbox" id="modoOffline" autocomplete="off">
@@ -583,7 +583,7 @@ header {
         carrito: JSON.parse(localStorage.getItem('marian_pos_cart')) || [],
         userDB: null,
         clienteSeleccionado: JSON.parse(localStorage.getItem('marian_pos_client')) || null,
-        nroFactura: "FAC-000000",
+        nroFactura: "B0200000001",
         tempProd: null,
         cotizacionSeleccionada: null,
         permitirStockNegativo: false,
@@ -591,28 +591,28 @@ header {
     };
     window.puedeEditarPrecios = false;
     const comprobantesBase = [
-        { codigo: 'B02', descripcion: 'Factura de consumidor final', activo: true, siguienteNumero: 1 },
-        { codigo: 'B01', descripcion: 'Factura de credito fiscal', activo: false, siguienteNumero: 1 },
-        { codigo: 'B03', descripcion: 'Nota de debito', activo: false, siguienteNumero: 1 },
-        { codigo: 'B04', descripcion: 'Nota de credito', activo: false, siguienteNumero: 1 },
-        { codigo: 'B13', descripcion: 'Factura de regimen especial', activo: false, siguienteNumero: 1 },
-        { codigo: 'B14', descripcion: 'Factura gubernamental', activo: false, siguienteNumero: 1 },
-        { codigo: 'B15', descripcion: 'Factura de exportacion', activo: false, siguienteNumero: 1 },
-        { codigo: 'B16', descripcion: 'Factura de compras', activo: false, siguienteNumero: 1 },
-        { codigo: 'E31', descripcion: 'e-CF de credito fiscal', activo: false, siguienteNumero: 1 },
-        { codigo: 'E32', descripcion: 'e-CF de consumidor final', activo: false, siguienteNumero: 1 },
-        { codigo: 'E33', descripcion: 'e-CF nota de debito', activo: false, siguienteNumero: 1 },
-        { codigo: 'E34', descripcion: 'e-CF nota de credito', activo: false, siguienteNumero: 1 },
-        { codigo: 'E41', descripcion: 'e-CF de compras', activo: false, siguienteNumero: 1 },
-        { codigo: 'E43', descripcion: 'e-CF gubernamental', activo: false, siguienteNumero: 1 },
-        { codigo: 'E44', descripcion: 'e-CF de exportacion', activo: false, siguienteNumero: 1 },
-        { codigo: 'E45', descripcion: 'e-CF de regimen especial', activo: false, siguienteNumero: 1 },
-        { codigo: 'E46', descripcion: 'e-CF para consumidor final especial', activo: false, siguienteNumero: 1 }
+        { codigo: 'B02', descripcion: 'Factura de consumidor final', grupo: 'Caja', activo: true, siguienteNumero: 1 },
+        { codigo: 'B01', descripcion: 'Factura de credito fiscal', grupo: 'Caja', activo: false, siguienteNumero: 1 },
+        { codigo: 'B03', descripcion: 'Nota de debito', grupo: 'Devoluciones y notas', activo: false, siguienteNumero: 1 },
+        { codigo: 'B04', descripcion: 'Nota de credito', grupo: 'Devoluciones y notas', activo: false, siguienteNumero: 1 },
+        { codigo: 'B13', descripcion: 'Factura de regimen especial', grupo: 'Caja', activo: false, siguienteNumero: 1 },
+        { codigo: 'B14', descripcion: 'Factura gubernamental', grupo: 'Caja', activo: false, siguienteNumero: 1 },
+        { codigo: 'B15', descripcion: 'Factura de exportacion', grupo: 'Caja', activo: false, siguienteNumero: 1 },
+        { codigo: 'B16', descripcion: 'Factura de compras', grupo: 'Compras / recepcion', activo: false, siguienteNumero: 1 },
+        { codigo: 'E31', descripcion: 'e-CF de credito fiscal', grupo: 'Caja', activo: false, siguienteNumero: 1 },
+        { codigo: 'E32', descripcion: 'e-CF de consumidor final', grupo: 'Caja', activo: false, siguienteNumero: 1 },
+        { codigo: 'E33', descripcion: 'e-CF nota de debito', grupo: 'Devoluciones y notas', activo: false, siguienteNumero: 1 },
+        { codigo: 'E34', descripcion: 'e-CF nota de credito', grupo: 'Devoluciones y notas', activo: false, siguienteNumero: 1 },
+        { codigo: 'E41', descripcion: 'e-CF de compras', grupo: 'Compras / recepcion', activo: false, siguienteNumero: 1 },
+        { codigo: 'E43', descripcion: 'e-CF gubernamental', grupo: 'Caja', activo: false, siguienteNumero: 1 },
+        { codigo: 'E44', descripcion: 'e-CF de exportacion', grupo: 'Caja', activo: false, siguienteNumero: 1 },
+        { codigo: 'E45', descripcion: 'e-CF de regimen especial', grupo: 'Caja', activo: false, siguienteNumero: 1 },
+        { codigo: 'E46', descripcion: 'e-CF para consumidor final especial', grupo: 'Caja', activo: false, siguienteNumero: 1 }
     ];
     const cargarTiposComprobante = async () => {
         const snap = await getDoc(doc(db, 'configuracion-sistema', 'comprobantes'));
         const guardados = snap.exists() ? snap.data().tipos || [] : [];
-        state.tiposComprobante = comprobantesBase.map(base => ({ ...base, ...guardados.find(item => item.codigo === base.codigo) })).filter(item => item.activo);
+        state.tiposComprobante = comprobantesBase.map(base => ({ ...base, ...guardados.find(item => item.codigo === base.codigo) })).filter(item => item.activo && (item.grupo || 'Caja') === 'Caja');
         if (!state.tiposComprobante.length) state.tiposComprobante = [comprobantesBase[0]];
         const selector = document.getElementById('tipoComprobante');
         selector.innerHTML = state.tiposComprobante.map(item => `<option value="${item.codigo}">${item.codigo} - ${item.descripcion}</option>`).join('');
@@ -1897,13 +1897,18 @@ document.addEventListener('keydown', (e) => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             document.getElementById('emailCajeroApertura').innerText = user.email;
-            state.userDB = await POSCore.obtenerUsuario(db, user.email);
+            state.userDB = await POSCore.obtenerUsuario(db, user.email, user.uid);
             sincronizarCatalogoDiario();
             try { await cargarTiposComprobante(); } catch (error) { console.error('No se pudo cargar comprobantes:', error); }
             const configuracionStock = await getDoc(doc(db, 'configuracion-sistema', 'inventario'));
             state.permitirStockNegativo = configuracionStock.exists() && configuracionStock.data().permitirStockNegativo === true;
             window.puedeEditarPrecios = ['Administrador', 'Jefe'].includes(state.userDB?.rol);
-            if (state.userDB) document.getElementById('nombreCajeroApertura').innerText = state.userDB.nombre;
+            if (state.userDB) {
+                document.getElementById('nombreCajeroApertura').innerText = state.userDB.nombre || user.email;
+            } else {
+                document.getElementById('nombreCajeroApertura').innerText = 'Perfil de cajero no encontrado';
+                console.error('No se encontró el perfil del cajero en usuarios/{uid}.', { uid: user.uid, email: user.email });
+            }
             if (state.clienteSeleccionado) window.seleccionarCliente(state.clienteSeleccionado);
             if (navigator.onLine) iniciarEscuchaCotizaciones();
             await sincronizarVentasOffline();

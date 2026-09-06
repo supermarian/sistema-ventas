@@ -6,7 +6,10 @@
     <style>
         /* --- ESTILOS GENERALES --- */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        header { background: #1a73e8; color: white; width: 100%; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        header { background: #1a73e8; color: white; width: 100%; padding: 14px 20px; text-align: center; font-size: 24px; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: relative; box-sizing: border-box; }
+        .header-actions { position: absolute; top: 50%; right: 20px; transform: translateY(-50%); display: flex; gap: 8px; }
+        .header-action { border: 1px solid rgba(255,255,255,.7); background: rgba(0,0,0,.12); color: white; border-radius: 7px; padding: 8px 11px; cursor: pointer; font-weight: 700; }
+        .header-action:hover { background: rgba(0,0,0,.28); }
         .welcome { margin-top: 20px; text-align: center; color: #333; }
         
         /* --- PARTE A: EL ESTILO DEL AVISO --- */
@@ -44,12 +47,17 @@
         .quick-result { display:flex; justify-content:space-between; gap:12px; padding:10px; border-bottom:1px solid #eee; cursor:pointer; }
         .quick-result:last-child { border-bottom:0; }
         .quick-result:hover { background:#f1f7ff; }
-        @media(max-width:600px) { .grid-menu { grid-template-columns:1fr; } .quick-grid { grid-template-columns:1fr; } }
+        @media(max-width:600px) { header { padding-right:150px; font-size:18px; } .header-actions { right:10px; } .header-action { padding:7px 8px; font-size:12px; } .grid-menu { grid-template-columns:1fr; } .quick-grid { grid-template-columns:1fr; } }
     </style>
 </head>
 <body>
 
-<header>🛒 Súper Marian - Panel Principal</header>
+<header>
+    🛒 Súper Marian - Panel Principal
+    <div class="header-actions">
+        <button id="configuracionSuperior" class="header-action" type="button" title="Abrir configuracion">⚙️ Configuración</button>
+    </div>
+</header>
 
 <div class="welcome">
     <h2 id="saludo">Cargando...</h2>
@@ -99,6 +107,9 @@
     </div>
     <div class="menu-card" id="btnConfiguracion" data-acceso="configuracion" onclick="navegar('configuracion.html', ['Administrador','Jefe'])">
         <span>⚙️</span> <h3>Configuración</h3> <p>Comprobantes y numeración</p>
+    </div>
+    <div class="menu-card" id="btnCorreccionesFacturas" data-acceso="correcciones" onclick="navegar('facturacion/correcciones.html', ['Administrador','Jefe'])">
+        <span>↩️</span> <h3>Devoluciones y notas</h3> <p>Devoluciones y correcciones administrativas auditadas</p>
     </div>
 
 </div>
@@ -162,7 +173,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
     import { getFirestore, collection, onSnapshot, addDoc, doc, getDoc, updateDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -181,10 +192,25 @@
     const functions = getFunctions(app, 'us-central1');
     let productosCache = [];
 
-    const userRol = localStorage.getItem("userRol");
-    const userName = localStorage.getItem("userName");
+    const userRolGuardado = localStorage.getItem("userRol");
+    const userNameGuardado = localStorage.getItem("userName");
 
-    if (!userRol) window.location.href = "index.html";
+    const usuarioAutenticado = await new Promise(resolve => onAuthStateChanged(auth, resolve));
+    if (!usuarioAutenticado) {
+        window.location.href = "index.html";
+        throw new Error('Sesión no disponible');
+    }
+    const tokenActual = await usuarioAutenticado.getIdTokenResult(true);
+    const userRol = tokenActual.claims.rol || userRolGuardado;
+    const userName = usuarioAutenticado.displayName || userNameGuardado || usuarioAutenticado.email;
+    const tieneClaimEmpleado = Boolean(tokenActual.claims.rol || tokenActual.claims.admin === true);
+    if (!userRol) {
+        localStorage.removeItem('userRol');
+        window.location.href = "index.html";
+        throw new Error('Rol no disponible');
+    }
+    localStorage.setItem('userRol', userRol);
+    localStorage.setItem('userName', userName);
 
     document.getElementById('saludo').innerText = `¡Hola, ${userName}!`;
     document.getElementById('rolText').innerText = `Rango: ${userRol}`;
@@ -215,9 +241,9 @@
         return Number.isNaN(fecha.getTime()) ? null : fecha;
     };
 
-    onSnapshot(query(collection(db, "deudas_clientes"), where("estado", "==", "PENDIENTE")), (snapshot) => {
-        const vencidos = snapshot.docs
-            .map(documento => documento.data())
+    const mostrarCreditosVencidos = documentos => {
+        const vencidos = documentos
+            .map(documento => documento.data ? documento.data() : documento)
             .filter(credito => {
                 const vencimiento = convertirFecha(credito.fechaVencimiento);
                 return vencimiento && vencimiento < new Date();
@@ -229,27 +255,43 @@
         } else {
             aviso.style.display = "none";
         }
-    });
+    };
+    let deudasNuevas = [];
+    let deudasAntiguas = [];
+    const actualizarAvisoCreditos = () => mostrarCreditosVencidos([...deudasNuevas, ...deudasAntiguas]);
+    if (tieneClaimEmpleado) {
+        onSnapshot(query(collection(db, "deudas_clientes"), where("estado", "==", "PENDIENTE")), snapshot => {
+            deudasNuevas = snapshot.docs;
+            actualizarAvisoCreditos();
+        }, error => console.warn('Créditos nuevos pendientes de permisos:', error.code));
+    }
+    onSnapshot(collection(db, "clientes_fiado"), snapshot => {
+        deudasAntiguas = snapshot.docs;
+        actualizarAvisoCreditos();
+    }, error => console.error('No se pudieron cargar créditos antiguos:', error));
 
     const permisosPorRol = {
-        Administrador: ['almacen','productos','precios','facturacion','dashboard','reportes','personal','creditos','auditoria','bot','configuracion'],
-        Jefe: ['almacen','productos','precios','facturacion','dashboard','reportes','creditos','auditoria','bot','configuracion'],
+        Administrador: ['almacen','productos','precios','facturacion','dashboard','reportes','personal','creditos','auditoria','bot','configuracion','correcciones'],
+        Jefe: ['almacen','productos','precios','facturacion','dashboard','reportes','creditos','auditoria','bot','configuracion','correcciones'],
         Cajero: ['facturacion'], Consultor: ['reportes','auditoria'], Contador: ['reportes','auditoria']
     };
     let permisosGuardados = {};
     try { permisosGuardados = JSON.parse(localStorage.getItem('userPermisos') || '{}'); } catch (error) { permisosGuardados = {}; }
     const permisos = Object.keys(permisosGuardados).length ? permisosGuardados : Object.fromEntries((permisosPorRol[userRol] || []).map(permiso => [permiso, true]));
+    if (userRol === 'Administrador') permisos.correcciones = true;
     document.querySelectorAll('[data-acceso]').forEach(card => {
         if (permisos[card.dataset.acceso] !== true) card.remove();
     });
-    if (['Administrador', 'Jefe'].includes(userRol)) {
+    document.getElementById('configuracionSuperior').style.display = ['Administrador', 'Jefe'].includes(userRol) ? 'block' : 'none';
+    document.getElementById('configuracionSuperior').onclick = () => navegar('configuracion.html', ['Administrador', 'Jefe']);
+    if (['Administrador', 'Jefe'].includes(userRol) && tieneClaimEmpleado) {
         onSnapshot(query(collection(db, 'cotizaciones'), where('estado', '==', 'PENDIENTE')), snapshot => {
             const badge = document.getElementById('badgeCotizacionesMenu');
             if (!badge) return;
             badge.innerText = String(snapshot.size);
             badge.style.display = snapshot.size ? 'inline-block' : 'none';
             badge.title = snapshot.size ? `${snapshot.size} cotización(es) pendiente(s)` : '';
-        }, error => console.error('No se pudo cargar el contador de cotizaciones:', error));
+        }, error => console.warn('Contador de cotizaciones pendiente de permisos renovados:', error));
     }
 
 
@@ -385,6 +427,10 @@
         }
     };
 
+    if (window.location.hash === '#configuracion-bot') {
+        setTimeout(() => window.abrirConfiguracionBot(), 0);
+    }
+
     window.navegar = (pagina, niveles) => {
         const rolesPermitidos = Array.isArray(niveles) ? niveles : [niveles];
         if (rolesPermitidos.includes(userRol)) {
@@ -394,11 +440,17 @@
         }
     };
 
-    window.cerrarSesion = () => {
+    window.cerrarSesion = async () => {
         const colaOffline = localStorage.getItem('supermarian_offline_queue');
-        localStorage.clear();
-        if (colaOffline) localStorage.setItem('supermarian_offline_queue', colaOffline);
-        window.location.href = "index.html";
+        try {
+            await signOut(auth);
+            localStorage.clear();
+            if (colaOffline) localStorage.setItem('supermarian_offline_queue', colaOffline);
+            window.location.href = "index.html";
+        } catch (error) {
+            console.error('No se pudo cerrar la sesión:', error);
+            alert('No se pudo cerrar la sesión. Revisa tu conexión e inténtalo de nuevo.');
+        }
     };
 </script>
 <script src="offline-status.js"></script>
