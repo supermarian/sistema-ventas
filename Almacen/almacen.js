@@ -23,6 +23,7 @@ let productosCache = [];
 let imagenesProductoActual = [];
 let imagenesNuevas = [];
 let imagenesEliminadas = [];
+let presentacionesProducto = [];
 let lineasRecepcion = [];
 let recepcionValidada = false;
 let modoItbisBloqueado = null;
@@ -41,6 +42,33 @@ const calcularCostosRecepcion = () => {
     });
 };
 
+const renderPresentaciones = () => {
+    const contenedor = document.getElementById('presentacionesProducto');
+    if (!contenedor) return;
+    contenedor.innerHTML = presentacionesProducto.map((presentacion, indice) => `
+        <div style="display:grid;grid-template-columns:1.2fr 1.2fr .8fr .9fr auto;gap:8px;align-items:end;margin:8px 0">
+            <label><small>Nombre</small><input data-presentacion="nombre" data-indice="${indice}" value="${escaparHtml(presentacion.nombre)}" placeholder="Unidad o Caja"></label>
+            <label><small>Código de barra</small><input data-presentacion="codigo" data-indice="${indice}" value="${escaparHtml(presentacion.codigo)}" placeholder="Código único"></label>
+            <label><small>Factor base</small><input data-presentacion="factorConversion" data-indice="${indice}" type="number" min="1" step="1" value="${presentacion.factorConversion}"></label>
+            <label><small>Precio</small><input data-presentacion="precio" data-indice="${indice}" type="number" min="0" step="0.01" value="${presentacion.precio}"></label>
+            <button type="button" onclick="window.quitarPresentacionProducto(${indice})">Quitar</button>
+        </div>`).join('');
+    contenedor.querySelectorAll('[data-presentacion]').forEach(input => input.oninput = event => {
+        const item = presentacionesProducto[Number(event.target.dataset.indice)];
+        const campo = event.target.dataset.presentacion;
+        item[campo] = campo === 'factorConversion' || campo === 'precio' ? Number(event.target.value) : event.target.value.trim();
+    });
+};
+
+window.agregarPresentacionProducto = () => {
+    presentacionesProducto.push({ id: `presentacion-${Date.now()}`, nombre: presentacionesProducto.length ? 'Caja' : 'Unidad', codigo: '', factorConversion: presentacionesProducto.length ? 12 : 1, precio: Number(document.getElementById('preProd').value) || 0 });
+    renderPresentaciones();
+};
+window.quitarPresentacionProducto = indice => {
+    presentacionesProducto.splice(indice, 1);
+    renderPresentaciones();
+};
+
 const prepararAutorizacionMargen = (costo, precio, margen) => {
     const minimo = costo > 0 ? costo * (1 + margen / 100) : 0;
     if (costo <= 0 || precio >= minimo) return null;
@@ -52,6 +80,27 @@ const prepararAutorizacionMargen = (costo, precio, margen) => {
         motivo,
         autorizadoEn: new Date().toISOString()
     };
+};
+
+const presentacionesValidas = () => {
+    const presentaciones = presentacionesProducto.length ? presentacionesProducto : [{
+        id: 'base', nombre: document.getElementById('unidadProd').value || 'Und',
+        codigo: document.getElementById('codBarra').value.trim(), factorConversion: 1,
+        precio: Number(document.getElementById('preProd').value) || 0
+    }];
+    const resultado = presentaciones.map((presentacion, indice) => ({
+        id: presentacion.id || `presentacion-${indice + 1}`,
+        nombre: String(presentacion.nombre || '').trim() || 'Und',
+        codigo: String(presentacion.codigo || '').trim(),
+        factorConversion: Number(presentacion.factorConversion || 1),
+        precio: Number(presentacion.precio || 0)
+    }));
+    if (resultado.some(item => !Number.isInteger(item.factorConversion) || item.factorConversion < 1)) {
+        throw new Error('Cada presentación debe tener un factor entero mayor o igual a 1.');
+    }
+    const codigos = resultado.filter(item => item.codigo).map(item => item.codigo.toLowerCase());
+    if (new Set(codigos).size !== codigos.length) throw new Error('No se puede repetir el código de barras entre presentaciones.');
+    return resultado;
 };
 
 const comprimirImagen = archivo => new Promise((resolve, reject) => {
@@ -401,6 +450,7 @@ window.renderizarTabla = () => {
         listaFinal = productosCache.filter(p => 
             p.nombre.toLowerCase().includes(busq) || 
             (p.codigo && p.codigo.toLowerCase().includes(busq)) || 
+            (Array.isArray(p.presentaciones) && p.presentaciones.some(item => String(item.codigo || '').toLowerCase().includes(busq) || String(item.nombre || '').toLowerCase().includes(busq))) ||
             p.idSecuencial.includes(busq)
         ).sort((a, b) => parseInt(a.idSecuencial) - parseInt(b.idSecuencial));
         info.innerText = `🔍 Encontrados: ${listaFinal.length}`;
@@ -417,11 +467,14 @@ window.renderizarTabla = () => {
         const esInactivo = p.estatus === "INACTIVO";
         const trStyle = esInactivo ? "style='background:#f2f2f2; color:#999;'" : "";
         const badge = esInactivo ? "❌" : "✅";
+        const presentaciones = Array.isArray(p.presentaciones) && p.presentaciones.length
+            ? p.presentaciones.map(item => `${item.nombre || 'Und'}: ${item.codigo || 'S/C'} x${Number(item.factorConversion || item.factor || 1)}`).join(' · ')
+            : `${p.unidad || 'Und'}: ${p.codigo || 'S/C'} x1`;
 
         cuerpo.innerHTML += `
             <tr ${trStyle} onclick="window.cargarEdicion('${p.idDoc}','${p.idSecuencial}','${p.codigo || ''}','${p.referenciaEmpresa || ''}','${p.nombre}',${p.precio},${p.stock},'${p.unidad || 'Und'}','${p.estatus || 'ACTIVO'}')">
                 <td><span class="id-db">${p.idSecuencial}</span></td>
-                <td>${p.codigo || 'S/C'}</td>
+                <td>${escaparHtml(presentaciones)}</td>
                 <td><b>${p.nombre}</b></td>
                 <td>RD$ ${p.precio}</td>
                 <td>${p.stock}</td>
@@ -667,6 +720,7 @@ document.getElementById('btnGuardar').onclick = async () => {
         margenMinimo,
         margenPorcentaje: costoActual > 0 ? ((precio - costoActual) / costoActual) * 100 : 0,
         precio,
+        presentaciones: presentacionesValidas(),
         stock: Number(document.getElementById('stockProd').value) || 0,
         unidad: document.getElementById('unidadProd').value,
         estatus: "ACTIVO", // Siempre se crea activo
@@ -709,6 +763,7 @@ window.actualizarProducto = async () => {
         margenMinimo,
         margenPorcentaje: costoActual > 0 ? ((precioNuevo - costoActual) / costoActual) * 100 : 0,
         precio: precioNuevo,
+        presentaciones: presentacionesValidas(),
         unidad: document.getElementById('unidadProd').value,
         estatus: document.getElementById('estatusProd').value,
         imagenes,
@@ -743,6 +798,10 @@ window.cargarEdicion = (id, idSec, cod, referencia, nom, pre, sto, unidad, est) 
     document.getElementById('costoProd').value = producto?.costoActual ?? 0;
     document.getElementById('margenProd').value = producto?.margenMinimo ?? 2;
     document.getElementById('motivoMargen').value = '';
+    presentacionesProducto = Array.isArray(producto?.presentaciones) && producto.presentaciones.length
+        ? producto.presentaciones.map(item => ({ ...item, factorConversion: Number(item.factorConversion || item.factor || 1) }))
+        : [{ id: 'base', nombre: unidad || 'Und', codigo: cod || '', factorConversion: 1, precio: Number(pre || 0) }];
+    renderPresentaciones();
     document.getElementById('preProd').value = pre;
     document.getElementById('stockProd').value = sto;
     document.getElementById('stockProd').disabled = true;
@@ -779,6 +838,8 @@ function limpiarForm() {
     document.getElementById('preProd').value = "";
     document.getElementById('margenProd').value = "2";
     document.getElementById('motivoMargen').value = "";
+    presentacionesProducto = [];
+    renderPresentaciones();
     document.getElementById('stockProd').value = "";
     document.getElementById('unidadProd').value = "Und";
     document.getElementById('estatusProd').value = "ACTIVO";

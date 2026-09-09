@@ -102,6 +102,7 @@ La ficha de producto debe evolucionar desde los campos actuales (`idSecuencial`,
 - Categoria.
 - Referencia del fabricante o proveedor.
 - Varias fotos opcionales, con una imagen principal y texto alternativo.
+- Varias presentaciones de venta, cada una con código de barras, precio, nombre visible y factor de conversión a la unidad base.
 
 ### Venta, costos e impuestos
 

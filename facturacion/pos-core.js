@@ -8,12 +8,26 @@ export const POSCore = {
     buscarProducto: (productos, termino) => {
         const val = termino.trim().toLowerCase();
         if (!val) return []; 
-        
-        return productos.filter(p => {
-            const codigo = (p.codigo || "").toLowerCase();
-            const nombre = (p.nombre || "").toLowerCase();
-            // Prioriza coincidencia exacta de código (útil para escáner) o coincidencia en nombre
-            return codigo === val || nombre.includes(val);
+
+        return productos.flatMap(producto => {
+            const presentaciones = Array.isArray(producto.presentaciones) && producto.presentaciones.length
+                ? producto.presentaciones
+                : [{ id: 'base', nombre: producto.unidad || 'Und', codigo: producto.codigo || '', factorConversion: 1, precio: producto.precio }];
+            return presentaciones
+                .map(presentacion => ({
+                    ...producto,
+                    codigo: presentacion.codigo || producto.codigo || '',
+                    precio: Number(presentacion.precio ?? producto.precio) || 0,
+                    unidad: presentacion.nombre || producto.unidad || 'Und',
+                    presentacionId: presentacion.id || 'base',
+                    presentacionNombre: presentacion.nombre || producto.unidad || 'Und',
+                    factorConversion: Number(presentacion.factorConversion || presentacion.factor || 1)
+                }))
+                .filter(presentacion => {
+                    const codigo = presentacion.codigo.toLowerCase();
+                    const nombre = `${producto.nombre || ''} ${presentacion.presentacionNombre || ''}`.toLowerCase();
+                    return codigo === val || nombre.includes(val);
+                });
         });
     },
 
@@ -31,6 +45,9 @@ export const POSCore = {
             lineaOrden: nuevoCarrito.length + 1,
             cantidad,
             precio: precioNum,
+            presentacionId: producto.presentacionId || 'base',
+            presentacionNombre: producto.presentacionNombre || producto.unidad || 'Und',
+            factorConversion: Number(producto.factorConversion || 1),
             subtotal: cantidad * precioNum
         });
         return nuevoCarrito;

@@ -37,6 +37,19 @@ const precioPublicadoValido = producto => {
         && (!Number.isFinite(costo) || costo <= 0 || precio >= costo * (1 + margen / 100));
 };
 
+const obtenerFactorPresentacion = (producto, item) => {
+    const presentaciones = Array.isArray(producto.presentaciones) ? producto.presentaciones : [];
+    if (!presentaciones.length) return 1;
+    const presentacion = presentaciones.find(opcion =>
+        (item.presentacionId && opcion.id === item.presentacionId)
+        || (item.codigo && opcion.codigo === item.codigo)
+    );
+    if (!presentacion) throw new HttpsError('failed-precondition', 'La presentación del producto ya no está disponible.');
+    const factor = Number(presentacion.factorConversion || presentacion.factor || 1);
+    if (!Number.isInteger(factor) || factor < 1) throw new HttpsError('failed-precondition', 'El factor de conversión del producto no es válido.');
+    return factor;
+};
+
 const tienePermisoAuditoria = async request => {
     if (!request.auth) return false;
     const perfilSnapshot = await db.collection('usuarios').doc(request.auth.uid).get();
@@ -363,6 +376,7 @@ exports.registrarVentaOffline = onCall(async request => {
             const ultimoNumero = correlativoSnapshot.exists ? Number(correlativoSnapshot.data().ultimoNumeroFactura || 0) : 0;
             const nroFactura = `FAC-${(ultimoNumero + 1).toString().padStart(12, '0')}`;
             const cambiosPrecio = [];
+            const factoresConversion = [];
 
             productosSnapshots.forEach((snapshot, indice) => {
                 if (!snapshot.exists) throw new HttpsError('failed-precondition', `El producto ${venta.items[indice].nombre || 'seleccionado'} no existe.`);
@@ -370,6 +384,8 @@ exports.registrarVentaOffline = onCall(async request => {
                 const cantidad = Number(venta.items[indice].cantidad) || 0;
                 const precioActual = Number(snapshot.data().precio) || 0;
                 const precioVenta = Number(venta.items[indice].precio) || 0;
+                const factorConversion = obtenerFactorPresentacion(snapshot.data(), venta.items[indice]);
+                factoresConversion[indice] = factorConversion;
                 if (!precioPublicadoValido({ ...snapshot.data(), precio: precioVenta })) {
                     throw new HttpsError('failed-precondition', `El precio de ${venta.items[indice].nombre || 'el producto'} no está validado para publicación.`);
                 }
@@ -382,7 +398,7 @@ exports.registrarVentaOffline = onCall(async request => {
                         precioNuevo: precioVenta
                     });
                 }
-                if (cantidad <= 0 || stockActual < cantidad) {
+                if (cantidad <= 0 || stockActual < cantidad * factorConversion) {
                     throw new HttpsError('failed-precondition', `Stock insuficiente para ${venta.items[indice].nombre || 'el producto'}.`);
                 }
             });
@@ -393,7 +409,7 @@ exports.registrarVentaOffline = onCall(async request => {
                 const cantidad = Number(venta.items[indice].cantidad) || 0;
                 const cambio = cambiosPrecio.find(item => item.idProducto === referencias[indice].id);
                 transaction.update(referencias[indice], {
-                    stock: stockActual - cantidad,
+                    stock: stockActual - (cantidad * (factoresConversion[indice] || 1)),
                     ...(cambio ? { precio: cambio.precioNuevo } : {})
                 });
             });

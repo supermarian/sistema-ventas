@@ -976,7 +976,7 @@ header {
         await detenerLectorCodigo();
 
         const resultados = POSCore.buscarProducto(state.productos, codigoNormalizado);
-        const producto = resultados.find(item => String(item.codigo || '').trim() === codigoNormalizado);
+    const producto = resultados.find(item => String(item.codigo || '').trim() === codigoNormalizado);
 
         if (!producto) {
             mostrarEstadoLector(`Código ${codigoNormalizado} no está registrado. Retira el producto y pulsa NUEVO PRODUCTO.`);
@@ -1745,6 +1745,7 @@ window.finalizarVenta = async (metodo) => {
             const documentosProductos = await Promise.all(referenciasProductos.map(referencia => transaction.get(referencia)));
             const cambiosPrecio = [];
             const ventasPosteriores = [];
+            const consumoPorProducto = new Map();
             const puedeAutorizarStockNegativo = state.permitirStockNegativo && state.userDB?.rol === 'Administrador';
             if (state.permitirStockNegativo && !puedeAutorizarStockNegativo) {
                 throw new Error('El Administrador no está autorizado para vender con stock negativo.');
@@ -1753,6 +1754,9 @@ window.finalizarVenta = async (metodo) => {
                 if (!documento.exists()) throw new Error(`El producto ${carritoVenta[indice].nombre || 'seleccionado'} ya no existe.`);
                 const stockActual = Number(documento.data().stock) || 0;
                 const cantidadSolicitada = Number(carritoVenta[indice].cantidad) || 0;
+                const factorConversion = Number(carritoVenta[indice].factorConversion || 1);
+                const unidadesBaseSolicitadas = cantidadSolicitada * factorConversion;
+                consumoPorProducto.set(referenciasProductos[indice].id, (consumoPorProducto.get(referenciasProductos[indice].id) || 0) + unidadesBaseSolicitadas);
                 const precioActual = Number(documento.data().precio) || 0;
                 const precioVenta = Number(carritoVenta[indice].precio) || 0;
                 if (Math.abs(precioVenta - precioActual) > 0.009 && !window.puedeEditarPrecios) {
@@ -1775,7 +1779,14 @@ window.finalizarVenta = async (metodo) => {
                         precioVenta
                     });
                 }
-                if (stockActual < cantidadSolicitada && !puedeAutorizarStockNegativo) throw new Error(`Stock insuficiente para ${carritoVenta[indice].nombre || 'el producto'}. Disponible: ${stockActual}.`);
+                if (stockActual < unidadesBaseSolicitadas && !puedeAutorizarStockNegativo) throw new Error(`Stock insuficiente para ${carritoVenta[indice].nombre || 'el producto'} (${carritoVenta[indice].presentacionNombre || 'presentación'}). Disponible: ${stockActual} unidad(es) base.`);
+            });
+            documentosProductos.forEach((documento, indice) => {
+                if (!documento.exists() || puedeAutorizarStockNegativo || referenciasProductos.findIndex(referencia => referencia.id === referenciasProductos[indice].id) !== indice) return;
+                const consumoTotal = consumoPorProducto.get(referenciasProductos[indice].id) || 0;
+                if (Number(documento.data().stock || 0) < consumoTotal) {
+                    throw new Error(`Stock insuficiente para ${carritoVenta[indice].nombre || 'el producto'} en las presentaciones seleccionadas. Disponible: ${Number(documento.data().stock || 0)} unidad(es) base.`);
+                }
             });
             transaction.set(correlativoRef, { ultimoNumeroFactura: nuevoNumero }, { merge: true });
             transaction.set(secuenciaRef, { siguienteNumero: numeroComprobante + 1, codigo: codigoComprobante, ultimoNumeroGlobal: numeroComprobante }, { merge: true });
@@ -1784,8 +1795,9 @@ window.finalizarVenta = async (metodo) => {
                 transaction.set(correlativoCreditoRef, { ultimoNumeroCredito: nuevoNumeroCredito }, { merge: true });
             }
             documentosProductos.forEach((documento, indice) => {
+                if (referenciasProductos.findIndex(referencia => referencia.id === referenciasProductos[indice].id) !== indice) return;
                 const stockActual = Number(documento.data().stock) || 0;
-                const cantidadSolicitada = Number(carritoVenta[indice].cantidad) || 0;
+                const cantidadSolicitada = consumoPorProducto.get(referenciasProductos[indice].id) || 0;
                 const precioActual = Number(documento.data().precio) || 0;
                 const precioVenta = Number(carritoVenta[indice].precio) || 0;
                 const actualizacion = { stock: stockActual - cantidadSolicitada };

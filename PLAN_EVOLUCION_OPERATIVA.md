@@ -75,6 +75,7 @@ enviara a PhotoRoom por defecto.
 - [x] Captura o seleccion de varias fotos por producto desde Almacen.
 - [x] Compresion WebP, vista previa y almacenamiento protegido en Firebase Storage.
 - [x] Referencias `imagenes[]` con URL, ruta, orden e imagen principal.
+- [x] Presentaciones múltiples por producto con código, nombre, precio y factor de unidad base.
 - [x] Guardar costo actual, margen mínimo y margen calculado en la ficha de producto.
 - [x] Callable `registrarRecepcionCompra` con transaccion, duplicado determinista y movimientos.
 - [x] Conexion inicial del webhook de WhatsApp con el procesador conversacional.
@@ -155,6 +156,7 @@ La recepcion transaccional basica ya existe, pero debe evolucionar a este flujo 
 - Existencia actual y, cuando se defina el modelo, existencia por almacen.
 - Suplidor principal, referencia, ubicacion y parametros de reposicion.
 - Varias imagenes del producto, imagen principal y texto alternativo.
+- Presentaciones de venta con código de barras propio, por ejemplo unidad factor 1 y caja factor 12.
 
 ### Margenes
 

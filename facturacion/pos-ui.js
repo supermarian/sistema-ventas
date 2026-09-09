@@ -46,7 +46,7 @@ export const POSUI = {
             
             return `
                 <tr>
-                    <td>${p.nombre}</td>
+                    <td>${p.nombre}<br><small style="color:#667085">${p.presentacionNombre || p.unidad || 'Und'} · ${p.codigo || 'S/C'}</small></td>
                     <td>${p.cantidad}</td>
                     <td>RD$ ${subtotalVal.toFixed(2)}</td>
                     <td>
