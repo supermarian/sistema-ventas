@@ -33,7 +33,7 @@
 | Productos | Margenes, autorizacion bajo 2%, precio validado para clientes | 6-10 h |
 | Entrada rapida | Escaneo + confirmacion + captura de varias fotos, compresion y almacenamiento seguro | 3-5 h restantes |
 | Sugerencias | Coincidencias por codigo, referencia, nombre, marca, proveedor y unidad con confirmacion humana | 4-8 h |
-| Imagen avanzada | Eliminacion de fondo y comparacion original/resultado | 6-12 h opcionales |
+| Imagen avanzada | Eliminacion de fondo en web y comparacion original/resultado | 6-12 h opcionales |
 | Importacion | Bandeja PDF/CSV, revision de filas, asociacion de imagenes y reporte | 10-18 h |
 | Devoluciones | Modulo separado, transaccion, auditoria y correcciones fiscales separadas | 8-14 h |
 | WhatsApp | Pruebas con numero de prueba, reintentos, duplicados y credenciales | 3-5 h |
@@ -46,7 +46,26 @@
 - Ya se han realizado aproximadamente **25 a 35 horas** de implementacion y analisis en esta iteracion; esos tiempos no se suman al pendiente.
 - Con una dedicacion de 4 horas diarias, el trabajo restante equivale aproximadamente a **12-21 dias laborables** sin fondo avanzado o **13-24 dias** incluyendolo.
 
-La eliminacion de fondo debe mantenerse opcional hasta validar costo, privacidad, calidad y dependencia de un servicio externo. La captura de varias fotos, compresion WebP y almacenamiento seguro ya estan implementados; la integración con PhotoRoom queda lista en código y requiere configurar el secreto y probar calidad/costo antes de activarse en producción.
+La eliminacion de fondo debe mantenerse opcional hasta validar costo, privacidad, calidad y dependencia de un servicio externo. La captura de varias fotos, compresion WebP y almacenamiento seguro ya estan implementados; la integración web con PhotoRoom queda lista en código y requiere configurar el secreto y probar calidad/costo antes de activarse en producción.
+
+### Decision para la app movil
+
+En la app movil el quitar fondo se ejecutara **en el mismo celular**, antes de
+subir la imagen a Firebase Storage. La imagen original y la procesada se
+conservaran como referencias separadas en `imagenes[]`, pero la foto no se
+enviara a PhotoRoom por defecto.
+
+- Usar un modelo/libreria nativa compatible con Android e iOS y procesamiento
+	local, por ejemplo una integracion ONNX/TFLite validada para el tamaño de la
+	app y la memoria disponible.
+- Mostrar progreso y permitir conservar la original si el resultado no es
+	satisfactorio.
+- Procesar una copia comprimida; nunca destruir la foto original.
+- Si el dispositivo no puede procesarla, informar al usuario y dejar la imagen
+	original disponible. El backend web queda como alternativa administrativa,
+	no como requisito de la app movil.
+- Probar rendimiento, consumo de bateria, memoria, modo sin conexion y calidad
+	en equipos de gama baja antes de activarlo para todos.
 
 ## Estado de lo ya implementado
 

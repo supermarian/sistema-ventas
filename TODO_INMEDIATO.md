@@ -5,7 +5,7 @@
 
 ## ESTIMACION ACTUALIZADA
 
-El trabajo pendiente estimado es de **46 a 81 horas** para cerrar el MVP operativo sin eliminacion de fondo, o **52 a 93 horas** si se incluye procesamiento avanzado de imagen e IA. A 4 horas diarias representa aproximadamente **12 a 21 dias laborables**, o **13 a 24 dias** con fondo avanzado.
+El trabajo pendiente estimado es de **46 a 81 horas** para cerrar el MVP operativo sin eliminacion de fondo, o **52 a 93 horas** si se incluye procesamiento avanzado de imagen e IA. Para la app movil, el quitar fondo se planifica localmente en el celular, sin enviar la foto a un servicio externo. A 4 horas diarias representa aproximadamente **12 a 21 dias laborables**, o **13 a 24 dias** con fondo avanzado.
 
 El detalle por bloque y los supuestos estan en [PLAN_EVOLUCION_OPERATIVA.md](PLAN_EVOLUCION_OPERATIVA.md). Estas cifras no incluyen trabajo ya realizado.
 
