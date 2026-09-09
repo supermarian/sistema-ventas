@@ -9,11 +9,12 @@ admin.initializeApp();
 setGlobalOptions({ region: 'us-central1' });
 
 const ROLES = new Set(['Administrador', 'Jefe', 'Cajero', 'Consultor', 'Contador']);
+const PERMISOS = new Set(['almacen', 'recepciones', 'productos', 'precios', 'facturacion', 'dashboard', 'reportes', 'personal', 'creditos', 'auditoria', 'bot', 'configuracion', 'correcciones']);
 const db = admin.firestore();
 const COLECCIONES_COPIA = [
     'clientes', 'clientes_portal', 'deudas_clientes', 'productos', 'usuarios',
     'cotizaciones', 'ventas_realizadas', 'pagos_creditos', 'recepciones_compras',
-    'movimientos_inventario', 'configuracion-sistema', 'configuracion-venta-factura'
+    'movimientos_inventario', 'cierres_caja', 'movimientos_caja', 'configuracion-sistema', 'configuracion-venta-factura'
 ];
 const TELEFONO_WHATSAPP_POR_DEFECTO = '809-573-7989';
 const WHATSAPP_TOKEN = defineSecret('WHATSAPP_TOKEN');
@@ -50,6 +51,10 @@ const esAdministrador = async uid => {
 
 const puedeGestionarCopias = request => request.auth && (
     request.auth.token.admin === true || ['Administrador', 'Jefe'].includes(request.auth.token.rol)
+);
+
+const limpiarPermisos = permisos => Object.fromEntries(
+    [...PERMISOS].map(permiso => [permiso, permisos?.[permiso] === true])
 );
 
 const prepararDatoCopia = dato => {
@@ -128,13 +133,14 @@ exports.asignarRol = onCall(async request => {
         throw new HttpsError('permission-denied', 'Solo un Administrador o Jefe puede gestionar usuarios.');
     }
 
-    const { email, rol, nombre, pin } = request.data || {};
+    const { email, rol, nombre, pin, permisos } = request.data || {};
     if (!email || !ROLES.has(rol)) {
         throw new HttpsError('invalid-argument', 'Correo o rol inválido.');
     }
     if (esJefeSolicitante && !['Cajero', 'Consultor', 'Contador'].includes(rol)) {
         throw new HttpsError('permission-denied', 'Un Jefe solo puede asignar Cajero, Consultor o Contador.');
     }
+    const permisosNormalizados = limpiarPermisos(permisos);
 
     let usuario;
     try {
@@ -173,6 +179,7 @@ exports.asignarRol = onCall(async request => {
             nombre: String(nombre || perfilSnapshot.data()?.nombre || usuario.displayName || usuario.email),
             ...(pin ? { pin: String(pin) } : {}),
             rol,
+            permisos: permisosNormalizados,
             actualizadoEn: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
     });
@@ -211,6 +218,38 @@ exports.guardarConfiguracionWhatsApp = onCall(async request => {
         actualizadoEn: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     return { telefono, telefonoVisible, phoneNumberId, botActivo: request.data?.botActivo === true };
+});
+
+exports.archivarCierreCaja = onCall(async request => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+    if (!['Administrador', 'Jefe'].includes(request.auth.token.rol) && request.auth.token.admin !== true) {
+        throw new HttpsError('permission-denied', 'Solo un Administrador o Jefe puede archivar cierres.');
+    }
+    if (!await tienePermisoAuditoria(request)) {
+        throw new HttpsError('permission-denied', 'Tu usuario no tiene permiso para gestionar auditoría y cierres.');
+    }
+
+    const cierreId = String(request.data?.cierreId || '').trim();
+    const motivo = String(request.data?.motivo || '').trim();
+    if (!cierreId) throw new HttpsError('invalid-argument', 'El cierre es obligatorio.');
+    if (motivo.length > 300) throw new HttpsError('invalid-argument', 'El motivo no puede superar 300 caracteres.');
+
+    const cierreRef = db.collection('cierres_caja').doc(cierreId);
+    const cierreSnapshot = await cierreRef.get();
+    if (!cierreSnapshot.exists) throw new HttpsError('not-found', 'El cierre no existe.');
+    if (cierreSnapshot.data().estado === 'ARCHIVADO') {
+        return { id: cierreId, estado: 'ARCHIVADO' };
+    }
+
+    await cierreRef.update({
+        estado: 'ARCHIVADO',
+        archivadoEn: admin.firestore.FieldValue.serverTimestamp(),
+        archivadoPorUid: request.auth.uid,
+        archivadoPorEmail: request.auth.token.email || '',
+        motivoArchivo: motivo || 'Revisión de cuadre completada'
+    });
+
+    return { id: cierreId, estado: 'ARCHIVADO' };
 });
 
 exports.registrarVentaOffline = onCall(async request => {

@@ -220,6 +220,113 @@ Estado actualizado:
 
 ## Error actual de permisos en Personal, Creditos y Configuracion
 
+### Permisos de módulos desde Usuarios
+
+Los accesos visibles se administran en **Personal/Usuarios**, dentro de las casillas de
+permisos. Al guardar un usuario se conserva el mapa en `usuarios/{UID}.permisos`, y el
+menú lo lee desde Firebase al iniciar sesión. `localStorage` solo queda como respaldo
+visual temporal; no debe considerarse una autorización de seguridad.
+
+Para consultar cuadres, el usuario debe ser `Administrador`, `Jefe`, `Consultor` o
+`Contador`. El acceso temporal `accesos_admin/{UID}` con `activo=true` también
+funciona como acceso administrativo. Administrador y Jefe tienen acceso base a Auditoría y Personal para
+evitar bloquear la gestión de permisos; Consultor y Contador necesitan
+`permisos.auditoria=true`. Para cambiar estados se exige además rol `Administrador`
+o `Jefe`.
+Sin Blaze, esta autorización se valida directamente en las reglas de Firestore.
+
+### Vincular un usuario sin Blaze
+
+1. Entra a Firebase Console > Authentication > Users.
+2. Crea la cuenta del empleado desde **Add user**.
+3. Copia el UID generado.
+4. Entra a **Personal** en la aplicación.
+5. Completa nombre, correo, UID, PIN, rol y permisos.
+6. Pulsa **Guardar perfil y permisos**.
+
+El UID es obligatorio. Esta pantalla no crea cuentas de Authentication ni llama a
+Cloud Functions. Al editar un perfil existente, el UID queda bloqueado para evitar
+vincular por accidente los permisos a otra cuenta.
+
+Para que la persona entre al sistema, debe usar el correo y la contraseña de la
+cuenta creada en **Authentication > Users** desde la página principal. El UID no se
+lo pide la aplicación al iniciar sesión: el UID solo lo usa el Administrador para
+vincular esa cuenta con su perfil, rol y permisos en **Personal**.
+
+### Entrada rápida de producto
+
+**Productos rápidos** ahora se presenta como **Entrada rápida de producto**. Es un
+formulario directo para crear un producto nuevo con código, nombre, precio de venta
+y stock inicial. No realiza búsqueda ni edita productos existentes. La búsqueda y
+edición de productos permanecen en **Almacén**. El permiso utilizado es
+`usuarios/{UID}.permisos.productos`.
+
+### Permiso de Entrada de factura
+
+En **Personal**, el permiso se muestra como **Entrada de factura** y se guarda como
+`usuarios/{UID}.permisos.recepciones`. Administrador y Jefe lo tienen habilitado por
+defecto. Otros roles deben recibirlo explícitamente. El permiso permite consultar
+y guardar borradores; no autoriza todavía aplicar una compra al inventario.
+
+## Estados del cuadre sin Blaze
+
+La especificación completa de la pantalla de cuadre, sus campos, movimientos,
+métodos de pago y fases de implementación está en [GUIA_CUADRE_CAJA.md](GUIA_CUADRE_CAJA.md).
+
+El cierre no se considera aprobado automáticamente. Su flujo es:
+
+`PENDIENTE_REVISION` -> `EN_REVISION` -> `APROBADO` -> `ARCHIVADO`
+
+Si hay una diferencia que debe aclararse, puede pasar a `OBSERVADO` con un motivo.
+La operación vuelve a revisión cuando corresponda antes de archivarse. Firestore
+solo permite las transiciones previstas y conserva el usuario, fecha y motivo de
+cada decisión.
+
+## Publicar permisos y cuadres
+
+Desde la raíz del proyecto, iniciar sesión con una cuenta que tenga acceso IAM al
+proyecto Firebase:
+
+```bash
+npx firebase-tools login
+npx firebase-tools use supermercado-marian
+```
+
+Primero publica la página y las reglas. Esto permite revisar la interfaz aunque
+Cloud Functions todavía no esté habilitado:
+
+```bash
+npx firebase-tools deploy --only "firestore:rules,hosting"
+```
+
+Las funciones son opcionales para este flujo. Sin Blaze, la pantalla de Usuarios
+guarda permisos directamente en `usuarios/{UID}` y Auditoría archiva directamente
+en `cierres_caja`; las reglas de Firestore siguen validando el rol y el permiso.
+Para registrar una cuenta nueva sin Functions, primero créala manualmente en
+Firebase Authentication, copia su UID y escríbelo en el campo UID de Personal.
+
+Si más adelante activas Blaze, puedes publicar las funciones para automatizar la
+sincronización por correo:
+
+```bash
+npx firebase-tools deploy --only "functions:asignarRol,functions:archivarCierreCaja"
+```
+
+Si se intenta publicar funciones en el plan Spark, Firebase mostrará un error
+indicando que Cloud Functions requiere Blaze. Ese error no significa que las
+reglas o Hosting estén dañados; son despliegues independientes.
+
+Comprobar las funciones desplegadas:
+
+```bash
+npx firebase-tools functions:list
+```
+
+Después del despliegue, cerrar sesión y entrar de nuevo para renovar los claims.
+En **Personal**, editar cada usuario y guardar sus casillas de acceso. El permiso
+`Auditoría` controla la consulta y gestión de cuadres; el rol también se valida en
+backend, por lo que ocultar una tarjeta del menú no sustituye la seguridad.
+
 Si el menú muestra `Rango: Administrador` pero la consola muestra `Missing or insufficient permissions`, el rol está solo en `localStorage` o en un documento antiguo. Firestore necesita encontrar el perfil autorizado en `usuarios/{UID}` o en el claim de Firebase Auth.
 
 La solución recomendada es crear el documento `usuarios/{UID}` desde Firebase Console copiando `email`, `nombre`, `rol` y `permisos` del registro antiguo. No se debe abrir la colección completa en las reglas porque contiene PINs. El procedimiento detallado está en [GUIA_MIGRACION_DATOS.md](GUIA_MIGRACION_DATOS.md).

@@ -2321,7 +2321,11 @@ document.addEventListener('keydown', (e) => {
                     diferencia,
                     umbralDiferencia,
                     alertaDiferencia: Math.abs(diferencia) > umbralDiferencia,
-                    totalEnGaveta: montoRealContado
+                    totalEnGaveta: montoRealContado,
+                    estado: 'PENDIENTE_REVISION',
+                    creadoPorUid: auth.currentUser?.uid || '',
+                    creadoPorEmail: auth.currentUser?.email || '',
+                    creadoEn: serverTimestamp()
                 });
                 if (Math.abs(diferencia) > umbralDiferencia) {
                     await addDoc(collection(db, 'alertas_auditoria'), {

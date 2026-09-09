@@ -50,6 +50,9 @@ El primer valor es interno y no se debe editar. El segundo es el numero que pued
 | `recepciones_compras` | Automatico | `idRecepcion` y `numeroFactura` |
 | `movimientos_inventario` | Automatico | `idMovimiento` |
 
+La estructura funcional esperada para aperturas, cierres, movimientos, sucursales,
+cajas y métodos de pago se documenta en [GUIA_CUADRE_CAJA.md](GUIA_CUADRE_CAJA.md).
+
 ### Reglas para estos IDs
 
 - No reutilizar un ID de negocio.
@@ -148,6 +151,12 @@ Al existir `usuarios/{UID}`, las reglas actuales pueden validar el rol aun cuand
 ## Acceso administrativo temporal sin Blaze
 
 Mientras no se pueda asignar el claim mediante Cloud Functions, se puede habilitar temporalmente la cuenta desde una coleccion separada y sin PINs:
+
+Para registrar empleados sin Blaze, la cuenta de inicio de sesión debe crearse
+primero en **Firebase Console > Authentication > Users**. Después copia el UID de
+esa cuenta en el campo **UID de Firebase Authentication** de Personal. La pantalla
+no crea cuentas de Authentication por sí sola ni permite usar únicamente el correo,
+porque eso podría dejar un perfil sin una cuenta real asociada.
 
 1. En Firestore pulsa **Iniciar colección**.
 2. Nombre de la colección:

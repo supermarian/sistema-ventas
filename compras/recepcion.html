@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrada de factura | Súper Marian</title>
+    <style>
+        :root { --blue:#087cf0; --ink:#24313d; --muted:#667085; --line:#d7dee7; --bg:#f3f6f9; --white:#fff; }
+        * { box-sizing:border-box; }
+        body { margin:0; padding:18px; background:var(--bg); color:var(--ink); font-family:Segoe UI, sans-serif; }
+        .shell { width:min(100%, 1180px); margin:auto; }
+        header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; color:white; background:var(--blue); border-radius:8px 8px 0 0; }
+        h1 { margin:0; font-size:clamp(1.15rem, 2vw, 1.7rem); }
+        .back { color:white; text-decoration:none; padding:9px 12px; border:1px solid rgba(255,255,255,.65); border-radius:5px; white-space:nowrap; }
+        main { background:var(--white); padding:clamp(16px, 3vw, 28px); border-radius:0 0 8px 8px; box-shadow:0 4px 16px rgba(25,45,65,.1); }
+        .notice { padding:16px; border-left:4px solid var(--blue); background:#edf6ff; }
+        .grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:22px; }
+        .form-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin:20px 0; }
+        label { display:grid; gap:5px; color:#475467; font-size:.85rem; font-weight:600; }
+        input, select { width:100%; padding:9px; border:1px solid var(--line); border-radius:4px; font:inherit; }
+        .span-2 { grid-column:span 2; }
+        .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
+        button { border:0; border-radius:4px; padding:10px 14px; cursor:pointer; font:inherit; font-weight:600; }
+        .primary { color:white; background:var(--blue); }
+        .secondary { color:#344054; background:#e9eef4; }
+        .disabled { color:#667085; background:#eef2f6; cursor:not-allowed; }
+        .table-wrap { overflow-x:auto; margin-top:18px; }
+        table { width:100%; min-width:850px; border-collapse:collapse; }
+        th, td { padding:9px; border-bottom:1px solid var(--line); text-align:left; font-size:.85rem; }
+        th { color:white; background:var(--blue); }
+        .totals { display:grid; justify-content:end; gap:5px; margin-top:16px; text-align:right; }
+        .totals strong { display:inline-block; min-width:130px; }
+        #estadoRecepcion { min-height:20px; margin:12px 0; color:var(--muted); }
+        .panel { padding:16px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+        .panel h2 { margin:0 0 8px; font-size:1rem; }
+        .panel p { margin:0; color:var(--muted); line-height:1.5; }
+        .steps { margin:22px 0 0; padding:0; list-style:none; display:grid; gap:8px; }
+        .steps li { padding:12px 14px; border:1px solid var(--line); border-radius:5px; background:#fafcfe; }
+        .status { display:inline-block; margin-top:18px; padding:7px 10px; border-radius:4px; color:#6b4b00; background:#fff3cd; font-weight:600; }
+        @media (max-width:700px) { body { padding:8px; } header { align-items:flex-start; flex-direction:column; } .grid, .form-grid { grid-template-columns:1fr; } .span-2 { grid-column:auto; } .back { width:100%; text-align:center; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <header>
+            <h1>📥 Entrada de factura</h1>
+            <a class="back" href="../menu.html">Volver al menú</a>
+        </header>
+        <main>
+            <div class="notice"><strong>Recepción de compras de productos</strong><p>El borrador no modifica existencias. La aplicación al inventario se habilitará después de validar permisos y duplicados.</p></div>
+            <span class="status">BORRADOR: sin impacto en inventario</span>
+            <div class="form-grid">
+                <label class="span-2">Proveedor<input id="proveedorNombre" placeholder="Nombre del proveedor" required></label>
+                <label>Sucursal<select id="sucursal"><option value="principal">Sucursal principal</option></select></label>
+                <label>Almacén<select id="almacen"><option value="principal">Almacén principal</option></select></label>
+                <label>Número de factura<input id="numeroFactura" placeholder="Ej. 10073964" required></label>
+                <label>Fecha de factura<input id="fechaFactura" type="date" required></label>
+                <label>Condición<select id="condicionPago"><option>CONTADO</option><option>CREDITO</option></select></label>
+                <label>Días de vencimiento<input id="diasVencimiento" type="number" min="0" value="0"></label>
+                <label>Comprobante fiscal<input id="comprobanteFiscal" placeholder="Opcional"></label>
+                <label>ITBIS retenido<input id="itbisRetenido" type="number" min="0" step="0.01" value="0"></label>
+                <label>ISR<input id="isr" type="number" min="0" step="0.01" value="0"></label>
+                <label>Flete<input id="flete" type="number" min="0" step="0.01" value="0"></label>
+                <label class="span-2">Notas<textarea id="notas" rows="2" style="resize:vertical;padding:9px;border:1px solid var(--line);border-radius:4px;font:inherit"></textarea></label>
+            </div>
+            <div class="panel"><h2>Agregar producto recibido</h2><div class="form-grid" style="margin:12px 0 0">
+                <label class="span-2">Producto<select id="productoSelect"><option value="">Cargando productos...</option></select></label>
+                <label>Cantidad<input id="cantidad" type="number" min="0.01" step="0.01" value="1"></label>
+                <label>Bonificada<input id="cantidadBonificada" type="number" min="0" step="0.01" value="0"></label>
+                <label>Costo unitario<input id="costoUnitario" type="number" min="0" step="0.01" value="0"></label>
+                <label>Descuento %<input id="descuento" type="number" min="0" max="100" step="0.01" value="0"></label>
+                <label>ITBIS %<input id="tasaItbis" type="number" min="0" max="100" step="0.01" value="18"></label>
+                <button id="btnAgregarLinea" class="primary" type="button">Agregar línea</button>
+            </div></div>
+            <div class="table-wrap"><table><thead><tr><th>Código</th><th>Producto</th><th>Unidad</th><th>Cantidad</th><th>Costo</th><th>Descuento</th><th>ITBIS</th><th>Total</th><th></th></tr></thead><tbody id="lineasBody"></tbody></table></div>
+            <div class="totals"><div>Subtotal bruto: <strong id="subtotalTotal">RD$ 0.00</strong></div><div>Descuentos: <strong id="descuentosTotal">RD$ 0.00</strong></div><div>ITBIS: <strong id="itbisTotal">RD$ 0.00</strong></div><div>Flete: <strong id="fleteTotal">RD$ 0.00</strong></div><div>Total neto: <strong id="totalNeto">RD$ 0.00</strong></div></div>
+            <p id="estadoRecepcion"></p>
+            <div class="actions"><button id="btnGuardarBorrador" class="primary" type="button">Guardar borrador</button><button class="disabled" type="button" disabled>Aplicar al inventario (próximamente)</button><button class="secondary" type="button" onclick="location.href='../menu.html'">Cancelar</button></div>
+        </main>
+    </div>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+        import { getFirestore, collection, getDocs, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        const app = initializeApp({ apiKey:'AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY', authDomain:'supermercado-marian.firebaseapp.com', projectId:'supermercado-marian', storageBucket:'supermercado-marian.firebasestorage.app', messagingSenderId:'627337795444', appId:'1:627337795444:web:e9a4cb48ff164b78477e21' });
+        const auth = getAuth(app); const db = getFirestore(app); let productos = []; let lineas = [];
+        const dinero = valor => `RD$ ${Number(valor || 0).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+        const $ = id => document.getElementById(id);
+        const totales = () => lineas.reduce((total, linea) => { total.bruto += linea.cantidad * linea.costo; total.descuentos += total.bruto ? linea.cantidad * linea.costo * linea.descuento / 100 : 0; total.itbis += (linea.cantidad * linea.costo - linea.cantidad * linea.costo * linea.descuento / 100) * linea.tasaItbis / 100; return total; }, { bruto:0, descuentos:0, itbis:0 });
+        const render = () => { $('lineasBody').innerHTML = lineas.map((linea, indice) => `<tr><td>${linea.codigo || 'S/C'}</td><td>${linea.nombre}</td><td>${linea.unidad || 'Und'}</td><td>${linea.cantidad}</td><td>${dinero(linea.costo)}</td><td>${linea.descuento}%</td><td>${dinero(linea.itbis)}</td><td>${dinero(linea.total)}</td><td><button class="secondary" data-quitar="${indice}" type="button">Quitar</button></td></tr>`).join(''); const total = totales(); $('subtotalTotal').innerText=dinero(total.bruto); $('descuentosTotal').innerText=dinero(total.descuentos); $('itbisTotal').innerText=dinero(total.itbis); $('fleteTotal').innerText=dinero($('flete').value); $('totalNeto').innerText=dinero(total.bruto-total.descuentos+total.itbis+Number($('flete').value||0)); document.querySelectorAll('[data-quitar]').forEach(boton => boton.onclick=()=>{ lineas.splice(Number(boton.dataset.quitar),1); render(); }); };
+        $('productoSelect').onchange = () => { const producto=productos.find(item=>item.id===$('productoSelect').value); if(producto) $('costoUnitario').value=Number(producto.costoActual||producto.costo||0); };
+        $('flete').oninput=render;
+        $('btnAgregarLinea').onclick=()=>{ const producto=productos.find(item=>item.id===$('productoSelect').value); const cantidad=Number($('cantidad').value); const costo=Number($('costoUnitario').value); const descuento=Number($('descuento').value); const tasaItbis=Number($('tasaItbis').value); if(!producto||cantidad<=0||costo<0||descuento<0||tasaItbis<0) return alert('Selecciona un producto y completa valores válidos.'); const bruto=cantidad*costo; const neto=bruto-bruto*descuento/100; lineas.push({...producto,cantidad,cantidadBonificada:Number($('cantidadBonificada').value)||0,costo,descuento,tasaItbis,itbis:neto*tasaItbis/100,total:neto+neto*tasaItbis/100}); render(); };
+        $('btnGuardarBorrador').onclick=async()=>{ const total=totales(); const datos={proveedorNombre:$('proveedorNombre').value.trim(),sucursalId:$('sucursal').value,almacenId:$('almacen').value,numeroFactura:$('numeroFactura').value.trim(),fechaFactura:$('fechaFactura').value,condicionPago:$('condicionPago').value,diasVencimiento:Number($('diasVencimiento').value)||0,comprobanteFiscal:$('comprobanteFiscal').value.trim(),itbisRetenido:Number($('itbisRetenido').value)||0,isr:Number($('isr').value)||0,flete:Number($('flete').value)||0,notas:$('notas').value.trim(),lineas,subtotal:total.bruto,descuentos:total.descuentos,itbis:total.itbis,total:total.bruto-total.descuentos+total.itbis+Number($('flete').value||0),estado:'BORRADOR',usuarioUid:auth.currentUser.uid,creadoEn:serverTimestamp()}; if(!datos.proveedorNombre||!datos.numeroFactura||!datos.fechaFactura||!lineas.length) return alert('Completa proveedor, factura, fecha y agrega al menos un producto.'); try{ const ref=await addDoc(collection(db,'recepciones_compras'),datos); $('estadoRecepcion').innerText=`Borrador guardado: ${ref.id}. El inventario no fue modificado.`; }catch(error){ console.error(error); $('estadoRecepcion').innerText=`No se pudo guardar: ${error.message}`; }};
+        onAuthStateChanged(auth, async user=>{ if(!user) return location.href='../index.html'; const snapshot=await getDocs(collection(db,'productos')); productos=snapshot.docs.map(item=>({id:item.id,...item.data()})); $('productoSelect').innerHTML='<option value="">Selecciona un producto</option>'+productos.map(item=>`<option value="${item.id}">${item.codigo||'S/C'} - ${item.nombre}</option>`).join(''); render(); });
+    </script>
+</body>
+</html>

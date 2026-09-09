@@ -10,6 +10,11 @@ Roles permitidos:
 - `Consultor`: consultas y reportes.
 - `Contador`: consultas y reportes.
 
+La pantalla **Personal/Usuarios** vincula cuentas existentes y guarda los permisos de módulos en `usuarios/{UID}.permisos`.
+El menú usa ese perfil para mostrar los módulos y las funciones sensibles deben validarlo
+también en backend. Para gestionar cierres de caja, el usuario necesita rol `Administrador`
+o `Jefe` y `permisos.auditoria=true`; Administrador conserva acceso global.
+
 ## Inicialización
 
 1. Crea primero el usuario administrador en Firebase Authentication.

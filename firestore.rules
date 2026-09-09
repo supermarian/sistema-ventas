@@ -40,6 +40,56 @@ service cloud.firestore {
       return administradorOJefePorToken();
     }
 
+    function gestorUsuarios() {
+      return autenticado() && (
+        request.auth.token.admin == true
+        || request.auth.token.rol in ['Administrador', 'Jefe']
+        || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'Jefe'])
+        || (exists(/databases/$(database)/documents/accesos_admin/$(request.auth.uid))
+          && get(/databases/$(database)/documents/accesos_admin/$(request.auth.uid)).data.activo == true)
+      );
+    }
+
+    function permisoAuditoria() {
+      return autenticado() && (
+        request.auth.token.admin == true
+        || request.auth.token.rol in ['Administrador', 'Jefe']
+        || (exists(/databases/$(database)/documents/accesos_admin/$(request.auth.uid))
+          && get(/databases/$(database)/documents/accesos_admin/$(request.auth.uid)).data.activo == true)
+        || (
+          (request.auth.token.rol in ['Administrador', 'Jefe', 'Consultor', 'Contador']
+            || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+              && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'Jefe', 'Consultor', 'Contador']))
+          && (!exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+            || !('permisos' in get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data)
+            || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.permisos.auditoria == true)
+        )
+      );
+    }
+
+    function gestorCuadres() {
+      return autenticado() && permisoAuditoria() && (
+        request.auth.token.admin == true
+        || request.auth.token.rol in ['Administrador', 'Jefe']
+        || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'Jefe'])
+        || (exists(/databases/$(database)/documents/accesos_admin/$(request.auth.uid))
+          && get(/databases/$(database)/documents/accesos_admin/$(request.auth.uid)).data.activo == true)
+      );
+    }
+
+    function permisoRecepciones() {
+      return autenticado() && (
+        request.auth.token.admin == true
+        || request.auth.token.rol in ['Administrador', 'Jefe']
+        || (exists(/databases/$(database)/documents/accesos_admin/$(request.auth.uid))
+          && get(/databases/$(database)/documents/accesos_admin/$(request.auth.uid)).data.activo == true)
+        || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.permisos.recepciones == true)
+      );
+    }
+
     // Preparado para cuando cada documento usuarios/{uid} tenga el rol.
     function administrador() {
       return autenticado() && (
@@ -62,8 +112,8 @@ service cloud.firestore {
     }
 
     match /usuarios/{usuarioId} {
-      allow read: if accesoAdministrativo() || (autenticado() && resource.data.email == request.auth.token.email);
-      allow create, update, delete: if administrador();
+      allow read: if gestorUsuarios() || (autenticado() && resource.data.email == request.auth.token.email);
+      allow create, update, delete: if gestorUsuarios();
     }
 
     match /accesos_admin/{usuarioId} {
@@ -218,9 +268,51 @@ service cloud.firestore {
     }
 
     match /cierres_caja/{cierreId} {
-      allow read: if autenticado();
-      allow create: if autenticado();
-      allow update, delete: if false;
+      allow read: if permisoAuditoria();
+      allow create: if autenticado()
+        && request.resource.data.estado == 'PENDIENTE_REVISION'
+        && request.resource.data.creadoPorUid == request.auth.uid;
+      allow update: if gestorCuadres()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'estado', 'revisionIniciadaEn', 'revisionIniciadaPorUid', 'revisionIniciadaPorEmail',
+          'aprobadoEn', 'aprobadoPorUid', 'aprobadoPorEmail',
+          'observadoEn', 'observadoPorUid', 'observadoPorEmail', 'motivoObservacion',
+          'archivadoEn', 'archivadoPorUid', 'archivadoPorEmail', 'motivoArchivo'
+        ])
+        && (
+          (request.resource.data.estado == 'EN_REVISION'
+            && (resource.data.estado == 'PENDIENTE_REVISION' || resource.data.estado == 'CERRADO'
+              || resource.data.estado == 'OBSERVADO' || resource.data.estado == 'ARCHIVADO' || !('estado' in resource.data))
+            && request.resource.data.revisionIniciadaPorUid == request.auth.uid)
+          || (request.resource.data.estado == 'APROBADO'
+            && resource.data.estado == 'EN_REVISION'
+            && request.resource.data.aprobadoPorUid == request.auth.uid)
+          || (request.resource.data.estado == 'OBSERVADO'
+            && (resource.data.estado == 'EN_REVISION' || resource.data.estado == 'PENDIENTE_REVISION')
+            && request.resource.data.observadoPorUid == request.auth.uid
+            && request.resource.data.motivoObservacion is string
+            && request.resource.data.motivoObservacion.size() > 0)
+          || (request.resource.data.estado == 'ARCHIVADO'
+            && resource.data.estado == 'APROBADO'
+            && request.resource.data.archivadoPorUid == request.auth.uid)
+        );
+      allow delete: if false;
+    }
+
+    match /recepciones_compras/{recepcionId} {
+      allow read: if permisoRecepciones();
+      allow create: if permisoRecepciones()
+        && request.resource.data.estado == 'BORRADOR'
+        && request.resource.data.usuarioUid == request.auth.uid;
+      allow update: if permisoRecepciones()
+        && resource.data.estado == 'BORRADOR'
+        && request.resource.data.estado == 'BORRADOR'
+        && request.resource.data.usuarioUid == resource.data.usuarioUid;
+      allow delete: if permisoRecepciones() && resource.data.estado == 'BORRADOR';
+    }
+
+    match /recepciones_compras/{recepcionId}/lineas/{lineaId} {
+      allow read, write: if false;
     }
 
     match /configuracion-venta-factura/{configuracionId} {
