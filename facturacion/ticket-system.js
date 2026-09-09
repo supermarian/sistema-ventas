@@ -90,7 +90,9 @@ export const TicketSystem = {
                             // Soporte para item.nombre o item.descripcion
                             const nombreProd = (item.nombre || item.descripcion || "Producto").toUpperCase();
                             const cant = item.cantidad || 1;
-                            const unidad = item.unidad || 'Und';
+                            const unidad = item.presentacionNombre || item.unidad || 'Und';
+                            const codigo = item.codigo || '';
+                            const factor = Number(item.factorConversion || 1);
                             const precio = Number(item.precio || 0).toFixed(2);
                             const sub = Number(item.subtotal || 0).toFixed(2);
 
@@ -98,7 +100,8 @@ export const TicketSystem = {
                                 <tr class="item-row">
                                     <td>
                                         ${nombreProd}<br>
-                                        <small>${cant} ${unidad} x RD$ ${precio}</small>
+                                        <small>${cant} ${unidad} x RD$ ${precio}</small><br>
+                                        <small>${codigo ? `Código: ${codigo} · ` : ''}1 ${unidad} = ${factor} unidad(es) base</small>
                                     </td>
                                     <td align="right" valign="bottom">
                                         RD$ ${sub}

@@ -78,8 +78,9 @@ export const TicketSystem = {
                     <tbody>
                         ${items.map(item => `
                             <tr>
-                                <td>${item.nombre.toUpperCase()}<br>
-                                    <small>${item.cantidad} x RD$ ${Number(item.precio).toFixed(2)}</small>
+                                <td>${(item.nombre || item.descripcion || 'Producto').toUpperCase()}<br>
+                                    <small>${item.cantidad} ${item.presentacionNombre || item.unidad || 'Und'} x RD$ ${Number(item.precio || 0).toFixed(2)}</small><br>
+                                    <small>${item.codigo ? `Código: ${item.codigo} · ` : ''}1 ${item.presentacionNombre || item.unidad || 'Und'} = ${Number(item.factorConversion || 1)} unidad(es) base</small>
                                 </td>
                                 <td align="right" valign="bottom">
                                     RD$ ${Number(item.subtotal).toFixed(2)}

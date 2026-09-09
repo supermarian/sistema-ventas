@@ -119,6 +119,11 @@ export const POSCore = {
                 items: carrito.map(item => ({
                     id: item.id,
                     nombre: item.nombre,
+                    codigo: item.codigo,
+                    unidad: item.unidad,
+                    presentacionId: item.presentacionId || 'base',
+                    presentacionNombre: item.presentacionNombre || item.unidad || 'Und',
+                    factorConversion: Number(item.factorConversion || 1),
                     cantidad: item.cantidad,
                     precio: item.precio,
                     subtotal: item.subtotal
