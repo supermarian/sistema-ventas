@@ -102,6 +102,7 @@
                 <fieldset class="permisos-grupo">
                     <legend>Inventario y productos</legend>
                     <label><input type="checkbox" data-permiso="almacen" style="width:auto"> Almacén</label>
+                    <label><input type="checkbox" data-permiso="compras" style="width:auto"> Compras y recepciones</label>
                     <label><input type="checkbox" data-permiso="productos" style="width:auto"> Productos rápidos</label>
                     <label><input type="checkbox" data-permiso="precios" style="width:auto"> Control de precios</label>
                 </fieldset>
@@ -110,6 +111,7 @@
                     <label><input type="checkbox" data-permiso="dashboard" style="width:auto"> Dashboard</label>
                     <label><input type="checkbox" data-permiso="reportes" style="width:auto"> Reportes</label>
                     <label><input type="checkbox" data-permiso="creditos" style="width:auto"> Créditos</label>
+                    <label><input type="checkbox" data-permiso="consulta_ventas" style="width:auto"> Consulta de ventas</label>
                 </fieldset>
                 <fieldset class="permisos-grupo">
                     <legend>Auditoría y documentos</legend>
@@ -216,11 +218,11 @@
 
     let usuariosData = {}; 
     const permisosPorRol = {
-        Administrador: ['almacen','productos','precios','facturacion','caja_credito','caja_reimpresion','caja_egreso','caja_cotizaciones','caja_cierre','dashboard','reportes','personal','creditos','auditoria','cierres_caja','correcciones','bot','configuracion'],
-        Jefe: ['almacen','productos','precios','facturacion','caja_credito','caja_reimpresion','caja_egreso','caja_cotizaciones','caja_cierre','dashboard','reportes','creditos','auditoria','cierres_caja','correcciones','bot','configuracion'],
-        Cajero: ['facturacion','caja_reimpresion'],
-        Consultor: ['reportes','auditoria','cierres_caja'],
-        Contador: ['reportes','auditoria','cierres_caja']
+        Administrador: ['almacen','compras','productos','precios','facturacion','caja_credito','caja_reimpresion','caja_egreso','caja_cotizaciones','caja_cierre','dashboard','reportes','personal','creditos','consulta_ventas','auditoria','cierres_caja','correcciones','bot','configuracion'],
+        Jefe: ['almacen','compras','productos','precios','facturacion','caja_credito','caja_reimpresion','caja_egreso','caja_cotizaciones','caja_cierre','dashboard','reportes','creditos','consulta_ventas','auditoria','cierres_caja','correcciones','bot','configuracion'],
+        Cajero: ['facturacion','caja_reimpresion','consulta_ventas'],
+        Consultor: ['reportes','consulta_ventas','auditoria','cierres_caja'],
+        Contador: ['reportes','consulta_ventas','auditoria','cierres_caja']
     };
     const leerPermisos = () => Object.fromEntries([...document.querySelectorAll('[data-permiso]')].map(caja => [caja.dataset.permiso, caja.checked]));
     const cargarPermisos = (permisos, rol) => document.querySelectorAll('[data-permiso]').forEach(caja => { caja.checked = permisos ? permisos[caja.dataset.permiso] === true : permisosPorRol[rol]?.includes(caja.dataset.permiso); });

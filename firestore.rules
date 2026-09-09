@@ -86,7 +86,8 @@ service cloud.firestore {
         || (exists(/databases/$(database)/documents/accesos_admin/$(request.auth.uid))
           && get(/databases/$(database)/documents/accesos_admin/$(request.auth.uid)).data.activo == true)
         || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.permisos.recepciones == true)
+          && (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.permisos.compras == true
+            || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.permisos.recepciones == true))
       );
     }
 

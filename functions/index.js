@@ -9,7 +9,7 @@ admin.initializeApp();
 setGlobalOptions({ region: 'us-central1' });
 
 const ROLES = new Set(['Administrador', 'Jefe', 'Cajero', 'Consultor', 'Contador']);
-const PERMISOS = new Set(['almacen', 'recepciones', 'productos', 'precios', 'facturacion', 'dashboard', 'reportes', 'personal', 'creditos', 'auditoria', 'consulta_ventas', 'bot', 'configuracion', 'correcciones']);
+const PERMISOS = new Set(['almacen', 'compras', 'recepciones', 'productos', 'precios', 'facturacion', 'dashboard', 'reportes', 'personal', 'creditos', 'auditoria', 'consulta_ventas', 'bot', 'configuracion', 'correcciones']);
 const db = admin.firestore();
 const COLECCIONES_COPIA = [
     'clientes', 'clientes_portal', 'deudas_clientes', 'productos', 'usuarios',

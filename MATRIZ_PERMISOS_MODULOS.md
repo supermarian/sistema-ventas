@@ -53,6 +53,7 @@ Eliminar nunca debe estar pegado a editar. Debe ser una accion separada, con sel
 | Modulo | Permiso principal |
 |---|---|
 | Almacen | `almacen` |
+| Compras y recepciones | `compras` |
 | Productos rapidos | `productos` |
 | Control de precios | `precios` |
 | Dashboard | `dashboard` |

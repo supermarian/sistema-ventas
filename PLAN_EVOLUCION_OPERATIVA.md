@@ -347,7 +347,7 @@ No guardar tokens en HTML, Markdown, Git ni mensajes del chat.
 - [x] Guardar referencia empresarial del producto y conservarla en las líneas de recepción.
 - [x] Permitir alternar Con/Sin ITBIS antes de agregar líneas y bloquear cambios después con aviso.
 - [ ] Definir sucursales, impuestos y campos ampliados de proveedores/almacenes.
-- [ ] Probar permisos de Compras, Jefe, Administrador y Cajero.
+- [ ] Probar permisos de Compras, Jefe, Administrador y Cajero (la clave `compras` ya está normalizada).
 - [x] Mostrar alertas de facturas próximas a vencer y vencidas en el historial de Almacen.
 - [ ] Usar referencia, marca, proveedor y unidad como señales de recomendación para la IA, siempre con confirmación humana.
 
