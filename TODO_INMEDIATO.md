@@ -71,11 +71,10 @@ Antes de agregar nuevas funciones, validar en este orden:
 ## ⏱️ ESTIMACIÓN TOTAL
 
 ```
-Bloqueadores:        11 horas
-Importantes:         16 horas  
-Complementarios:     20 horas
-─────────────────────────────
-TOTAL:              47 horas de alcance pendiente ≈ 2 semanas (trabajando 4h/día)
+Bloqueadores y validaciones:  11 horas mínimas
+Bloques funcionales restantes: 35-70 horas
+──────────────────────────────────────────
+TOTAL:              46-81 horas de alcance pendiente ≈ 12-21 días (trabajando 4h/día)
 ```
 
 ---
