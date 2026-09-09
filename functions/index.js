@@ -3,6 +3,7 @@ const { setGlobalOptions } = require('firebase-functions/v2');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
+const crypto = require('crypto');
 
 admin.initializeApp();
 setGlobalOptions({ region: 'us-central1' });
@@ -300,6 +301,148 @@ exports.registrarVentaOffline = onCall(async request => {
         if (error instanceof HttpsError) throw error;
         console.error('Error sincronizando venta offline:', error);
         throw new HttpsError('internal', 'No se pudo sincronizar la venta offline.');
+    }
+});
+
+exports.registrarRecepcionCompra = onCall(async request => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión para registrar una recepción.');
+
+    const datos = request.data || {};
+    const proveedorId = String(datos.proveedorId || '').trim();
+    const proveedorNombre = String(datos.proveedorNombre || '').trim();
+    const almacenId = String(datos.almacenId || '').trim();
+    const numeroFactura = String(datos.numeroFactura || '').trim();
+    const lineas = Array.isArray(datos.lineas) ? datos.lineas : [];
+    const perfilSnapshot = await db.collection('usuarios').doc(request.auth.uid).get();
+    const perfil = perfilSnapshot.exists ? perfilSnapshot.data() : {};
+    const rol = request.auth.token.rol || perfil.rol;
+    const permisos = perfil.permisos || {};
+    const puedeComprar = ['Administrador', 'Jefe'].includes(rol)
+        || permisos.compras === true
+        || (Array.isArray(permisos) && permisos.includes('compras'));
+
+    if (!puedeComprar) {
+        throw new HttpsError('permission-denied', 'El usuario no tiene permiso para registrar compras.');
+    }
+    if (!proveedorId || !almacenId || !numeroFactura || !lineas.length) {
+        throw new HttpsError('invalid-argument', 'La recepción requiere proveedor, almacén, factura y al menos una línea.');
+    }
+
+    const productosIds = new Set();
+    const lineasValidadas = lineas.map((linea, indice) => {
+        const productoId = String(linea.productoId || '').trim();
+        const cantidad = Number(linea.cantidad);
+        const cantidadBonificada = Number(linea.cantidadBonificada || 0);
+        const costoUnitario = Number(linea.costoUnitario);
+        if (!productoId || productosIds.has(productoId)) {
+            throw new HttpsError('invalid-argument', `La línea ${indice + 1} tiene un producto inválido o repetido.`);
+        }
+        if (!Number.isFinite(cantidad) || cantidad <= 0
+            || !Number.isFinite(cantidadBonificada) || cantidadBonificada < 0
+            || !Number.isFinite(costoUnitario) || costoUnitario < 0) {
+            throw new HttpsError('invalid-argument', `La línea ${indice + 1} tiene cantidades o costo inválidos.`);
+        }
+        productosIds.add(productoId);
+        return {
+            productoId,
+            codigo: String(linea.codigo || ''),
+            descripcion: String(linea.descripcion || ''),
+            unidad: String(linea.unidad || 'Und'),
+            cantidad,
+            cantidadBonificada,
+            costoUnitario,
+            descuento: Number(linea.descuento || 0),
+            itbis: Number(linea.itbis || 0)
+        };
+    });
+
+    const claveDuplicado = crypto.createHash('sha256')
+        .update(`${proveedorId}|${numeroFactura.toUpperCase()}|${almacenId}`)
+        .digest('hex');
+    const recepcionRef = db.collection('recepciones_compras').doc(claveDuplicado);
+    const referencias = lineasValidadas.map(linea => db.collection('productos').doc(linea.productoId));
+    const subtotal = lineasValidadas.reduce((total, linea) => total + (linea.cantidad * linea.costoUnitario) - linea.descuento, 0);
+
+    try {
+        return await db.runTransaction(async transaction => {
+            const [recepcionSnapshot, ...productosSnapshots] = await transaction.getAll(recepcionRef, ...referencias);
+            if (recepcionSnapshot.exists) {
+                return {
+                    estado: 'YA_APLICADA',
+                    idRecepcion: recepcionSnapshot.id,
+                    recepcion: recepcionSnapshot.data()
+                };
+            }
+
+            productosSnapshots.forEach((snapshot, indice) => {
+                if (!snapshot.exists) {
+                    throw new HttpsError('failed-precondition', `El producto ${lineasValidadas[indice].productoId} no existe.`);
+                }
+            });
+
+            const ahora = admin.firestore.FieldValue.serverTimestamp();
+            transaction.set(recepcionRef, {
+                idRecepcion: recepcionRef.id,
+                proveedorId,
+                proveedorNombre,
+                almacenId,
+                numeroFactura,
+                fechaFactura: datos.fechaFactura || null,
+                fechaRecepcion: datos.fechaRecepcion || null,
+                condicionPago: String(datos.condicionPago || 'CONTADO'),
+                subtotal,
+                descuentos: Number(datos.descuentos || 0),
+                itbis: Number(datos.itbis || 0),
+                flete: Number(datos.flete || 0),
+                total: Number(datos.total || subtotal),
+                estado: 'APLICADA',
+                usuarioId: request.auth.uid,
+                creadoEn: ahora,
+                aplicadoEn: ahora
+            });
+
+            lineasValidadas.forEach((linea, indice) => {
+                const referenciaProducto = referencias[indice];
+                const producto = productosSnapshots[indice].data();
+                const stockAnterior = Number(producto.stock) || 0;
+                const entrada = linea.cantidad + linea.cantidadBonificada;
+                const stockNuevo = stockAnterior + entrada;
+                transaction.update(referenciaProducto, {
+                    stock: stockNuevo,
+                    costoAnterior: Number(producto.costoActual || 0),
+                    costoActual: linea.costoUnitario,
+                    ultimaCompra: ahora,
+                    actualizadoPor: request.auth.uid,
+                    actualizadoEn: ahora
+                });
+                transaction.set(db.collection('recepciones_compras').doc(recepcionRef.id)
+                    .collection('lineas').doc(String(indice + 1).padStart(4, '0')), {
+                    ...linea,
+                    total: (linea.cantidad * linea.costoUnitario) - linea.descuento
+                });
+                transaction.set(db.collection('movimientos_inventario').doc(), {
+                    idMovimiento: `${recepcionRef.id}-${indice + 1}`,
+                    productoId: linea.productoId,
+                    almacenId,
+                    tipo: 'ENTRADA_RECEPCION',
+                    cantidad: entrada,
+                    stockAnterior,
+                    stockNuevo,
+                    costo: linea.costoUnitario,
+                    recepcionId: recepcionRef.id,
+                    factura: numeroFactura,
+                    usuarioId: request.auth.uid,
+                    motivo: 'Recepción de compra',
+                    creadoEn: ahora
+                });
+            });
+
+            return { estado: 'APLICADA', idRecepcion: recepcionRef.id };
+        });
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        console.error('Error registrando recepción de compra:', error);
+        throw new HttpsError('internal', 'No se pudo registrar la recepción de compra.');
     }
 });
 

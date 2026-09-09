@@ -61,16 +61,6 @@ service cloud.firestore {
       );
     }
 
-    function actualizaSoloStock() {
-      return autenticado()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock'])
-        && request.resource.data.stock >= 0;
-    }
-
-    function autorizaStockNegativo() {
-      return autenticado() && request.auth.token.admin == true;
-    }
-
     match /usuarios/{usuarioId} {
       allow read: if accesoAdministrativo() || (autenticado() && resource.data.email == request.auth.token.email);
       allow create, update, delete: if administrador();
@@ -98,11 +88,8 @@ service cloud.firestore {
     match /productos/{productoId} {
       allow read: if autenticado();
       allow create, update, delete: if administrador();
-      allow update: if actualizaSoloStock();
       allow update: if gestorPrecios()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['precio', 'stock', 'seguimientoPrecio']);
-      allow update: if autorizaStockNegativo()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['precio', 'seguimientoPrecio']);
     }
 
     match /clientes/{clienteId} {
@@ -197,6 +184,21 @@ service cloud.firestore {
       allow read: if administrador();
       allow create: if autenticado();
       allow update, delete: if administrador();
+    }
+
+    match /recepciones_compras/{recepcionId} {
+      allow read: if administradorOJefe();
+      allow write: if false;
+    }
+
+    match /recepciones_compras/{recepcionId}/lineas/{lineaId} {
+      allow read: if administradorOJefe();
+      allow write: if false;
+    }
+
+    match /movimientos_inventario/{movimientoId} {
+      allow read: if administradorOJefe();
+      allow write: if false;
     }
 
     match /cierres_caja/{cierreId} {

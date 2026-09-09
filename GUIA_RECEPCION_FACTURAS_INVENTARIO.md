@@ -1,6 +1,6 @@
 # Guia de Recepcion de Facturas y Actualizacion de Inventario
 
-**Estado:** Parcial: inventario basico implementado; recepcion de compras pendiente  
+**Estado:** Parcial: recepcion aplicada transaccional implementada; faltan borradores y catalogos
 **Prioridad sugerida:** Alta  
 **Referencia:** Flujo de recepcion de compras y mantenimiento de inventario mostrado en las pantallas de referencia.
 
@@ -8,7 +8,7 @@
 
 Ya existe un inventario basico para consultar y mantener productos, precios, stock, estatus y codigos de barras desde el modulo de Almacen. Tambien existen alertas de bajo stock y consumo de existencias desde facturacion.
 
-Este documento describe la siguiente ampliacion pendiente: recepcion de facturas de proveedores, costos, movimientos auditables, devoluciones y aplicacion idempotente al almacen. No debe interpretarse como una funcionalidad ya disponible.
+Ya existe una primera recepcion aplicada desde Almacen. La callable `registrarRecepcionCompra` valida permisos, evita duplicados por proveedor + factura + almacen, actualiza stock y costo dentro de una transaccion y registra lineas y movimientos. Aun faltan borradores, catalogos formales de proveedores y almacenes, impuestos, devoluciones y pruebas de extremo a extremo.
 
 ## Objetivo
 
@@ -189,15 +189,16 @@ La existencia por almacen puede mantenerse en un campo separado o en una subcole
 
 - [ ] Definir proveedores, almacenes y catalogos de impuestos.
 - [ ] Definir estructura final de recepciones y movimientos.
-- [ ] Crear pantalla de recepcion con cabecera, lineas y totales.
-- [ ] Guardar borrador y validar factura duplicada.
+- [x] Crear pantalla basica de recepcion con cabecera y lineas.
+- [ ] Guardar borrador y completar totales e impuestos.
+- [x] Validar factura duplicada por proveedor, factura y almacen.
 
 ### Fase B: aplicacion al inventario
 
-- [ ] Aplicar recepcion con transaccion.
-- [ ] Actualizar stock, costo y ultima compra.
-- [ ] Registrar movimientos y auditoria.
-- [ ] Evitar doble aplicacion y soportar reintentos.
+- [x] Aplicar recepcion con transaccion.
+- [x] Actualizar stock, costo y ultima compra.
+- [x] Registrar movimientos y auditoria.
+- [x] Evitar doble aplicacion y soportar reintentos.
 
 ### Fase C: mantenimiento ampliado
 

@@ -85,6 +85,31 @@
     </div>
 
     <div class="form-card">
+        <h3>Recepción de compra</h3>
+        <span class="info-tag">La recepción actualiza stock y costo dentro de una transacción.</span>
+        <div class="grid-inputs">
+            <input id="recepcionProveedorId" placeholder="ID del proveedor">
+            <input id="recepcionProveedorNombre" placeholder="Nombre del proveedor">
+            <input id="recepcionAlmacenId" placeholder="ID del almacén">
+            <input id="recepcionNumeroFactura" placeholder="Número de factura">
+        </div>
+        <div class="grid-inputs" style="margin-top:15px">
+            <select id="recepcionProducto" style="padding:10px;border:1px solid #ddd;border-radius:8px;width:100%;font-size:1rem">
+                <option value="">Selecciona un producto</option>
+            </select>
+            <input id="recepcionCantidad" type="number" min="0.001" step="0.001" placeholder="Cantidad">
+            <input id="recepcionBonificada" type="number" min="0" step="0.001" value="0" placeholder="Bonificada">
+            <input id="recepcionCosto" type="number" min="0" step="0.01" placeholder="Costo unitario RD$">
+        </div>
+        <button class="btn-add" type="button" onclick="window.agregarLineaRecepcion()">Agregar línea</button>
+        <table>
+            <thead><tr><th>Producto</th><th>Cantidad</th><th>Bonificada</th><th>Costo</th><th></th></tr></thead>
+            <tbody id="recepcionLineas"></tbody>
+        </table>
+        <button class="btn-add" id="btnAplicarRecepcion" type="button" onclick="window.aplicarRecepcion()">Aplicar recepción</button>
+    </div>
+
+    <div class="form-card">
         <input type="text" id="busqueda" style="width:100%; padding:10px; border-radius:8px; border:2px solid #1a73e8;"  placeholder="🔍 Escribe y presiona Enter para buscar..." onkeydown="if(event.key === 'Enter') window.ejecutarBusqueda()">
         <span id="txtInfo" class="info-tag"></span>
         <table>

@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { existeDuplicado } from './validaciones.js';
 
@@ -15,7 +16,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const functions = getFunctions(app, 'us-central1');
 let productosCache = [];
+let lineasRecepcion = [];
 let busquedaActiva = false; 
 const configStockRef = doc(db, 'configuracion-sistema', 'inventario');
 
@@ -109,7 +112,97 @@ window.renderizarTabla = () => {
                 <td style="text-align:center;">${badge}</td>
             </tr>`;
     });
+      const selector = document.getElementById('recepcionProducto');
+      if (selector) {
+          selector.replaceChildren(new Option('Selecciona un producto', ''));
+          [...productosCache]
+              .filter(producto => producto.estatus !== 'INACTIVO')
+              .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)))
+              .forEach(producto => selector.add(new Option(
+                  `${producto.nombre} (${producto.idSecuencial || producto.idDoc})`,
+                  producto.idDoc
+              )));
+      }
     busquedaActiva = false; 
+};
+
+window.agregarLineaRecepcion = () => {
+    const productoId = document.getElementById('recepcionProducto').value;
+    const producto = productosCache.find(item => item.idDoc === productoId);
+    const cantidad = Number(document.getElementById('recepcionCantidad').value);
+    const cantidadBonificada = Number(document.getElementById('recepcionBonificada').value || 0);
+    const costoUnitario = Number(document.getElementById('recepcionCosto').value);
+    if (!producto || !Number.isFinite(cantidad) || cantidad <= 0
+        || !Number.isFinite(cantidadBonificada) || cantidadBonificada < 0
+        || !Number.isFinite(costoUnitario) || costoUnitario < 0) {
+        return alert('Selecciona un producto e indica cantidades y costo válidos.');
+    }
+    if (lineasRecepcion.some(linea => linea.productoId === productoId)) {
+        return alert('Ese producto ya está agregado a la recepción.');
+    }
+    lineasRecepcion.push({
+        productoId,
+        codigo: producto.codigo || '',
+        descripcion: producto.nombre,
+        unidad: producto.unidad || 'Und',
+        cantidad,
+        cantidadBonificada,
+        costoUnitario,
+        descuento: 0,
+        itbis: 0
+    });
+    window.renderizarLineasRecepcion();
+    document.getElementById('recepcionProducto').value = '';
+    document.getElementById('recepcionCantidad').value = '';
+    document.getElementById('recepcionBonificada').value = '0';
+    document.getElementById('recepcionCosto').value = '';
+};
+
+window.renderizarLineasRecepcion = () => {
+    const cuerpo = document.getElementById('recepcionLineas');
+    if (!cuerpo) return;
+    cuerpo.innerHTML = lineasRecepcion.map((linea, indice) => `
+        <tr>
+            <td>${linea.descripcion}</td>
+            <td>${linea.cantidad}</td>
+            <td>${linea.cantidadBonificada}</td>
+            <td>RD$ ${linea.costoUnitario.toFixed(2)}</td>
+            <td><button type="button" onclick="window.quitarLineaRecepcion(${indice})">Quitar</button></td>
+        </tr>`).join('');
+};
+
+window.quitarLineaRecepcion = indice => {
+    lineasRecepcion.splice(indice, 1);
+    window.renderizarLineasRecepcion();
+};
+
+window.aplicarRecepcion = async () => {
+    const boton = document.getElementById('btnAplicarRecepcion');
+    const datos = {
+        proveedorId: document.getElementById('recepcionProveedorId').value.trim(),
+        proveedorNombre: document.getElementById('recepcionProveedorNombre').value.trim(),
+        almacenId: document.getElementById('recepcionAlmacenId').value.trim(),
+        numeroFactura: document.getElementById('recepcionNumeroFactura').value.trim(),
+        lineas: lineasRecepcion
+    };
+    if (!datos.proveedorId || !datos.almacenId || !datos.numeroFactura || !datos.lineas.length) {
+        return alert('Completa proveedor, almacén, factura y agrega al menos una línea.');
+    }
+    boton.disabled = true;
+    try {
+        const respuesta = await httpsCallable(functions, 'registrarRecepcionCompra')(datos);
+        alert(respuesta.data.estado === 'YA_APLICADA'
+            ? 'Esta recepción ya estaba aplicada.'
+            : 'Recepción aplicada y movimiento de inventario registrado.');
+        lineasRecepcion = [];
+        window.renderizarLineasRecepcion();
+        document.getElementById('recepcionNumeroFactura').value = '';
+    } catch (error) {
+        console.error(error);
+        alert(error.message || 'No se pudo aplicar la recepción.');
+    } finally {
+        boton.disabled = false;
+    }
 };
 
 // --- GUARDAR NUEVO PRODUCTO ---
@@ -154,7 +247,6 @@ window.actualizarProducto = async () => {
         codigo: codBarra,
         nombre: document.getElementById('nomProd').value,
         precio: precioNuevo,
-        stock: Number(document.getElementById('stockProd').value),
         unidad: document.getElementById('unidadProd').value,
         estatus: document.getElementById('estatusProd').value // Aquí guardamos el cambio de estatus
     });
@@ -181,6 +273,7 @@ window.cargarEdicion = (id, idSec, cod, nom, pre, sto, unidad, est) => {
     document.getElementById('nomProd').value = nom;
     document.getElementById('preProd').value = pre;
     document.getElementById('stockProd').value = sto;
+    document.getElementById('stockProd').disabled = true;
     document.getElementById('unidadProd').value = unidad || "Und";
     document.getElementById('estatusProd').value = est || "ACTIVO";
     
@@ -197,6 +290,7 @@ window.cancelarEdicion = () => {
     document.getElementById('btnGuardar').style.display = "block";
     document.getElementById('btnActualizar').style.display = "none";
     document.getElementById('btnCancelar').style.display = "none";
+      document.getElementById('stockProd').disabled = false;
 };
 
 function limpiarForm() {
