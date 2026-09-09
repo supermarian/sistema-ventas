@@ -608,6 +608,9 @@ document.getElementById('btnGuardar').onclick = async () => {
     const nombre = document.getElementById('nomProd').value.trim();
     const idSec = document.getElementById('secuencialProd').value;
     const codBarra = document.getElementById('codBarra').value.trim();
+    const costoActual = Number(document.getElementById('costoProd').value) || 0;
+    const margenMinimo = Number(document.getElementById('margenProd').value) || 0;
+    const precio = Number(document.getElementById('preProd').value) || 0;
 
     if(!nombre) return alert("El nombre es obligatorio");
 
@@ -620,7 +623,11 @@ document.getElementById('btnGuardar').onclick = async () => {
         codigo: codBarra || "S/C",
         referenciaEmpresa: document.getElementById('referenciaEmpresa').value.trim(),
         nombre: nombre,
-        precio: Number(document.getElementById('preProd').value) || 0,
+        costoActual,
+        costoAnterior: 0,
+        margenMinimo,
+        margenPorcentaje: costoActual > 0 ? ((precio - costoActual) / costoActual) * 100 : 0,
+        precio,
         stock: Number(document.getElementById('stockProd').value) || 0,
         unidad: document.getElementById('unidadProd').value,
         estatus: "ACTIVO", // Siempre se crea activo
@@ -638,6 +645,8 @@ window.actualizarProducto = async () => {
     const codBarra = document.getElementById('codBarra').value.trim();
     const productoAnterior = productosCache.find(producto => producto.idDoc === idDocActual);
     const precioNuevo = Number(document.getElementById('preProd').value);
+    const costoActual = Number(document.getElementById('costoProd').value) || 0;
+    const margenMinimo = Number(document.getElementById('margenProd').value) || 0;
 
     if (codBarra && codBarra !== "S/C") {
         const duplicado = await existeDuplicado(db, 'codigo', codBarra, idDocActual);
@@ -649,6 +658,10 @@ window.actualizarProducto = async () => {
         codigo: codBarra,
         referenciaEmpresa: document.getElementById('referenciaEmpresa').value.trim(),
         nombre: document.getElementById('nomProd').value,
+        costoAnterior: Number(productoAnterior?.costoActual || 0),
+        costoActual,
+        margenMinimo,
+        margenPorcentaje: costoActual > 0 ? ((precioNuevo - costoActual) / costoActual) * 100 : 0,
         precio: precioNuevo,
         unidad: document.getElementById('unidadProd').value,
         estatus: document.getElementById('estatusProd').value,
@@ -679,12 +692,14 @@ window.cargarEdicion = (id, idSec, cod, referencia, nom, pre, sto, unidad, est) 
     document.getElementById('codBarra').value = cod;
     document.getElementById('referenciaEmpresa').value = referencia || '';
     document.getElementById('nomProd').value = nom;
+    const producto = productosCache.find(item => item.idDoc === id);
+    document.getElementById('costoProd').value = producto?.costoActual ?? 0;
+    document.getElementById('margenProd').value = producto?.margenMinimo ?? 2;
     document.getElementById('preProd').value = pre;
     document.getElementById('stockProd').value = sto;
     document.getElementById('stockProd').disabled = true;
     document.getElementById('unidadProd').value = unidad || "Und";
     document.getElementById('estatusProd').value = est || "ACTIVO";
-    const producto = productosCache.find(item => item.idDoc === id);
     imagenesProductoActual = Array.isArray(producto?.imagenes)
         ? producto.imagenes.map((imagen, indice) => ({ ...imagen, esPrincipal: indice === 0 }))
         : producto?.imagenUrl ? [{ url: producto.imagenUrl, path: producto.imagenPath || '', esPrincipal: true }] : [];
@@ -712,7 +727,9 @@ function limpiarForm() {
     document.getElementById('codBarra').value = "";
     document.getElementById('referenciaEmpresa').value = "";
     document.getElementById('nomProd').value = "";
+    document.getElementById('costoProd').value = "0";
     document.getElementById('preProd').value = "";
+    document.getElementById('margenProd').value = "2";
     document.getElementById('stockProd').value = "";
     document.getElementById('unidadProd').value = "Und";
     document.getElementById('estatusProd').value = "ACTIVO";

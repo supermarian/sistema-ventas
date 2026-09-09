@@ -56,6 +56,7 @@ La eliminacion de fondo debe mantenerse opcional hasta validar costo, privacidad
 - [x] Captura o seleccion de varias fotos por producto desde Almacen.
 - [x] Compresion WebP, vista previa y almacenamiento protegido en Firebase Storage.
 - [x] Referencias `imagenes[]` con URL, ruta, orden e imagen principal.
+- [x] Guardar costo actual, margen mínimo y margen calculado en la ficha de producto.
 - [x] Callable `registrarRecepcionCompra` con transaccion, duplicado determinista y movimientos.
 - [x] Conexion inicial del webhook de WhatsApp con el procesador conversacional.
 - [ ] Recepcion completa con borrador, validacion visible e historial de entradas.
@@ -265,7 +266,7 @@ No guardar tokens en HTML, Markdown, Git ni mensajes del chat.
 
 ### Fase 3: productos y precios
 
-- [ ] Agregar costo y precio con margen calculado.
+- [x] Agregar costo y precio con margen calculado en Almacen.
 - [ ] Bloquear margen menor al 2% salvo autorizacion auditada.
 - [ ] Agregar imagen y vista previa.
 - [ ] Mostrar existencia/unidad/precio en busqueda de Caja.
