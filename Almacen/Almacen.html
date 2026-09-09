@@ -48,6 +48,13 @@
         .vencimiento-indicador { padding: 12px; border-radius: 8px; background: #f7f9fb; border-left: 4px solid #1a73e8; }
         .vencimiento-indicador.alerta { border-left-color: #f0ad4e; }
         .vencimiento-indicador.urgente { border-left-color: #d9534f; }
+        .imagenes-producto { margin-top: 15px; padding: 12px; border: 1px dashed #9bb7d8; border-radius: 8px; background: #f7fbff; }
+        .imagenes-producto input[type="file"] { padding: 8px; background: white; }
+        .galeria-producto { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 10px; }
+        .foto-producto { position: relative; min-height: 110px; border: 1px solid #d8e2ef; border-radius: 8px; overflow: hidden; background: white; }
+        .foto-producto img { width: 100%; height: 110px; object-fit: contain; display: block; }
+        .foto-producto button { position: absolute; top: 4px; right: 4px; border: 0; border-radius: 50%; width: 26px; height: 26px; background: #d93025; color: white; cursor: pointer; }
+        .foto-producto small { display: block; padding: 4px; color: #667085; text-align: center; }
         
     </style>
 </head>
@@ -83,6 +90,13 @@
                     <option value="Paq">Paq</option>
                 </select>
             </div>
+        </div>
+        <div class="imagenes-producto">
+            <label for="imagenesProducto"><strong>Fotos del producto</strong></label>
+            <input id="imagenesProducto" type="file" accept="image/*" capture="environment" multiple>
+            <span class="info-tag">Puedes tomar una foto o seleccionar varias. Se comprimen antes de guardarse.</span>
+            <div id="galeriaProducto" class="galeria-producto"></div>
+            <span id="estadoImagenesProducto" class="info-tag"></span>
         </div>
         <div>
 

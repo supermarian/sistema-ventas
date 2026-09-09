@@ -31,7 +31,7 @@
 | Auditoria | Probar faltantes, sobrantes, doble confirmacion y doble archivo con cuentas reales | 3-5 h |
 | Compras | Completar sucursales, impuestos, campos ampliados y permisos reales | 6-10 h |
 | Productos | Margenes, autorizacion bajo 2%, precio validado para clientes | 6-10 h |
-| Entrada rapida | Escaneo + confirmacion + foto, compresion y almacenamiento seguro | 7-11 h |
+| Entrada rapida | Escaneo + confirmacion + captura de varias fotos, compresion y almacenamiento seguro | 3-5 h restantes |
 | Sugerencias | Coincidencias por codigo, referencia, nombre, marca, proveedor y unidad con confirmacion humana | 4-8 h |
 | Imagen avanzada | Eliminacion de fondo y comparacion original/resultado | 6-12 h opcionales |
 | Importacion | Bandeja PDF/CSV, revision de filas, asociacion de imagenes y reporte | 10-18 h |
@@ -41,18 +41,21 @@
 
 ### Total estimado
 
-- **Obligatorio para cerrar el MVP operativo, sin quitar fondo:** **50 a 87 horas**.
-- **Con eliminacion de fondo e IA avanzada:** **56 a 99 horas**.
+- **Obligatorio para cerrar el MVP operativo, sin quitar fondo:** **46 a 81 horas**.
+- **Con eliminacion de fondo e IA avanzada:** **52 a 93 horas**.
 - Ya se han realizado aproximadamente **25 a 35 horas** de implementacion y analisis en esta iteracion; esos tiempos no se suman al pendiente.
-- Con una dedicacion de 4 horas diarias, el trabajo restante equivale aproximadamente a **13-22 dias laborables** sin fondo avanzado o **14-25 dias** incluyendolo.
+- Con una dedicacion de 4 horas diarias, el trabajo restante equivale aproximadamente a **12-21 dias laborables** sin fondo avanzado o **13-24 dias** incluyendolo.
 
-La eliminacion de fondo debe mantenerse opcional hasta validar costo, privacidad, calidad y dependencia de un servicio externo. El primer objetivo debe ser terminar captura, confirmacion, imagen original y reglas de producto.
+La eliminacion de fondo debe mantenerse opcional hasta validar costo, privacidad, calidad y dependencia de un servicio externo. La captura de varias fotos, compresion WebP y almacenamiento seguro ya estan implementados; queda integrar el procesamiento de fondo y su aprobacion manual.
 
 ## Estado de lo ya implementado
 
 - [x] Acceso normal a Almacen para mantenimiento y consulta de inventario.
 - [x] Acceso `Entrada rapida` mediante el modo `?modo=rapido`.
 - [x] Busqueda de productos registrados por nombre, codigo o ID, excluyendo inactivos.
+- [x] Captura o seleccion de varias fotos por producto desde Almacen.
+- [x] Compresion WebP, vista previa y almacenamiento protegido en Firebase Storage.
+- [x] Referencias `imagenes[]` con URL, ruta, orden e imagen principal.
 - [x] Callable `registrarRecepcionCompra` con transaccion, duplicado determinista y movimientos.
 - [x] Conexion inicial del webhook de WhatsApp con el procesador conversacional.
 - [ ] Recepcion completa con borrador, validacion visible e historial de entradas.
@@ -131,7 +134,7 @@ La recepcion transaccional basica ya existe, pero debe evolucionar a este flujo 
 - Unidad de compra y unidad de venta.
 - Existencia actual y, cuando se defina el modelo, existencia por almacen.
 - Suplidor principal, referencia, ubicacion y parametros de reposicion.
-- Imagen del producto y texto alternativo.
+- Varias imagenes del producto, imagen principal y texto alternativo.
 
 ### Margenes
 
@@ -144,7 +147,8 @@ La recepcion transaccional basica ya existe, pero debe evolucionar a este flujo 
 
 ### Imagen del producto
 
-- Guardar solo una referencia segura (`imagenUrl`, `imagenPath`, `imagenAlt`), no una imagen grande dentro del documento de producto.
+- Guardar referencias seguras en `imagenes[]` (`url`, `path`, `alt`, `orden`, `esPrincipal`), no imagenes grandes dentro del documento de producto.
+- Mantener `imagenUrl` e `imagenPath` como compatibilidad para consumidores antiguos.
 - La carga y eliminacion requieren permiso de mantenimiento de productos.
 - Almacen muestra vista previa; Caja muestra miniatura opcional junto al resultado; el catalogo de clientes muestra imagen y precio solo despues de validar el precio publicado.
 - Debe existir imagen alternativa y comportamiento correcto si no hay imagen.

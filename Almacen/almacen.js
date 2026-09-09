@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, getDoc, getDocs, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { existeDuplicado } from './validaciones.js';
 
 const firebaseConfig = {
@@ -16,8 +17,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 const functions = getFunctions(app, 'us-central1');
 let productosCache = [];
+let imagenesProductoActual = [];
+let imagenesNuevas = [];
+let imagenesEliminadas = [];
 let lineasRecepcion = [];
 let recepcionValidada = false;
 let modoItbisBloqueado = null;
@@ -35,6 +40,96 @@ const calcularCostosRecepcion = () => {
         return { ...linea, itbis, fleteDistribuido, costoConFlete: base + fleteDistribuido };
     });
 };
+
+const comprimirImagen = archivo => new Promise((resolve, reject) => {
+    const imagen = new Image();
+    const url = URL.createObjectURL(archivo);
+    imagen.onload = () => {
+        const escala = Math.min(1, 1600 / Math.max(imagen.width, imagen.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(imagen.width * escala));
+        canvas.height = Math.max(1, Math.round(imagen.height * escala));
+        canvas.getContext('2d').drawImage(imagen, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(blob => {
+            URL.revokeObjectURL(url);
+            if (!blob) return reject(new Error('No se pudo comprimir la imagen.'));
+            resolve(blob);
+        }, 'image/webp', 0.82);
+    };
+    imagen.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('El archivo seleccionado no es una imagen válida.'));
+    };
+    imagen.src = url;
+});
+
+const renderGaleriaProducto = () => {
+    const galeria = document.getElementById('galeriaProducto');
+    if (!galeria) return;
+    const existentes = imagenesProductoActual.map((imagen, indice) => `
+        <div class="foto-producto">
+            <img src="${imagen.url}" alt="${imagen.alt || 'Foto del producto'}">
+            <button type="button" title="Quitar foto" onclick="window.quitarImagenProducto(${indice}, false)">×</button>
+            <small>${imagen.esPrincipal ? 'Principal' : 'Guardada'}</small>
+        </div>`).join('');
+    const nuevas = imagenesNuevas.map((imagen, indice) => `
+        <div class="foto-producto">
+            <img src="${imagen.previewUrl}" alt="Vista previa del producto">
+            <button type="button" title="Quitar foto" onclick="window.quitarImagenProducto(${indice}, true)">×</button>
+            <small>${indice === 0 && !imagenesProductoActual.length ? 'Principal' : 'Nueva'}</small>
+        </div>`).join('');
+    galeria.innerHTML = existentes + nuevas || '<span class="info-tag">Aún no hay fotos asociadas.</span>';
+};
+
+const subirImagenesProducto = async productoId => {
+    const subidas = [];
+    for (const [indice, imagen] of imagenesNuevas.entries()) {
+        const blob = await comprimirImagen(imagen.file);
+        const ruta = `productos/${productoId}/${Date.now()}-${indice}.webp`;
+        const referencia = ref(storage, ruta);
+        await uploadBytes(referencia, blob, { contentType: 'image/webp' });
+        subidas.push({
+            url: await getDownloadURL(referencia),
+            path: ruta,
+            alt: imagen.file.name.replace(/\.[^.]+$/, '').slice(0, 120),
+            esPrincipal: !imagenesProductoActual.length && indice === 0,
+            orden: imagenesProductoActual.length + indice + 1
+        });
+    }
+    return [...imagenesProductoActual, ...subidas];
+};
+
+window.quitarImagenProducto = async (indice, esNueva) => {
+    if (esNueva) {
+        URL.revokeObjectURL(imagenesNuevas[indice]?.previewUrl || '');
+        imagenesNuevas.splice(indice, 1);
+        renderGaleriaProducto();
+        return;
+    }
+    const imagen = imagenesProductoActual[indice];
+    if (!imagen) return;
+    if (!confirm('¿Quitar esta foto del producto?')) return;
+    try {
+        imagenesEliminadas.push(imagen);
+        imagenesProductoActual.splice(indice, 1);
+        if (imagenesProductoActual.length) imagenesProductoActual[0].esPrincipal = true;
+        renderGaleriaProducto();
+        document.getElementById('estadoImagenesProducto').textContent = 'Foto quitada. Guarda los cambios para confirmar.';
+    } catch (error) {
+        console.error(error);
+        alert('No se pudo quitar la foto. Revisa la conexión y los permisos.');
+    }
+};
+
+document.getElementById('imagenesProducto').addEventListener('change', event => {
+    for (const file of event.target.files) {
+        if (!file.type.startsWith('image/')) continue;
+        imagenesNuevas.push({ file, previewUrl: URL.createObjectURL(file) });
+    }
+    event.target.value = '';
+    renderGaleriaProducto();
+    document.getElementById('estadoImagenesProducto').textContent = `${imagenesNuevas.length} foto(s) nueva(s) pendiente(s) de guardar.`;
+});
 
 const actualizarResumenCostos = () => {
     const lineas = calcularCostosRecepcion();
@@ -520,7 +615,7 @@ document.getElementById('btnGuardar').onclick = async () => {
     if (await existeDuplicado(db, 'idSecuencial', idSec)) return alert("❌ Error: Este ID ya fue usado.");
     if (codBarra && codBarra !== "" && await existeDuplicado(db, 'codigo', codBarra)) return alert("❌ Error: Código de barras duplicado.");
 
-    await addDoc(collection(db, "productos"), {
+    const productoRef = await addDoc(collection(db, "productos"), {
         idSecuencial: idSec,
         codigo: codBarra || "S/C",
         referenciaEmpresa: document.getElementById('referenciaEmpresa').value.trim(),
@@ -531,6 +626,8 @@ document.getElementById('btnGuardar').onclick = async () => {
         estatus: "ACTIVO", // Siempre se crea activo
         timestamp: Date.now()
     });
+    const imagenes = await subirImagenesProducto(productoRef.id);
+    if (imagenes.length) await updateDoc(productoRef, { imagenes, imagenUrl: imagenes[0].url, imagenPath: imagenes[0].path });
     alert("✅ ¡Producto Guardado!");
     limpiarForm();
 };
@@ -547,14 +644,19 @@ window.actualizarProducto = async () => {
         if (duplicado) return alert("❌ Error: El código ya pertenece a otro producto.");
     }
 
+    const imagenes = await subirImagenesProducto(idDocActual);
     await updateDoc(doc(db, "productos", idDocActual), {
         codigo: codBarra,
         referenciaEmpresa: document.getElementById('referenciaEmpresa').value.trim(),
         nombre: document.getElementById('nomProd').value,
         precio: precioNuevo,
         unidad: document.getElementById('unidadProd').value,
-        estatus: document.getElementById('estatusProd').value // Aquí guardamos el cambio de estatus
+        estatus: document.getElementById('estatusProd').value,
+        imagenes,
+        imagenUrl: imagenes[0]?.url || '',
+        imagenPath: imagenes[0]?.path || ''
     });
+    await Promise.all(imagenesEliminadas.filter(imagen => imagen.path).map(imagen => deleteObject(ref(storage, imagen.path)).catch(error => console.warn('No se pudo eliminar una foto anterior:', error))));
     const diferencia = precioNuevo - Number(productoAnterior?.precio || 0);
     if (productoAnterior && Math.abs(diferencia) > 0.009) {
         await addDoc(collection(db, "alertas_auditoria"), {
@@ -582,6 +684,13 @@ window.cargarEdicion = (id, idSec, cod, referencia, nom, pre, sto, unidad, est) 
     document.getElementById('stockProd').disabled = true;
     document.getElementById('unidadProd').value = unidad || "Und";
     document.getElementById('estatusProd').value = est || "ACTIVO";
+    const producto = productosCache.find(item => item.idDoc === id);
+    imagenesProductoActual = Array.isArray(producto?.imagenes)
+        ? producto.imagenes.map((imagen, indice) => ({ ...imagen, esPrincipal: indice === 0 }))
+        : producto?.imagenUrl ? [{ url: producto.imagenUrl, path: producto.imagenPath || '', esPrincipal: true }] : [];
+    imagenesNuevas = [];
+    imagenesEliminadas = [];
+    renderGaleriaProducto();
     
     document.getElementById('formTitulo').innerText = "📝 Editando Producto";
     document.getElementById('btnGuardar').style.display = "none";
@@ -607,6 +716,12 @@ function limpiarForm() {
     document.getElementById('stockProd').value = "";
     document.getElementById('unidadProd').value = "Und";
     document.getElementById('estatusProd').value = "ACTIVO";
+    imagenesProductoActual = [];
+    imagenesNuevas.forEach(imagen => URL.revokeObjectURL(imagen.previewUrl || ''));
+    imagenesNuevas = [];
+    imagenesEliminadas = [];
+    document.getElementById('estadoImagenesProducto').textContent = '';
+    renderGaleriaProducto();
 }
 
 

@@ -5,7 +5,7 @@
 
 ## ESTIMACION ACTUALIZADA
 
-El trabajo pendiente estimado es de **50 a 87 horas** para cerrar el MVP operativo sin eliminacion de fondo, o **56 a 99 horas** si se incluye procesamiento avanzado de imagen e IA. A 4 horas diarias representa aproximadamente **13 a 22 dias laborables**, o **14 a 25 dias** con fondo avanzado.
+El trabajo pendiente estimado es de **46 a 81 horas** para cerrar el MVP operativo sin eliminacion de fondo, o **52 a 93 horas** si se incluye procesamiento avanzado de imagen e IA. A 4 horas diarias representa aproximadamente **12 a 21 dias laborables**, o **13 a 24 dias** con fondo avanzado.
 
 El detalle por bloque y los supuestos estan en [PLAN_EVOLUCION_OPERATIVA.md](PLAN_EVOLUCION_OPERATIVA.md). Estas cifras no incluyen trabajo ya realizado.
 

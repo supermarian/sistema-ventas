@@ -101,7 +101,7 @@ La ficha de producto debe evolucionar desde los campos actuales (`idSecuencial`,
 - Tipo de inventario: venta, servicio, insumo u otro.
 - Categoria.
 - Referencia del fabricante o proveedor.
-- Foto opcional.
+- Varias fotos opcionales, con una imagen principal y texto alternativo.
 
 ### Venta, costos e impuestos
 
