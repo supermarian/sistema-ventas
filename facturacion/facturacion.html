@@ -97,6 +97,7 @@ header {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .modal-content { background: #fff; border-radius: 14px; padding: 22px; width: 420px; max-height: 85vh; overflow: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); animation: slideUp 0.3s ease-out; }
 .desglose-caja { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:7px; margin:12px 0; padding:10px; background:#f7f9fb; border:1px solid #dce3e8; border-radius:8px; }
+.desglose-caja[hidden] { display:none !important; }
 .desglose-caja label { display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:.82rem; font-weight:700; color:#46515a; }
 .desglose-caja input { width:72px; padding:6px; margin:0; text-align:center; }
 @media(max-width:500px) { .desglose-caja { grid-template-columns:1fr; } }
@@ -192,10 +193,12 @@ header {
   <div style="background:#f0f7f0;padding:12px;border-radius:8px;margin:12px 0">
     <div id="emailCajeroApertura" class="small">Cargando email...</div>
     <div id="nombreCajeroApertura" style="font-weight:700;color:var(--verde-pos)">Cargando nombre...</div>
+        <div id="diagnosticoCajeroApertura" class="small" style="margin-top:6px;color:#b42318"></div>
   </div>
     <input id="pinApertura" class="search-box" placeholder="PIN para abrir caja" type="password" style="text-align:center">
   <input id="montoInicial" class="search-box" placeholder="Monto Inicial RD$" type="number" style="margin-top:8px;text-align:center">
-    <div class="desglose-caja" data-desglose="apertura"></div>
+    <button type="button" class="btn" data-boton-desglose="apertura" onclick="window.alternarDesgloseCaja('apertura')" style="margin-top:8px">💵 Detallar monedas</button>
+    <div class="desglose-caja" data-desglose="apertura" hidden></div>
   <div style="display:flex;gap:10px;margin-top:14px">
     <button class="btn btn-main" onclick="window.validarPinApertura()">CONFIRMAR</button>
     <button class="btn" onclick="window.cerrarModal('modalApertura')">CANCELAR</button>
@@ -440,6 +443,8 @@ header {
     <h2 style="color:var(--rojo); border-bottom: 2px solid #eee; padding-bottom: 10px;">🔒 Cierre de Turno</h2>
     
     <div style="background:#fff5f5; padding:12px; border-radius:8px; margin:12px 0; border: 1px solid #ffebeb">
+            <div id="idTurnoCierre" style="font-weight:800;color:var(--rojo)">Turno: Cargando...</div>
+            <div id="jornadaCierre" class="small" style="margin-top:4px">Jornada: Cargando...</div>
       <div id="emailCajeroCierre" class="small">Cargando...</div>
       <div style="font-size: 0.8rem; color: #666; margin-top: 4px;">Monto de Apertura:</div>
       <div id="montoAperturaCierre" style="font-weight:700; color:var(--negro)">RD$ 0.00</div>
@@ -448,10 +453,10 @@ header {
     <div id="resumenCierre" style="background:#f9f9f9; padding:15px; border-radius:10px; margin:15px 0; line-height:1.6; border:1px solid #ddd; font-family: monospace; font-size: 0.9rem;">
       </div>
 
-        <div class="desglose-caja" data-desglose="cierre"></div>
-
         <label class="small" for="montoRealContado">Efectivo contado físicamente</label>
         <input id="montoRealContado" class="search-box" type="number" min="0" step="0.01" placeholder="RD$ 0.00" style="text-align:center; margin-bottom:10px;">
+        <button type="button" class="btn" data-boton-desglose="cierre" onclick="window.alternarDesgloseCaja('cierre')" style="margin-bottom:8px">💵 Detallar monedas</button>
+        <div class="desglose-caja" data-desglose="cierre" hidden></div>
     <input id="pinCierre" class="search-box" placeholder="PIN para confirmar cierre" type="password" style="text-align:center; margin-bottom: 10px;">
 
     <div style="display:flex; gap:10px;">
@@ -492,23 +497,24 @@ header {
   </div>
 
   <div class="card">
+        <div style="background:#fff8d8;padding:10px;border:1px solid #f0d56a;border-radius:10px;margin-bottom:12px">
+            <label for="tipoComprobanteRapido" style="font-weight:700;color:#5f4b00">🧾 Comprobante para esta venta</label>
+            <select id="tipoComprobanteRapido" class="search-box" style="margin-top:6px"></select>
+            <small id="descripcionComprobanteRapido" class="small">Selecciona el tipo antes de cobrar.</small>
+        </div>
     <div style="background:#e7f3ff;padding:12px;border-radius:10px;margin-bottom:12px">
       <strong style="color:var(--azul)">👤 GESTIÓN DE CLIENTE</strong>
-            <button class="venta-rapida-btn" type="button" onclick="window.abrirVentaRapida()" aria-label="Abrir venta rápida">
+                        <button id="btnVentaRapida" class="venta-rapida-btn" type="button" onclick="window.abrirVentaRapida()" aria-label="Abrir venta rápida">
                 <span class="venta-rapida-icon" aria-hidden="true">📱</span>
                 <span><strong>VENTA RÁPIDA</strong>Registrar cliente y preparar la venta</span>
             </button>
-      <div style="position:relative;margin-top:8px">
+            <button id="btnVentaCredito" class="venta-rapida-btn" type="button" onclick="window.activarModoCredito()" aria-label="Preparar venta a crédito" style="margin-top:8px;border-color:#c9a227;background:#fff8d8;color:#856404">
+                <span class="venta-rapida-icon" style="background:#c9a227">💳</span>
+                <span><strong>VENTA A CRÉDITO</strong>Seleccionar cliente y cobrar después</span>
+            </button>
+            <div id="busquedaClienteCaja" style="display:none;position:relative;margin-top:8px">
         <input id="buscadorCliente" class="search-box" placeholder="Buscar por nombre y Enter..." autocomplete="off">
         <div id="resultados-clientes" class="resultados-flotantes"></div>
-      </div>
-      <div class="grid-cols" style="margin-top:8px">
-        <input id="busc-cli-tel" class="search-box" placeholder="📱 Buscar teléfono" autocomplete="off">
-        <button id="btnBuscarTel" class="btn" style="background:#007bff;color:#fff">Buscar</button>
-      </div>
-      <div class="grid-cols" style="margin-top:8px">
-        <input id="inputCedulaSearch" class="search-box" placeholder="🔎 Buscar cédula" autocomplete="off">
-        <button id="btnBuscarCedula" class="btn" style="background:#0069d9;color:#fff">Buscar</button>
       </div>
       <div id="info-cliente-sel" style="display:none;margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:2px solid var(--verde-pos)">
                 <b id="nombre-cliente-ok" style="color:var(--verde-pos);font-size:1.05rem"></b>
@@ -526,7 +532,7 @@ header {
     </div>
     
     <div style="margin-top:auto">
-    <div id="mensaje-tipo-cobro" class="aviso-credito" style="display:none">⚠️ FACTURA A CRÉDITO</div>
+    <div id="mensaje-tipo-cobro" class="aviso-credito" style="display:none">⚠️ VENTA A CRÉDITO - Selecciona un cliente autorizado antes de cobrar.</div>
       <div style="text-align:right;margin-top:10px">
         <small class="small">TOTAL A COBRAR</small>
         <h1 id="granTotal" style="font-size:2.5rem;margin:6px 0;color:var(--verde-pos)">RD$ 0.00</h1>
@@ -552,7 +558,7 @@ header {
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
     import { 
         getFirestore, enableIndexedDbPersistence, collection, onSnapshot, doc, runTransaction,
-        addDoc, serverTimestamp, updateDoc, getDocs, getDocsFromCache, getDoc, query, where
+        addDoc, serverTimestamp, updateDoc, getDocs, getDocsFromCache, getDoc, setDoc, query, where
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
  
     // 3. Configuración ÚNICA
@@ -587,9 +593,64 @@ header {
         tempProd: null,
         cotizacionSeleccionada: null,
         permitirStockNegativo: false,
-        tiposComprobante: []
+        tiposComprobante: [],
+        modoVentaCredito: false
     };
     window.puedeEditarPrecios = false;
+    const puedeUsarCaja = permiso => {
+        const rol = state.userDB?.rol;
+        const permisos = state.userDB?.permisos;
+        if (permisos && Object.keys(permisos).length) return permisos[permiso] === true;
+        if (['Administrador', 'Jefe'].includes(rol)) return true;
+        return state.userDB?.permisos?.[permiso] === true;
+    };
+    const tieneAccesoFacturacion = () => {
+        const permisos = state.userDB?.permisos;
+        if (permisos && Object.keys(permisos).length) return permisos.facturacion === true;
+        return ['Administrador', 'Jefe', 'Cajero'].includes(state.userDB?.rol);
+    };
+    const registrarErrorAplicacion = (contexto, error, datos = {}) => {
+        console.error(`[SISTEMA VENTAS] ${contexto}`, { ...datos, code: error?.code, message: error?.message, error });
+    };
+    const verificarDispositivoCaja = async user => {
+        const esAdministrativo = ['Administrador', 'Jefe'].includes(state.userDB?.rol);
+        const dispositivoId = localStorage.getItem('supermarian_dispositivo_id') || globalThis.crypto?.randomUUID?.() || `disp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        localStorage.setItem('supermarian_dispositivo_id', dispositivoId);
+        const referencia = doc(db, 'dispositivos_autorizados', `${user.uid}__${dispositivoId}`);
+        const referenciaAnterior = doc(db, 'dispositivos_autorizados', dispositivoId);
+        const existente = await getDoc(referencia);
+        if (!existente.exists()) {
+            const registroAnterior = await getDoc(referenciaAnterior);
+            const datosAnteriores = registroAnterior.exists() && registroAnterior.data().uid === user.uid ? registroAnterior.data() : {};
+            await setDoc(referencia, { ...datosAnteriores, dispositivoId, uid: user.uid, email: user.email || '', nombre: state.userDB?.nombre || user.email || '', rol: state.userDB?.rol || '', estado: esAdministrativo ? 'AUTORIZADO' : (datosAnteriores.estado || 'PENDIENTE'), navegador: navigator.userAgent, plataforma: navigator.platform, creadoEn: datosAnteriores.creadoEn || serverTimestamp(), ultimoAcceso: serverTimestamp() });
+            registrarErrorAplicacion('DISPOSITIVO_PENDIENTE', new Error('Este equipo necesita autorizacion administrativa.'), { dispositivoId, uid: user.uid, email: user.email });
+        }
+        const datos = existente.exists() ? existente.data() : (await getDoc(referencia)).data() || { estado: 'PENDIENTE' };
+        if (esAdministrativo) {
+            await updateDoc(referencia, { email: user.email || '', nombre: state.userDB?.nombre || user.email || '', rol: state.userDB?.rol || '', estado: 'AUTORIZADO', ultimoAcceso: serverTimestamp(), navegador: navigator.userAgent, plataforma: navigator.platform });
+            return true;
+        }
+        if (datos.estado !== 'AUTORIZADO') {
+            registrarErrorAplicacion('DISPOSITIVO_NO_AUTORIZADO', new Error(`Estado del dispositivo: ${datos.estado || 'PENDIENTE'}`), { dispositivoId, uid: user.uid, email: user.email, rol: state.userDB?.rol, estado: datos.estado });
+            return false;
+        }
+        await updateDoc(referencia, { ultimoAcceso: serverTimestamp(), navegador: navigator.userAgent, plataforma: navigator.platform });
+        return true;
+    };
+    const aplicarPermisosCaja = () => {
+        const controles = {
+            'btn-cobrar-credito': 'caja_credito',
+            'btn-egreso-caja': 'caja_egreso',
+            'btn-cotizaciones': 'caja_cotizaciones',
+            'btn-cerrar-turno': 'caja_cierre'
+        };
+        Object.entries(controles).forEach(([id, permiso]) => {
+            const control = document.getElementById(id);
+            if (control && !puedeUsarCaja(permiso)) control.style.display = 'none';
+        });
+        const reimpresion = document.querySelector('.reimprimir-container');
+        if (reimpresion && !puedeUsarCaja('caja_reimpresion')) reimpresion.style.display = 'none';
+    };
     const comprobantesBase = [
         { codigo: 'B02', descripcion: 'Factura de consumidor final', grupo: 'Caja', activo: true, siguienteNumero: 1 },
         { codigo: 'B01', descripcion: 'Factura de credito fiscal', grupo: 'Caja', activo: false, siguienteNumero: 1 },
@@ -609,25 +670,56 @@ header {
         { codigo: 'E45', descripcion: 'e-CF de regimen especial', grupo: 'Caja', activo: false, siguienteNumero: 1 },
         { codigo: 'E46', descripcion: 'e-CF para consumidor final especial', grupo: 'Caja', activo: false, siguienteNumero: 1 }
     ];
+    let siguienteNumeroGlobal = 1;
     const cargarTiposComprobante = async () => {
         const snap = await getDoc(doc(db, 'configuracion-sistema', 'comprobantes'));
+        const correlativoGlobal = await getDoc(doc(db, 'configuracion-venta-factura', 'correlativo'));
+        siguienteNumeroGlobal = (correlativoGlobal.exists() ? Number(correlativoGlobal.data().ultimoNumeroFactura) || 0 : 0) + 1;
         const guardados = snap.exists() ? snap.data().tipos || [] : [];
         state.tiposComprobante = comprobantesBase.map(base => ({ ...base, ...guardados.find(item => item.codigo === base.codigo) })).filter(item => item.activo && (item.grupo || 'Caja') === 'Caja');
+        const siguienteConfigurado = Math.max(0, ...state.tiposComprobante.map(item => Number(item.siguienteNumero) || 0)) + 1;
+        siguienteNumeroGlobal = Math.max(siguienteNumeroGlobal, siguienteConfigurado);
         if (!state.tiposComprobante.length) state.tiposComprobante = [comprobantesBase[0]];
         const selector = document.getElementById('tipoComprobante');
-        selector.innerHTML = state.tiposComprobante.map(item => `<option value="${item.codigo}">${item.codigo} - ${item.descripcion}</option>`).join('');
-        selector.onchange = () => { const tipo = state.tiposComprobante.find(item => item.codigo === selector.value); document.getElementById('descripcionComprobante').innerText = tipo?.descripcion || ''; document.getElementById('nro-factura-display').innerText = `${tipo?.codigo || 'B02'}${String(Number(tipo?.siguienteNumero) || 1).padStart(8, '0')}`; };
+        const selectorRapido = document.getElementById('tipoComprobanteRapido');
+        const opciones = state.tiposComprobante.map(item => `<option value="${item.codigo}">${item.codigo} - ${item.descripcion}</option>`).join('');
+        selector.innerHTML = opciones;
+        if (selectorRapido) selectorRapido.innerHTML = opciones;
+        const actualizarComprobante = valor => {
+            selector.value = valor;
+            if (selectorRapido) selectorRapido.value = valor;
+            const tipo = state.tiposComprobante.find(item => item.codigo === valor);
+            document.getElementById('descripcionComprobante').innerText = tipo?.descripcion || '';
+            if (document.getElementById('descripcionComprobanteRapido')) document.getElementById('descripcionComprobanteRapido').innerText = tipo?.descripcion || '';
+            document.getElementById('nro-factura-display').innerText = `${tipo?.codigo || 'B02'}${String(siguienteNumeroGlobal).padStart(8, '0')} / FAC-${String(siguienteNumeroGlobal).padStart(6, '0')}`;
+        };
+        selector.onchange = () => actualizarComprobante(selector.value);
+        if (selectorRapido) selectorRapido.onchange = () => actualizarComprobante(selectorRapido.value);
         selector.dispatchEvent(new Event('change'));
     };
 
     const denominacionesCaja = [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000];
     const renderDesgloseCaja = () => document.querySelectorAll('.desglose-caja').forEach(contenedor => {
         const tipo = contenedor.dataset.desglose;
+        contenedor.dataset.activo = 'false';
         contenedor.innerHTML = denominacionesCaja.map(valor => `
             <label>RD$ ${valor}<input type="number" min="0" step="1" value="0" data-denominacion="${valor}" data-tipo="${tipo}"></label>
         `).join('');
         contenedor.insertAdjacentHTML('beforeend', '<strong style="grid-column:1/-1;text-align:right">Total: <span class="total-desglose">RD$ 0.00</span></strong>');
     });
+    window.alternarDesgloseCaja = tipo => {
+        const contenedor = document.querySelector(`[data-desglose="${tipo}"]`);
+        const destino = document.getElementById(tipo === 'apertura' ? 'montoInicial' : 'montoRealContado');
+        const boton = document.querySelector(`[data-boton-desglose="${tipo}"]`);
+        const activar = contenedor.dataset.activo !== 'true';
+        contenedor.dataset.activo = String(activar);
+        contenedor.hidden = !activar;
+        destino.disabled = activar;
+        boton.innerText = activar ? '✏️ Usar monto directo' : '💵 Detallar monedas';
+        if (activar) destino.value = '';
+        if (!activar) contenedor.querySelectorAll('input[data-denominacion]').forEach(input => { input.value = '0'; });
+        leerDesglose(tipo);
+    };
     const leerDesglose = tipo => {
         const contenedor = document.querySelector(`[data-desglose="${tipo}"]`);
         if (!contenedor) return { total: 0, cantidades: {} };
@@ -648,7 +740,7 @@ header {
         const tipo = event.target.dataset.tipo;
         const desglose = leerDesglose(tipo);
         const destino = document.getElementById(tipo === 'apertura' ? 'montoInicial' : 'montoRealContado');
-        if (destino) destino.value = desglose.total ? desglose.total.toFixed(2) : '';
+        if (destino && document.querySelector(`[data-desglose="${tipo}"]`).dataset.activo === 'true') destino.value = desglose.total.toFixed(2);
     });
 
     const guardarCarritoTemporal = () => {
@@ -660,6 +752,16 @@ header {
         const mes = String(fecha.getMonth() + 1).padStart(2, '0');
         const dia = String(fecha.getDate()).padStart(2, '0');
         return `${año}-${mes}-${dia}`;
+    };
+    const crearIdTurno = (fecha = Date.now(), uid = auth.currentUser?.uid || 'sin-uid') => `TURNO-${fechaLocalJornada(new Date(fecha)).replaceAll('-', '')}-${String(fecha).slice(-6)}-${uid.slice(0, 6).toUpperCase()}`;
+    const obtenerIdTurno = () => {
+        let id = localStorage.getItem('marian_pos_turno_id');
+        if (!id) {
+            id = crearIdTurno(Number(localStorage.getItem('marian_pos_open_at')) || Date.now());
+            localStorage.setItem('marian_pos_turno_id', id);
+            console.warn('[SISTEMA VENTAS] TURNO_ID_RECUPERADO', { id, jornada: localStorage.getItem('marian_pos_open_date') || fechaLocalJornada(), email: localStorage.getItem('marian_pos_open_email') || auth.currentUser?.email || '' });
+        }
+        return id;
     };
 
     let vigilanciaMedianocheIniciada = false;
@@ -1008,8 +1110,13 @@ window.abrirModuloCreditos = async () => {
         document.getElementById('listaDeudasBody').innerHTML = html || "<tr><td colspan='5' style='text-align:center'>No hay cuentas pendientes</td></tr>";
         
     } catch (e) {
-        console.error(e);
-        alert("Error al cargar deudas");
+        registrarErrorAplicacion('COBRO_CREDITO_CARGA_RECHAZADA', e, {
+            uid: auth.currentUser?.uid || '',
+            email: auth.currentUser?.email || '',
+            colecciones: ['deudas_clientes', 'clientes_fiado', 'clientes']
+        });
+        document.getElementById('listaDeudasBody').innerHTML = "<tr><td colspan='5' style='text-align:center;color:#b42318'>No se pudieron cargar las deudas. Revisa la consola y los permisos del usuario.</td></tr>";
+        alert(`Error al cargar datos de crédito: ${e?.code || e?.message || 'permiso rechazado'}`);
     }
 };
 
@@ -1107,7 +1214,23 @@ window.confirmarCobroDeuda = async () => {
 };
 
     // 2. FUNCIONES GLOBALES (Asignadas a window para los botones del HTML)
-    window.abrirModalApertura = () => POSUI.abrirModal('modalApertura');
+    const reiniciarCapturaCaja = tipo => {
+        const contenedor = document.querySelector(`[data-desglose="${tipo}"]`);
+        const destino = document.getElementById(tipo === 'apertura' ? 'montoInicial' : 'montoRealContado');
+        const boton = document.querySelector(`[data-boton-desglose="${tipo}"]`);
+        if (!contenedor || !destino || !boton) return;
+        contenedor.dataset.activo = 'false';
+        contenedor.hidden = true;
+        contenedor.querySelectorAll('input[data-denominacion]').forEach(input => { input.value = '0'; });
+        destino.disabled = false;
+        destino.value = '';
+        boton.innerText = '💵 Detallar monedas';
+        leerDesglose(tipo);
+    };
+    window.abrirModalApertura = () => {
+        reiniciarCapturaCaja('apertura');
+        POSUI.abrirModal('modalApertura');
+    };
     window.cerrarModal = (id) => POSUI.cerrarModal(id);
     
     window.cerrarSesion = () => {
@@ -1275,6 +1398,22 @@ window.confirmarCobroDeuda = async () => {
         avisoCredito.classList.toggle('activo', Boolean(cliente.permiteCredito));
         avisoCredito.style.display = cliente.permiteCredito ? 'block' : 'none';
         actualizarResumenCredito(cliente);
+        if (state.modoVentaCredito) {
+            document.getElementById('pagoTipo').value = 'Credito';
+            document.getElementById('mensaje-tipo-cobro').innerText = `⚠️ VENTA A CRÉDITO: ${cliente.nombre}. El saldo se registrará para cobro posterior.`;
+        }
+    };
+
+    window.activarModoCredito = () => {
+        state.modoVentaCredito = true;
+        document.getElementById('btnVentaCredito').style.display = 'none';
+        document.getElementById('btnVentaRapida').style.display = 'none';
+        document.getElementById('busquedaClienteCaja').style.display = 'block';
+        const aviso = document.getElementById('mensaje-tipo-cobro');
+        aviso.innerText = '⚠️ VENTA A CRÉDITO: busca y selecciona el cliente autorizado.';
+        aviso.style.display = 'block';
+        aviso.classList.add('activo');
+        document.getElementById('buscadorCliente').focus();
     };
 
     window.abrirVentaRapida = () => {
@@ -1383,16 +1522,23 @@ window.confirmarCobroDeuda = async () => {
 
     window.deseleccionarCliente = () => {
         state.clienteSeleccionado = null;
+        state.modoVentaCredito = false;
         localStorage.removeItem('marian_pos_client');
         document.getElementById('info-cliente-sel').style.display = 'none';
         const avisoCredito = document.getElementById('mensaje-tipo-cobro');
         avisoCredito.classList.remove('activo');
         avisoCredito.style.display = 'none';
+        document.getElementById('busquedaClienteCaja').style.display = 'none';
+        document.getElementById('btnVentaRapida').style.display = 'flex';
+        document.getElementById('btnVentaCredito').style.display = 'flex';
     };
 
 window.abrirModalPago = () => {
     // 1. Verificación de seguridad
     if (state.carrito.length === 0) return alert("⚠️ Carrito vacío");
+    if (state.modoVentaCredito && (!state.clienteSeleccionado || !state.clienteSeleccionado.permiteCredito)) {
+        return alert('Selecciona primero un cliente autorizado para comprar a crédito.');
+    }
 
     // 2. Cálculo del total con protección contra NaN 
     const total = state.carrito.reduce((acc, p) => {
@@ -1419,6 +1565,10 @@ window.abrirModalPago = () => {
         if (optCredito) {
             optCredito.style.display = 'block';
             optCredito.innerText = `Crédito (${state.clienteSeleccionado.nombre})`;
+            if (state.modoVentaCredito) {
+                optCredito.selected = true;
+                document.getElementById('pagoTipo').value = 'Credito';
+            }
         }
     } else {
         if (optCredito) optCredito.style.display = 'none';
@@ -1480,6 +1630,7 @@ const guardarVentaOffline = (metodo, carritoVenta, totalVenta) => {
         tipoComprobante: tipo.codigo,
         descripcionComprobante: tipo.descripcion,
         nroFactura: `PEND-${tipo.codigo}-${String(numeroOffline).padStart(6, '0')}`,
+        idFacturaGlobal: `FAC-PEND-${String(numeroOffline).padStart(6, '0')}`,
         metodoPago: metodo,
         pagos: state.pagosRealizados || [],
         creadaEn: new Date().toISOString()
@@ -1541,8 +1692,9 @@ window.finalizarVenta = async (metodo) => {
             const tipoComprobante = configuracionTipos.find(item => item.codigo === codigoComprobante) || { codigo: codigoComprobante, descripcion: 'Factura de consumidor final', activo: true, siguienteNumero: 1 };
             const secuenciaRef = doc(db, 'configuracion-venta-factura', `secuencia-${codigoComprobante}`);
             const secuenciaDoc = await transaction.get(secuenciaRef);
-            const numeroComprobante = secuenciaDoc.exists() ? Number(secuenciaDoc.data().siguienteNumero) || 1 : Number(tipoComprobante.siguienteNumero) || 1;
+            const numeroComprobante = nuevoNumero;
             const idFactura = `${codigoComprobante}${numeroComprobante.toString().padStart(8, '0')}`;
+            const idFacturaGlobal = `FAC-${numeroComprobante.toString().padStart(6, '0')}`;
             let creditoNumero = null;
             let plazoDias = null;
             let vencimiento = null;
@@ -1569,6 +1721,7 @@ window.finalizarVenta = async (metodo) => {
             const ventaRef = doc(collection(db, "ventas_realizadas"));
             const ventaData = {
                 nroFactura: idFactura,
+                idFacturaGlobal,
                 tipoComprobante: codigoComprobante,
                 descripcionComprobante: tipoComprobante.descripcion,
                 fecha: serverTimestamp(),
@@ -1624,7 +1777,7 @@ window.finalizarVenta = async (metodo) => {
                 if (stockActual < cantidadSolicitada && !puedeAutorizarStockNegativo) throw new Error(`Stock insuficiente para ${carritoVenta[indice].nombre || 'el producto'}. Disponible: ${stockActual}.`);
             });
             transaction.set(correlativoRef, { ultimoNumeroFactura: nuevoNumero }, { merge: true });
-            transaction.set(secuenciaRef, { siguienteNumero: numeroComprobante + 1, codigo: codigoComprobante }, { merge: true });
+            transaction.set(secuenciaRef, { siguienteNumero: numeroComprobante + 1, codigo: codigoComprobante, ultimoNumeroGlobal: numeroComprobante }, { merge: true });
             if (metodo === 'Credito') {
                 const nuevoNumeroCredito = Number(creditoNumero.replace('CRD-', ''));
                 transaction.set(correlativoCreditoRef, { ultimoNumeroCredito: nuevoNumeroCredito }, { merge: true });
@@ -1724,7 +1877,7 @@ window.finalizarVenta = async (metodo) => {
             localStorage.setItem('marian_ventas_efectivo', totalEf + efectivoVenta);
         }
 
-        alert(`✅ VENTA EXITOSA: ${ventaData.nroFactura}`);
+        alert(`✅ VENTA ${metodo === 'Credito' ? 'A CRÉDITO' : 'CONTADO'} REGISTRADA\nFactura: ${ventaData.nroFactura}${ventaData.idFacturaGlobal ? `\nReferencia: ${ventaData.idFacturaGlobal}` : ''}${ventaData.nroCredito ? `\nCuenta de crédito: ${ventaData.nroCredito}` : ''}`);
 
         // Limpiar
         state.carrito = [];
@@ -1750,7 +1903,6 @@ window.finalizarVenta = async (metodo) => {
 };
 
     // --- LÓGICA DE CIERRE DE CAJA LEGACY ---
-window.prepararResumenCierreLegacy = async () => {
 window.mostrarResumenCierreLegacy = async () => {
     if (!state.userDB) return alert("Error: Usuario no identificado");
     
@@ -1859,17 +2011,34 @@ document.addEventListener('keydown', (e) => {
 
     window.validarPinApertura = () => {
         if (localStorage.getItem('marian_pos_must_close') === 'true') {
-            return alert('La caja pertenece a una jornada anterior. Debe completar el cierre antes de abrir una nueva.');
+            const responsable = localStorage.getItem('marian_pos_open_email') || auth.currentUser?.email || 'cajero anterior';
+            const actual = auth.currentUser?.email || '';
+            if (responsable !== actual) {
+                registrarErrorAplicacion('APERTURA_JORNADA_OTRO_CAJERO', new Error('Existe una jornada anterior de otro cajero.'), { responsable, actual });
+                return alert(`La caja tiene una jornada anterior pendiente del cajero ${responsable}. Ese cajero debe cerrarla antes de abrir otra.`);
+            }
+            document.getElementById('diagnosticoCajeroApertura').innerText = `Jornada anterior pendiente de ${responsable}. Complete el cierre antes de abrir otra.`;
+            window.cerrarCaja();
+            return;
         }
         const pin = document.getElementById('pinApertura').value;
         const desgloseApertura = leerDesglose('apertura');
-        const monto = desgloseApertura.total || Number(document.getElementById('montoInicial').value);
-        if (state.userDB && pin === state.userDB.pin) {
+        const modoDesglose = document.querySelector('[data-desglose="apertura"]').dataset.activo === 'true';
+        const monto = modoDesglose ? desgloseApertura.total : Number(document.getElementById('montoInicial').value);
+        if (!state.userDB) {
+            const datos = { email: auth.currentUser?.email || '', uid: auth.currentUser?.uid || '', tienePerfil: false };
+            const mensaje = `No hay perfil de cajero para ${datos.email}. UID: ${datos.uid}. Revisa usuarios/{UID} y el PIN.`;
+            registrarErrorAplicacion('APERTURA_SIN_PERFIL', new Error(mensaje), datos);
+            document.getElementById('diagnosticoCajeroApertura').innerText = mensaje;
+            return alert('No se puede abrir caja: el perfil del cajero no fue encontrado. Revisa la consola para ver el UID exacto.');
+        }
+        if (pin === String(state.userDB.pin || '')) {
             if(!Number.isFinite(monto) || monto < 0) return alert("Ingrese un monto inicial válido");
             localStorage.setItem('marian_pos_open', 'true');
             localStorage.setItem('marian_monto_inicial', String(monto));
             localStorage.setItem('marian_pos_open_at', String(Date.now()));
             localStorage.setItem('marian_pos_open_date', fechaLocalJornada());
+            localStorage.setItem('marian_pos_turno_id', crearIdTurno(Date.now(), auth.currentUser?.uid));
             localStorage.setItem('marian_pos_open_email', state.userDB.email || auth.currentUser?.email || '');
             localStorage.setItem('marian_pos_open_name', state.userDB.nombre || '');
             document.getElementById('pinApertura').value = '';
@@ -1877,7 +2046,10 @@ document.addEventListener('keydown', (e) => {
             document.getElementById('btn-egreso-caja').style.display = 'block';
             POSUI.cerrarModal('modalApertura');
         } else {
-            alert("PIN Incorrecto");
+            const datos = { email: state.userDB.email, uid: state.userDB.uid || auth.currentUser?.uid || '', pinIngresado: Boolean(pin), pinConfigurado: Boolean(state.userDB.pin) };
+            registrarErrorAplicacion('APERTURA_PIN_INVALIDO', new Error('El PIN ingresado no coincide con el PIN del perfil.'), datos);
+            document.getElementById('diagnosticoCajeroApertura').innerText = `PIN no coincide para ${datos.email}. Revisa consola; UID: ${datos.uid}`;
+            alert('PIN incorrecto. Se dejó el diagnóstico en la consola.');
         }
     };
 
@@ -1898,6 +2070,15 @@ document.addEventListener('keydown', (e) => {
         if (user) {
             document.getElementById('emailCajeroApertura').innerText = user.email;
             state.userDB = await POSCore.obtenerUsuario(db, user.email, user.uid);
+            aplicarPermisosCaja();
+            console.info('[SISTEMA VENTAS] PERFIL_CAJERO', {
+                email: user.email,
+                uidSesion: user.uid,
+                uidPerfil: state.userDB?.uid || state.userDB?.id || null,
+                perfilEncontrado: Boolean(state.userDB),
+                rol: state.userDB?.rol || null,
+                permisos: state.userDB?.permisos || {}
+            });
             sincronizarCatalogoDiario();
             try { await cargarTiposComprobante(); } catch (error) { console.error('No se pudo cargar comprobantes:', error); }
             const configuracionStock = await getDoc(doc(db, 'configuracion-sistema', 'inventario'));
@@ -1905,9 +2086,28 @@ document.addEventListener('keydown', (e) => {
             window.puedeEditarPrecios = ['Administrador', 'Jefe'].includes(state.userDB?.rol);
             if (state.userDB) {
                 document.getElementById('nombreCajeroApertura').innerText = state.userDB.nombre || user.email;
+                if (!tieneAccesoFacturacion()) {
+                    registrarErrorAplicacion('FACTURACION_SIN_PERMISO', new Error('El perfil no tiene permiso facturacion.'), { uid: user.uid, email: user.email, rol: state.userDB.rol, permisos: state.userDB.permisos || {} });
+                    document.body.innerHTML = '<div style="font-family:Arial;padding:32px;max-width:620px;margin:auto"><h2>Acceso no autorizado</h2><p>Tu perfil no tiene habilitado Caja / Facturacion. Solicita al Administrador que active ese permiso en Personal.</p><button onclick="location.href=\'../menu.html\'">Volver al menu</button></div>';
+                    return;
+                }
             } else {
                 document.getElementById('nombreCajeroApertura').innerText = 'Perfil de cajero no encontrado';
-                console.error('No se encontró el perfil del cajero en usuarios/{uid}.', { uid: user.uid, email: user.email });
+                const mensaje = `Perfil no encontrado. Cree usuarios/${user.uid} con email ${user.email}, nombre, rol y pin.`;
+                document.getElementById('diagnosticoCajeroApertura').innerText = mensaje;
+                registrarErrorAplicacion('PERFIL_CAJERO_NO_ENCONTRADO', new Error(mensaje), { uid: user.uid, email: user.email });
+            }
+            try {
+                if (!(await verificarDispositivoCaja(user))) {
+                    document.getElementById('nombreCajeroApertura').innerText = 'Dispositivo pendiente de autorización';
+                    document.getElementById('diagnosticoCajeroApertura').innerText = 'Solicitud pendiente: entrega el ID mostrado en la consola al Administrador o Jefe para autorizar este equipo desde Personal.';
+                    POSUI.bloquearSistema();
+                    return;
+                }
+            } catch (error) {
+                registrarErrorAplicacion('DISPOSITIVO_VERIFICACION_RECHAZADA', error, { uid: user.uid, email: user.email });
+                POSUI.bloquearSistema();
+                return;
             }
             if (state.clienteSeleccionado) window.seleccionarCliente(state.clienteSeleccionado);
             if (navigator.onLine) iniciarEscuchaCotizaciones();
@@ -1920,7 +2120,12 @@ document.addEventListener('keydown', (e) => {
             const turnoAbierto = localStorage.getItem('marian_pos_open') === 'true';
             const fechaApertura = Number(localStorage.getItem('marian_pos_open_at') || 0);
             const fechaJornada = localStorage.getItem('marian_pos_open_date') || fechaLocalJornada(new Date(fechaApertura));
-            const mismoCajero = localStorage.getItem('marian_pos_open_email') === user.email;
+            const correoApertura = localStorage.getItem('marian_pos_open_email') || user.email;
+            if (!localStorage.getItem('marian_pos_open_email') && localStorage.getItem('marian_pos_must_close') === 'true') {
+                localStorage.setItem('marian_pos_open_email', user.email);
+                console.warn('[SISTEMA VENTAS] APERTURA_CORREO_RECUPERADO', { uid: user.uid, email: user.email, motivo: 'Jornada anterior sin correo guardado' });
+            }
+            const mismoCajero = correoApertura === user.email;
             const turnoVigente = fechaApertura > 0 && Date.now() - fechaApertura < 12 * 60 * 60 * 1000
                 && fechaJornada === fechaLocalJornada();
 
@@ -1928,8 +2133,13 @@ document.addEventListener('keydown', (e) => {
                 localStorage.setItem('marian_pos_must_close', 'true');
                 POSUI.bloquearSistema();
                 setTimeout(() => {
-                    alert('La jornada anterior terminó a medianoche. Complete ahora el cierre de caja para generar el reporte.');
-                    window.cerrarCaja();
+                    const responsable = localStorage.getItem('marian_pos_open_email') || user.email;
+                    if (responsable === user.email) {
+                        const confirmarCierre = confirm('La jornada anterior terminó a medianoche. ¿Deseas cerrar la jornada anterior ahora para generar el reporte?');
+                        if (confirmarCierre) window.cerrarCaja();
+                    } else {
+                        alert(`Hay una caja abierta del día anterior a nombre de ${responsable}. Ese cajero debe cerrarla antes de continuar.`);
+                    }
                 }, 300);
             }
 
@@ -1945,7 +2155,7 @@ document.addEventListener('keydown', (e) => {
                 const btnCotizaciones = document.getElementById('btn-cotizaciones');
                 if(btnCotizaciones) btnCotizaciones.style.display = 'block';
                 POSUI.renderCarrito(state.carrito);
-            } else if (turnoAbierto) {
+            } else if (turnoAbierto && fechaJornada === fechaLocalJornada()) {
                 localStorage.removeItem('marian_pos_open');
                 localStorage.removeItem('marian_monto_inicial');
                 localStorage.removeItem('marian_pos_open_at');
@@ -1953,6 +2163,7 @@ document.addEventListener('keydown', (e) => {
                 localStorage.removeItem('marian_pos_open_email');
                 localStorage.removeItem('marian_pos_open_name');
             }
+            aplicarPermisosCaja();
         } else {
             window.location.href = "../index.html";
         }
@@ -1969,15 +2180,18 @@ document.addEventListener('keydown', (e) => {
             if (!nroBuscado) return alert("⚠️ Escribe un número de factura (FAC-...)");
 
             try {
-                const q = query(collection(db, "ventas_realizadas"), where("nroFactura", "==", nroBuscado));
-                const querySnapshot = await getDocs(q);
+                const [porNumero, porIdGlobal] = await Promise.all([
+                    getDocs(query(collection(db, "ventas_realizadas"), where("nroFactura", "==", nroBuscado))),
+                    getDocs(query(collection(db, "ventas_realizadas"), where("idFacturaGlobal", "==", nroBuscado)))
+                ]);
+                const documentos = [...porNumero.docs, ...porIdGlobal.docs];
 
-                if (querySnapshot.empty) {
+                if (!documentos.length) {
                     alert("❌ Factura no encontrada. Verifica el número.");
                     return;
                 }
 
-                const venta = querySnapshot.docs[0].data();
+                const venta = documentos[0].data();
                 // Se envía 'true' para imprimir con marca de agua "COPIA"
                 TicketSystem.imprimir(venta, venta.items, true);
 
@@ -2020,6 +2234,10 @@ document.addEventListener('keydown', (e) => {
 
         // 1. Mostrar Email del cajero
         document.getElementById('emailCajeroCierre').innerText = user.email;
+        const idTurno = obtenerIdTurno();
+        const jornada = localStorage.getItem('marian_pos_open_date') || fechaLocalJornada();
+        document.getElementById('idTurnoCierre').innerText = `Turno: ${idTurno}`;
+        document.getElementById('jornadaCierre').innerText = `Jornada: ${jornada}`;
         
         // 2. Mostrar Monto de Apertura (desde localStorage)
         const montoApe = parseFloat(localStorage.getItem('marian_monto_inicial') || "0");
@@ -2060,6 +2278,10 @@ document.addEventListener('keydown', (e) => {
         POSUI.abrirModal('modalCierre');
         document.getElementById('montoRealContado').value = '';
         document.querySelectorAll('[data-desglose="cierre"] input').forEach(input => { input.value = '0'; });
+        document.querySelector('[data-desglose="cierre"]').dataset.activo = 'false';
+        document.querySelector('[data-desglose="cierre"]').hidden = true;
+        document.querySelector('[data-boton-desglose="cierre"]').innerText = '💵 Detallar monedas';
+        document.getElementById('montoRealContado').disabled = false;
         leerDesglose('cierre');
     };
 
@@ -2073,13 +2295,15 @@ document.addEventListener('keydown', (e) => {
                 const ventasCredito = Number(localStorage.getItem('marian_ventas_credito') || 0);
                 const egresos = Number(localStorage.getItem('marian_egresos_caja') || 0);
                 const desgloseEfectivo = leerDesglose('cierre');
-                const montoRealContado = desgloseEfectivo.total || Number(document.getElementById('montoRealContado').value);
+                const modoDesglose = document.querySelector('[data-desglose="cierre"]').dataset.activo === 'true';
+                const montoRealContado = modoDesglose ? desgloseEfectivo.total : Number(document.getElementById('montoRealContado').value);
                 const facturasTurno = Number(localStorage.getItem('marian_facturas_turno') || 0);
                 const montoEsperadoEnCaja = montoInicial + ventasEfectivo - egresos;
                 if (!Number.isFinite(montoRealContado) || montoRealContado < 0) return alert('Ingrese el efectivo contado físicamente.');
                 const diferencia = montoRealContado - montoEsperadoEnCaja;
                 const umbralDiferencia = Math.max(100, Math.abs(montoEsperadoEnCaja) * 0.05);
                 await addDoc(collection(db, 'cierres_caja'), {
+                    idTurno: obtenerIdTurno(),
                     fechaCierre: serverTimestamp(),
                     fechaJornada: localStorage.getItem('marian_pos_open_date') || fechaLocalJornada(),
                     cierreAutomaticoPorMedianoche: localStorage.getItem('marian_pos_must_close') === 'true',
@@ -2112,8 +2336,8 @@ document.addEventListener('keydown', (e) => {
                     .filter(([, cantidad]) => cantidad > 0)
                     .map(([denominacion, cantidad]) => ({ nombre: `Efectivo RD$ ${denominacion}`, cantidad, precio: Number(denominacion), subtotal: Number(denominacion) * cantidad }));
                 TicketSystem.imprimir({ nroFactura: `CIERRE-${Date.now()}`, tipoComprobante: 'CIERRE', descripcionComprobante: 'Desglose de cierre de caja', total: montoRealContado, cajero: state.userDB.nombre }, efectivoItems);
-                ['marian_pos_open', 'marian_monto_inicial', 'marian_pos_open_at', 'marian_pos_open_email', 'marian_pos_open_name', 'marian_ventas_efectivo', 'marian_ventas_credito', 'marian_egresos_caja', 'marian_facturas_turno', 'marian_pos_cart'].forEach(clave => localStorage.removeItem(clave));
-                ['marian_pos_open', 'marian_monto_inicial', 'marian_pos_open_at', 'marian_pos_open_date', 'marian_pos_must_close', 'marian_pos_open_email', 'marian_pos_open_name', 'marian_ventas_efectivo', 'marian_ventas_credito', 'marian_egresos_caja', 'marian_pos_cart'].forEach(clave => localStorage.removeItem(clave));
+                ['marian_pos_open', 'marian_monto_inicial', 'marian_pos_open_at', 'marian_pos_turno_id', 'marian_pos_open_email', 'marian_pos_open_name', 'marian_ventas_efectivo', 'marian_ventas_credito', 'marian_egresos_caja', 'marian_facturas_turno', 'marian_pos_cart'].forEach(clave => localStorage.removeItem(clave));
+                ['marian_pos_open', 'marian_monto_inicial', 'marian_pos_open_at', 'marian_pos_open_date', 'marian_pos_turno_id', 'marian_pos_must_close', 'marian_pos_open_email', 'marian_pos_open_name', 'marian_ventas_efectivo', 'marian_ventas_credito', 'marian_egresos_caja', 'marian_pos_cart'].forEach(clave => localStorage.removeItem(clave));
                 alert("✅ Caja cerrada exitosamente. El cierre fue registrado.");
                 location.reload();
             } catch (error) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Súper Marian - Auditoría de Cierres</title>
+    <title>Súper Marian - Auditoría y Cierres de Caja</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
@@ -106,7 +106,7 @@
 
 <div class="container">
     <header>
-        <h1><i class="fas fa-file-invoice-dollar"></i> Panel de Auditoría de Cierres</h1>
+        <h1><i class="fas fa-file-invoice-dollar"></i> Auditoría y Cierres de Caja</h1>
             <a href="../menu.html" class="btn-regresar"><i class="fas fa-arrow-left"></i> Volver al menú</a>
     </header>
 
@@ -129,6 +129,7 @@
         <table>
             <thead>
                 <tr>
+                    <th>Turno</th>
                     <th>Fecha/Hora</th>
                     <th>Cajero</th>
                     <th>Fondo Inicial</th>
@@ -204,6 +205,7 @@
 
                 const fila = `
                     <tr>
+                        <td><strong>${data.idTurno || 'Sin ID antiguo'}</strong></td>
                         <td>${fecha}</td>
                         <td><strong>${data.cajeroNombre || 'Sin nombre'}</strong><br><small>${data.cajeroEmail}</small></td>
                         <td>RD$ ${Number(data.fondoInicial ?? data.montoInicial ?? 0).toLocaleString()}</td>

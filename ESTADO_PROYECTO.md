@@ -1,6 +1,6 @@
 # 📊 ESTADO DEL PROYECTO - Súper Marian Sistema ERP
 
-**Última actualización:** 2026-09-06
+**Última actualización:** 2026-09-07
 **Versión:** v0.4 (MVP funcional en validación)
 
 ## 📌 ESTIMACIÓN GLOBAL
@@ -41,6 +41,9 @@ La aplicación cuenta con una versión funcional en desarrollo que integra porta
 - Copia manual de datos y configuración de comprobantes.
 - Correcciones administrativas de facturas con edición controlada de tipo, número, fecha, cliente y total.
 - Auditoría de valores anteriores y nuevos; no se permite anular ni borrar facturas desde este flujo.
+- Gestión de facturas visible con permiso `correcciones`.
+- Cierres de caja visibles como acceso separado con permiso `cierres_caja`.
+- Autorización de dispositivos por combinación UID + dispositivo y solicitudes pendientes.
 
 ### Pendiente antes de producción
 - Autenticar Firebase CLI y desplegar Cloud Functions.
@@ -77,6 +80,8 @@ La aplicación cuenta con una versión funcional en desarrollo que integra porta
 - [x] Métodos de pago
 - [x] Cierre de turno
 - [x] Estilos mejorados con hover effects
+- [x] Apertura de caja con monto directo y desglose opcional de monedas
+- [x] Permisos de Caja separados para crédito, reimpresión, egresos, cotizaciones y cierre
 
 ### **Módulo: CRÉDITOS**
 - [x] Registro de clientes
@@ -102,6 +107,7 @@ La aplicación cuenta con una versión funcional en desarrollo que integra porta
 - [x] Dashboard inicial con métricas y gráficos
 - [x] Reportes operativos iniciales
 - [x] Personal/empleados con roles y permisos básicos
+- [x] Eliminación de empleados mediante selección múltiple y confirmación separada
 - [x] Inventario básico: productos, stock, búsqueda y códigos de barras
 - [x] Configuración de comprobantes, numeración, bot y copia manual
 - [x] Correcciones administrativas y devoluciones registradas para Administrador/Jefe
@@ -114,6 +120,9 @@ La aplicación cuenta con una versión funcional en desarrollo que integra porta
 - [ ] Validar estructura de datos (uid vs idCliente)
 - [ ] Revalidar límite de crédito en backend
 - [ ] Permisos Firestore por rol
+- [ ] Normalizar perfiles antiguos para que `usuarios/{UID}` coincida con la cuenta Firebase real
+- [ ] Migrar el estado de caja de `localStorage` a una apertura persistente en Firestore
+- [ ] Verificar solicitudes de dispositivo con dos cuentas en dos equipos
 
 ### **Integración Cliente-Créditos**
 - [ ] Cuando cliente crea cuenta, registrar en tabla clientes

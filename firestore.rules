@@ -29,6 +29,8 @@ service cloud.firestore {
     function administradorOJefePorToken() {
       return autenticado() && (
         request.auth.token.admin == true || request.auth.token.rol in ['Administrador', 'Jefe']
+        || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['Administrador', 'Jefe'])
         || (exists(/databases/$(database)/documents/accesos_admin/$(request.auth.uid))
           && get(/databases/$(database)/documents/accesos_admin/$(request.auth.uid)).data.activo == true)
       );
@@ -77,6 +79,20 @@ service cloud.firestore {
     match /accesos_admin/{usuarioId} {
       allow read: if autenticado() && request.auth.uid == usuarioId;
       allow write: if request.auth.token.admin == true || request.auth.token.rol == 'Administrador';
+    }
+
+    match /dispositivos_autorizados/{dispositivoId} {
+      allow read: if administradorOJefe()
+        || (autenticado() && resource.data.uid == request.auth.uid);
+      allow create: if administradorOJefe()
+        || (autenticado()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.estado == 'PENDIENTE');
+      allow update: if administradorOJefe()
+        || (autenticado()
+          && resource.data.uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimoAcceso', 'navegador', 'plataforma']));
+      allow delete: if administradorOJefe();
     }
 
     match /productos/{productoId} {

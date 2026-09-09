@@ -11,6 +11,7 @@
         .header-action { border: 1px solid rgba(255,255,255,.7); background: rgba(0,0,0,.12); color: white; border-radius: 7px; padding: 8px 11px; cursor: pointer; font-weight: 700; }
         .header-action:hover { background: rgba(0,0,0,.28); }
         .welcome { margin-top: 20px; text-align: center; color: #333; }
+        .session-email { margin: 4px 0 0; color: #5c6770; font-size: .9rem; }
         
         /* --- PARTE A: EL ESTILO DEL AVISO --- */
         .alerta-stock {
@@ -62,6 +63,7 @@
 <div class="welcome">
     <h2 id="saludo">Cargando...</h2>
     <p id="rolText"></p>
+    <p id="emailText" class="session-email">Correo: cargando...</p>
 </div>
 
 <div id="avisoStock" class="alerta-stock">
@@ -100,7 +102,12 @@
     <div class="menu-card" id="btnAuditoria" data-acceso="auditoria" onclick="navegar('auditoria/auditoria.html', ['Administrador','Jefe','Consultor','Contador'])">
     <span>🕵️</span> 
     <h3>Auditoría</h3> 
-    <p>Historial de cierres y ventas.</p>  <p>cierre caja</p>
+    <p>Historial de cambios y ventas.</p>
+    </div>
+    <div class="menu-card" id="btnCierresCaja" data-acceso="cierres_caja" onclick="navegar('auditoria/auditoria.html', ['Administrador','Jefe','Consultor','Contador'])">
+    <span>💰</span>
+    <h3>Cierres de caja</h3>
+    <p>Cuadre diario, diferencias y responsables.</p>
     </div>
     <div class="menu-card" id="btnConfiguracionBot" data-acceso="bot" onclick="window.abrirConfiguracionBot()">
         <span>💬</span> <h3>Configuración del bot</h3> <p>WhatsApp y mensajes</p>
@@ -109,7 +116,7 @@
         <span>⚙️</span> <h3>Configuración</h3> <p>Comprobantes y numeración</p>
     </div>
     <div class="menu-card" id="btnCorreccionesFacturas" data-acceso="correcciones" onclick="navegar('facturacion/correcciones.html', ['Administrador','Jefe'])">
-        <span>↩️</span> <h3>Devoluciones y notas</h3> <p>Devoluciones y correcciones administrativas auditadas</p>
+        <span>🧾</span> <h3>Gestión de facturas</h3> <p>Correcciones, devoluciones y notas auditadas</p>
     </div>
 
 </div>
@@ -175,7 +182,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
-    import { getFirestore, collection, onSnapshot, addDoc, doc, getDoc, updateDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, addDoc, doc, getDoc, getDocs, setDoc, updateDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
@@ -203,17 +210,109 @@
     const tokenActual = await usuarioAutenticado.getIdTokenResult(true);
     const userRol = tokenActual.claims.rol || userRolGuardado;
     const userName = usuarioAutenticado.displayName || userNameGuardado || usuarioAutenticado.email;
-    const tieneClaimEmpleado = Boolean(tokenActual.claims.rol || tokenActual.claims.admin === true);
+    let tieneClaimEmpleado = Boolean(tokenActual.claims.rol || tokenActual.claims.admin === true);
     if (!userRol) {
         localStorage.removeItem('userRol');
         window.location.href = "index.html";
         throw new Error('Rol no disponible');
     }
-    localStorage.setItem('userRol', userRol);
-    localStorage.setItem('userName', userName);
+    let perfilActual = null;
+    let errorPerfilActual = null;
+    try {
+        try {
+            const perfilPorUid = await getDoc(doc(db, 'usuarios', usuarioAutenticado.uid));
+            if (perfilPorUid.exists()) perfilActual = { id: perfilPorUid.id, ...perfilPorUid.data() };
+        } catch (errorPorUid) {
+            console.warn('[SISTEMA VENTAS] MENU_PERFIL_UID_NO_DISPONIBLE; se intentara por correo', {
+                code: errorPorUid?.code,
+                message: errorPorUid?.message,
+                uid: usuarioAutenticado.uid,
+                email: usuarioAutenticado.email,
+                error: errorPorUid
+            });
+        }
+        if (!perfilActual) {
+            const perfilesPorCorreo = await getDocs(query(collection(db, 'usuarios'), where('email', '==', usuarioAutenticado.email)));
+            if (!perfilesPorCorreo.empty) {
+                const documento = perfilesPorCorreo.docs[0];
+                perfilActual = { id: documento.id, ...documento.data() };
+                if (documento.id !== usuarioAutenticado.uid && perfilActual.uid !== usuarioAutenticado.uid) {
+                    console.warn('[SISTEMA VENTAS] MENU_PERFIL_UID_INCONSISTENTE', {
+                        uidSesion: usuarioAutenticado.uid,
+                        uidPerfil: perfilActual.uid || documento.id,
+                        email: usuarioAutenticado.email
+                    });
+                }
+            }
+        }
+        if (!perfilActual && !tokenActual.claims.rol && !tokenActual.claims.admin) {
+            throw new Error(`No existe un perfil para ${usuarioAutenticado.email}`);
+        }
+    } catch (error) {
+        errorPerfilActual = error;
+        console.error('[SISTEMA VENTAS] MENU_PERFIL_RECHAZADO', { code: error?.code, message: error?.message, uid: usuarioAutenticado.uid, email: usuarioAutenticado.email, coleccion: 'usuarios', error });
+    }
+    if (errorPerfilActual && !perfilActual) {
+        localStorage.removeItem('userPermisos');
+        const rolPorToken = tokenActual.claims.rol || (tokenActual.claims.admin === true ? 'Administrador' : '');
+        if (rolPorToken) {
+            console.warn('[SISTEMA VENTAS] MENU_USANDO_ROL_TOKEN_SIN_PERFIL', {
+                uid: usuarioAutenticado.uid,
+                email: usuarioAutenticado.email,
+                rol: rolPorToken
+            });
+            perfilActual = { uid: usuarioAutenticado.uid, email: usuarioAutenticado.email || '', nombre: usuarioAutenticado.displayName || usuarioAutenticado.email || '', rol: rolPorToken };
+        } else {
+            document.body.innerHTML = `<div style="font-family:Arial;padding:32px;max-width:680px;margin:auto"><h2>⚠️ Perfil no actualizado</h2><p>No se cargaron los permisos actuales, por eso se bloquearon los módulos para no usar accesos antiguos.</p><p><b>Correo:</b> ${usuarioAutenticado.email || ''}<br><b>UID:</b> <code>${usuarioAutenticado.uid}</code></p><p>Corrige o crea <code>usuarios/${usuarioAutenticado.uid}</code> en Firestore y vuelve a entrar.</p><button id="btnCerrarSesionBloqueo">Cerrar sesión</button></div>`;
+            document.getElementById('btnCerrarSesionBloqueo').onclick = () => signOut(auth).then(() => location.href = 'index.html');
+            perfilActual = { uid: usuarioAutenticado.uid, email: usuarioAutenticado.email || '', nombre: usuarioAutenticado.email || '', rol: '', permisos: {} };
+        }
+    }
+    const userRolFinal = perfilActual?.rol || userRol;
+    const userNameFinal = perfilActual?.nombre || userName;
+    localStorage.setItem('userRol', userRolFinal);
+    localStorage.setItem('userName', userNameFinal);
+    if (perfilActual?.permisos && typeof perfilActual.permisos === 'object') localStorage.setItem('userPermisos', JSON.stringify(perfilActual.permisos));
 
-    document.getElementById('saludo').innerText = `¡Hola, ${userName}!`;
-    document.getElementById('rolText').innerText = `Rango: ${userRol}`;
+    const dispositivoId = localStorage.getItem('supermarian_dispositivo_id') || globalThis.crypto?.randomUUID?.() || `disp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem('supermarian_dispositivo_id', dispositivoId);
+    const claveDispositivo = uid => `${uid}__${dispositivoId}`;
+    const verificarDispositivo = async () => {
+        const esAdministrativo = ['Administrador', 'Jefe'].includes(userRolFinal);
+        const referencia = doc(db, 'dispositivos_autorizados', claveDispositivo(usuarioAutenticado.uid));
+        const referenciaAnterior = doc(db, 'dispositivos_autorizados', dispositivoId);
+        const existente = await getDoc(referencia);
+        if (!existente.exists()) {
+            const registroAnterior = await getDoc(referenciaAnterior);
+            const datosAnteriores = registroAnterior.exists() && registroAnterior.data().uid === usuarioAutenticado.uid ? registroAnterior.data() : {};
+            await setDoc(referencia, { ...datosAnteriores, dispositivoId, uid: usuarioAutenticado.uid, email: usuarioAutenticado.email || '', nombre: userNameFinal, rol: userRolFinal, estado: esAdministrativo ? 'AUTORIZADO' : (datosAnteriores.estado || 'PENDIENTE'), navegador: navigator.userAgent, plataforma: navigator.platform, creadoEn: datosAnteriores.creadoEn || serverTimestamp(), ultimoAcceso: serverTimestamp() });
+        }
+        const datos = existente.exists() ? existente.data() : (await getDoc(referencia)).data() || { estado: 'PENDIENTE' };
+        if (esAdministrativo) {
+            await updateDoc(referencia, { email: usuarioAutenticado.email || '', nombre: userNameFinal, rol: userRolFinal, estado: 'AUTORIZADO', ultimoAcceso: serverTimestamp(), navegador: navigator.userAgent, plataforma: navigator.platform });
+            return true;
+        }
+        if (datos.estado === 'AUTORIZADO') {
+            await updateDoc(referencia, { ultimoAcceso: serverTimestamp(), navegador: navigator.userAgent, plataforma: navigator.platform });
+            return true;
+        }
+        document.body.innerHTML = `<div style="font-family:Arial;padding:32px;max-width:680px;margin:auto"><h2>🔐 Solicitar acceso desde este dispositivo</h2><p>Este equipo todavía no está autorizado para <b>${usuarioAutenticado.email || 'este usuario'}</b>.</p><p><b>Rol:</b> ${userRolFinal}<br><b>Estado:</b> ${datos.estado || 'PENDIENTE'}<br><b>ID del dispositivo:</b><br><code>${dispositivoId}</code></p><div style="background:#fff8d8;padding:14px;border-radius:8px"><b>Qué debes hacer:</b><br>Entrega este ID al Administrador o Jefe. Ellos deben abrir <b>Personal → Accesos por dispositivo</b>, buscar tu correo o este ID y pulsar <b>Autorizar</b>.</div><p id="estadoSolicitud" style="color:#65727a">La solicitud ya fue registrada como pendiente.</p><button id="btnRevisarAcceso" style="padding:10px 14px;margin-right:8px">🔄 Revisar autorización</button><button onclick="location.href='index.html'">Cerrar sesión</button></div>`;
+        document.getElementById('btnRevisarAcceso').onclick = async () => {
+            const estadoSolicitud = document.getElementById('estadoSolicitud');
+            estadoSolicitud.innerText = 'Consultando autorización...';
+            const actualizado = await getDoc(referencia);
+            const nuevoEstado = actualizado.exists() ? actualizado.data().estado : 'PENDIENTE';
+            if (nuevoEstado === 'AUTORIZADO') location.reload();
+            else estadoSolicitud.innerText = nuevoEstado === 'BLOQUEADO' ? 'Este dispositivo está bloqueado. Solicita al Administrador que lo revise.' : 'Todavía está pendiente de autorización.';
+        };
+        console.warn('[SISTEMA VENTAS] DISPOSITIVO_NO_AUTORIZADO', { dispositivoId, uid: usuarioAutenticado.uid, email: usuarioAutenticado.email, rol: userRolFinal, estado: datos.estado || 'PENDIENTE' });
+        return false;
+    };
+    if (!(await verificarDispositivo())) throw new Error('Dispositivo no autorizado');
+
+    document.getElementById('saludo').innerText = `¡Hola, ${userNameFinal}!`;
+    document.getElementById('rolText').innerText = `Rango: ${userRolFinal}`;
+    document.getElementById('emailText').innerText = `Correo: ${usuarioAutenticado.email || 'No disponible'}`;
 
     // REVISAR STOCK BAJO
     onSnapshot(collection(db, "productos"), (snapshot) => {
@@ -232,6 +331,15 @@
         } else {
             box.style.display = 'none';
         }
+    }, error => {
+        console.error('[SISTEMA VENTAS] MENU_PRODUCTOS_RECHAZADO', {
+            code: error?.code,
+            message: error?.message,
+            uid: usuarioAutenticado.uid,
+            email: usuarioAutenticado.email,
+            coleccion: 'productos',
+            error
+        });
     });
 
     const convertirFecha = (valor) => {
@@ -271,20 +379,21 @@
     }, error => console.error('No se pudieron cargar créditos antiguos:', error));
 
     const permisosPorRol = {
-        Administrador: ['almacen','productos','precios','facturacion','dashboard','reportes','personal','creditos','auditoria','bot','configuracion','correcciones'],
-        Jefe: ['almacen','productos','precios','facturacion','dashboard','reportes','creditos','auditoria','bot','configuracion','correcciones'],
-        Cajero: ['facturacion'], Consultor: ['reportes','auditoria'], Contador: ['reportes','auditoria']
+        Administrador: ['almacen','productos','precios','facturacion','dashboard','reportes','personal','creditos','auditoria','cierres_caja','bot','configuracion','correcciones'],
+        Jefe: ['almacen','productos','precios','facturacion','dashboard','reportes','creditos','auditoria','cierres_caja','bot','configuracion','correcciones'],
+        Cajero: ['facturacion'], Consultor: ['reportes','auditoria','cierres_caja'], Contador: ['reportes','auditoria','cierres_caja']
     };
     let permisosGuardados = {};
     try { permisosGuardados = JSON.parse(localStorage.getItem('userPermisos') || '{}'); } catch (error) { permisosGuardados = {}; }
-    const permisos = Object.keys(permisosGuardados).length ? permisosGuardados : Object.fromEntries((permisosPorRol[userRol] || []).map(permiso => [permiso, true]));
-    if (userRol === 'Administrador') permisos.correcciones = true;
+    const permisosExplicitos = perfilActual?.permisos && typeof perfilActual.permisos === 'object';
+    const permisos = permisosExplicitos ? perfilActual.permisos : (Object.keys(permisosGuardados).length ? permisosGuardados : Object.fromEntries((permisosPorRol[userRolFinal] || []).map(permiso => [permiso, true])));
+    tieneClaimEmpleado = tieneClaimEmpleado || Boolean(userRolFinal);
     document.querySelectorAll('[data-acceso]').forEach(card => {
         if (permisos[card.dataset.acceso] !== true) card.remove();
     });
-    document.getElementById('configuracionSuperior').style.display = ['Administrador', 'Jefe'].includes(userRol) ? 'block' : 'none';
+    document.getElementById('configuracionSuperior').style.display = ['Administrador', 'Jefe'].includes(userRolFinal) ? 'block' : 'none';
     document.getElementById('configuracionSuperior').onclick = () => navegar('configuracion.html', ['Administrador', 'Jefe']);
-    if (['Administrador', 'Jefe'].includes(userRol) && tieneClaimEmpleado) {
+    if (['Administrador', 'Jefe'].includes(userRolFinal) && tieneClaimEmpleado) {
         onSnapshot(query(collection(db, 'cotizaciones'), where('estado', '==', 'PENDIENTE')), snapshot => {
             const badge = document.getElementById('badgeCotizacionesMenu');
             if (!badge) return;
@@ -327,7 +436,7 @@
     };
 
     window.abrirGestionProductosRapida = () => {
-        if (!['Administrador', 'Jefe'].includes(userRol)) return alert("Solo un administrador o jefe puede modificar productos.");
+        if (!['Administrador', 'Jefe'].includes(userRolFinal)) return alert("Solo un administrador o jefe puede modificar productos.");
         document.getElementById("modalProductosRapidos").style.display = "flex";
         renderProductosRapidos();
         document.getElementById("busquedaProductoRapida").focus();
@@ -370,7 +479,7 @@
                         tipo: Math.abs(diferencia) > Math.max(100, Math.abs(Number(productoAnterior.precio || 0)) * 0.2) ? "CAMBIO_PRECIO_IMPORTANTE" : "CAMBIO_PRECIO",
                         idProducto: id, producto: nombre, precioAnterior: Number(productoAnterior.precio || 0), precioNuevo: precio,
                         diferencia, idUsuario: auth.currentUser?.uid || "", usuarioUid: auth.currentUser?.uid || "",
-                        cajeroNombre: userName || "Desconocido", cajeroEmail: auth.currentUser?.email || "",
+                        cajeroNombre: userNameFinal || "Desconocido", cajeroEmail: auth.currentUser?.email || "",
                         dispositivo: navigator.userAgent, fecha: serverTimestamp(), estado: "PENDIENTE",
                         ventasObjetivo: 5, ventasRegistradas: 0
                     });
@@ -390,7 +499,7 @@
     });
 
     window.abrirConfiguracionBot = async () => {
-        if (!['Administrador', 'Jefe'].includes(userRol)) return alert('Solo un Administrador o Jefe puede configurar el bot.');
+        if (!['Administrador', 'Jefe'].includes(userRolFinal)) return alert('Solo un Administrador o Jefe puede configurar el bot.');
         document.getElementById('estadoConfiguracionBot').innerText = 'Cargando configuración...';
         document.getElementById('modalConfiguracionBot').style.display = 'flex';
         try {
@@ -433,7 +542,7 @@
 
     window.navegar = (pagina, niveles) => {
         const rolesPermitidos = Array.isArray(niveles) ? niveles : [niveles];
-        if (rolesPermitidos.includes(userRol)) {
+        if (rolesPermitidos.includes(userRolFinal)) {
             window.location.href = pagina;
         } else {
             alert("Acceso denegado");

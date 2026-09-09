@@ -5,6 +5,16 @@
 
 ## 🔴 BLOQUEADORES (HACER PRIMERO)
 
+### Diagnóstico actualizado: 2026-09-07
+
+Antes de agregar nuevas funciones, validar en este orden:
+
+1. Normalizar el documento `usuarios/{UID}` de cada cuenta real y eliminar dependencia de roles antiguos guardados en `localStorage`.
+2. Probar solicitudes de `dispositivos_autorizados` con dos cuentas y dos navegadores; confirmar que cada registro tenga correo, UID, rol y estado.
+3. Registrar aperturas de caja en Firestore. El estado actual depende principalmente de `localStorage`, por lo que una caja abierta en otro equipo no puede recuperarse de forma confiable.
+4. Probar cierre de jornada anterior, cierre por diferencia y apertura posterior.
+5. Solo después completar devolución real de productos y notas fiscales.
+
 | Tarea | Prioridad | Esfuerzo | Estado |
 |-------|-----------|----------|--------|
 | Recuperación de contraseña | 🔴 CRÍTICA | 2h | ✅ Implementado |

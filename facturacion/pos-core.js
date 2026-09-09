@@ -25,20 +25,14 @@ export const POSCore = {
     // 3. Gestión de Carrito (Evita duplicados y errores de cálculo)
     agregarProducto: (carrito, producto, cantidad) => {
         const nuevoCarrito = [...carrito];
-        const itemExistente = nuevoCarrito.find(p => p.id === producto.id);
         const precioNum = Number(producto.precio) || 0;
-        
-        if (itemExistente) {
-            itemExistente.cantidad += cantidad;
-            itemExistente.subtotal = itemExistente.cantidad * precioNum;
-        } else {
-            nuevoCarrito.push({
-                ...producto,
-                cantidad: cantidad,
-                precio: precioNum,
-                subtotal: cantidad * precioNum
-            });
-        }
+        nuevoCarrito.push({
+            ...producto,
+            lineaOrden: nuevoCarrito.length + 1,
+            cantidad,
+            precio: precioNum,
+            subtotal: cantidad * precioNum
+        });
         return nuevoCarrito;
     },
 
@@ -51,15 +45,42 @@ export const POSCore = {
     obtenerUsuario: async (db, email, uid) => {
         try {
             if (uid) {
-                const perfilPorUid = await getDoc(doc(db, "usuarios", uid));
-                if (perfilPorUid.exists()) return { id: perfilPorUid.id, ...perfilPorUid.data() };
+                try {
+                    const perfilPorUid = await getDoc(doc(db, "usuarios", uid));
+                    if (perfilPorUid.exists()) return { id: perfilPorUid.id, ...perfilPorUid.data() };
+                } catch (errorPorUid) {
+                    console.warn('[SISTEMA VENTAS] PERFIL_UID_NO_DISPONIBLE; se intentara por correo', {
+                        code: errorPorUid?.code,
+                        message: errorPorUid?.message,
+                        email,
+                        uid,
+                        error: errorPorUid
+                    });
+                }
             }
             const q = query(collection(db, "usuarios"), where("email", "==", email));
             const snap = await getDocs(q);
             const perfil = snap.docs.find(documento => documento.data().uid === uid) || snap.docs[0];
-            return perfil ? { id: perfil.id, ...perfil.data() } : null;
+            if (!perfil) return null;
+            const datos = perfil.data();
+            if (perfil.id !== uid && datos.uid !== uid) {
+                console.warn('[SISTEMA VENTAS] PERFIL_UID_INCONSISTENTE', {
+                    email,
+                    uidSesion: uid,
+                    uidPerfil: datos.uid || perfil.id,
+                    documentoPerfil: perfil.id
+                });
+            }
+            return { id: perfil.id, ...datos };
         } catch (e) {
-            console.error("Error obteniendo usuario:", e);
+            console.error('[SISTEMA VENTAS] PERFIL_LECTURA_RECHAZADA', {
+                code: e?.code,
+                message: e?.message,
+                email,
+                uid,
+                coleccion: 'usuarios',
+                error: e
+            });
             return null;
         }
     },

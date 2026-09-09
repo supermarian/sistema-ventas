@@ -79,6 +79,94 @@ No se debe diagnosticar solo con el último error visible: el primer error rojo 
 - Hosting: última versión desplegada y archivos presentes.
 - Cloud Functions: revisar logs si la autenticación o una función participa en el flujo.
 
+## Publicar reglas, funciones y pagina
+
+### Estado de publicacion: 2026-09-07
+
+- [x] Firestore Rules publicadas correctamente.
+- [x] Hosting publicado correctamente en `https://supermercado-marian.web.app`.
+- [x] Correccion sintactica de Facturacion publicada; el boton **Abrir turno** vuelve a registrar su funcion.
+- [x] Caja reorganizada con permiso principal y subpermisos para credito, reimpresion, egresos, cotizaciones y cierre.
+- [x] Personal puede guardar cambios directamente en Firestore cuando Cloud Functions no esta disponible.
+- [ ] Cloud Functions pendientes: el proyecto esta en Spark y Firebase exige Blaze para habilitar Artifact Registry y Cloud Build.
+
+El despliegue completo se intento con la cuenta `marcospenarosario@gmail.com`. Las reglas compilaron, pero Functions se detuvo antes de publicar porque el proyecto necesita actualizarse a Blaze. No se requiere cambiar el codigo para resolverlo; despues de activar Blaze se puede repetir solamente el despliegue de Functions.
+
+La correccion local no cambia el sitio publicado hasta desplegarla en el proyecto `supermercado-marian`. Estos comandos deben ejecutarse desde la carpeta raiz del repositorio, en una terminal donde la cuenta tenga acceso al proyecto. No se deben compartir contrasenas, tokens ni archivos de credenciales.
+
+### 1. Instalar y autenticar Firebase CLI
+
+Si `firebase --version` responde `command not found`, usar `npx` sin instalacion global:
+
+```bash
+npx firebase-tools@latest --version
+npx firebase-tools@latest login
+npx firebase-tools@latest projects:list
+npx firebase-tools@latest use supermercado-marian
+```
+
+La cuenta que inicia sesion debe ser miembro del proyecto Firebase. Si el proyecto no aparece en `projects:list`, el propietario debe agregar esa cuenta desde Firebase Console > Project settings > Users and permissions.
+
+### 2. Instalar dependencias de Cloud Functions
+
+```bash
+cd functions
+npm install
+npm run lint
+cd ..
+```
+
+### 3. Publicar la correccion completa
+
+```bash
+npx firebase-tools@latest deploy --only firestore:rules,functions,hosting --project supermercado-marian
+```
+
+Para publicar primero solo el acceso y la funcion de roles:
+
+```bash
+npx firebase-tools@latest deploy --only firestore:rules,functions:asignarRol --project supermercado-marian
+```
+
+Para publicar solo la pagina despues de corregir caché o interfaz:
+
+```bash
+npx firebase-tools@latest deploy --only hosting --project supermercado-marian
+```
+
+Despues de activar el plan Blaze, publicar las funciones pendientes con:
+
+```bash
+npx firebase-tools@latest deploy --only functions --project supermercado-marian
+```
+
+### 4. Comprobar la funcion de sincronizacion offline
+
+```bash
+npx firebase-tools@latest functions:list --project supermercado-marian
+npx firebase-tools@latest functions:log --only registrarVentaOffline --project supermercado-marian
+```
+
+`registrarVentaOffline` debe aparecer en la region `us-central1`. Si el navegador continua mostrando CORS, normalmente la funcion aun no fue desplegada, el despliegue fallo o se esta usando una version antigua del sitio. Despues de publicar, cerrar sesion, borrar los datos del sitio y entrar nuevamente desde `https://supermercado-marian.web.app`.
+
+### Error 403 de IAM
+
+Si aparece `Failed to get Firebase project`, `403 PERMISSION_DENIED` o `serviceusage.services.use`, la cuenta usada por la CLI no tiene permisos suficientes. El propietario debe agregarla temporalmente como **Editor** o asignar permisos equivalentes para Firebase Hosting, Firestore Rules, Cloud Functions, Artifact Registry, Service Account User y **Service Usage Consumer**. Luego repetir `login`, `projects:list` y el despliegue.
+
+El error no se corrige cambiando el navegador ni las reglas locales. Las ventas normales, la apertura de caja, el cierre y la gestion directa de perfiles funcionan con Firestore sin Blaze. La sincronizacion de ventas guardadas sin conexion mediante `registrarVentaOffline` y la asignacion remota de claims siguen pendientes mientras no exista Cloud Functions.
+
+### Actualizacion de cache
+
+El service worker se incremento a `supermarian-app-v4` para forzar la descarga de la correccion de Facturacion. Si un dispositivo conserva la pantalla anterior, cerrar todas las pestañas del sitio, abrir nuevamente la URL publicada y borrar los datos del sitio una sola vez.
+
+## Autorizacion por dispositivo
+
+La coleccion `dispositivos_autorizados` se utiliza para impedir que un empleado entre desde un navegador no aprobado. El primer acceso desde un equipo nuevo crea un registro `PENDIENTE`; el Administrador puede abrir Personal, filtrar por ID, correo, rol o estado y cambiarlo a `AUTORIZADO` o `BLOQUEADO`.
+
+El Administrador y el Jefe no quedan bloqueados por este control para poder recuperar equipos y autorizar solicitudes. Los cajeros y demas empleados si deben tener el estado `AUTORIZADO` antes de usar Menu o Facturacion.
+
+El ID se guarda en el almacenamiento local del navegador. Si se borran los datos del sitio, se genera otro ID y debe aprobarse otra vez. Esto es intencional. No se debe considerar una huella fisica infalible; para seguridad reforzada se requiere App Check o un backend con gestion central de sesiones.
+
 ## Procedimiento de recuperación
 
 1. Confirmar que Hosting responde HTTP 200.

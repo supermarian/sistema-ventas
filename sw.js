@@ -1,4 +1,4 @@
-const CACHE_NAME = 'supermarian-app-v3';
+const CACHE_NAME = 'supermarian-app-v4';
 const APP_FILES = [
     './', './index.html', './menu.html', './facturacion/facturacion.html',
     './facturacion/pos-core.js', './facturacion/pos-ui.js',

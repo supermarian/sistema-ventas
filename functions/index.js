@@ -103,7 +103,8 @@ exports.copiaAutomaticaDiaria = onSchedule({ schedule: 'every day 02:00', timeZo
 
 exports.asignarRol = onCall(async request => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
-    const rolSolicitante = request.auth.token.rol;
+    const perfilSolicitante = await db.collection('usuarios').doc(request.auth.uid).get();
+    const rolSolicitante = request.auth.token.rol || (perfilSolicitante.exists ? perfilSolicitante.data().rol : '');
     const esAdminSolicitante = request.auth.token.admin === true || rolSolicitante === 'Administrador';
     const esJefeSolicitante = rolSolicitante === 'Jefe';
     if (!esAdminSolicitante && !esJefeSolicitante) {
