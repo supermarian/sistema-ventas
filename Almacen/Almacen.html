@@ -81,7 +81,8 @@
             <div><label><small>Nombre del Producto:</small></label><input type="text" id="nomProd"></div>
             <div><label><small>Costo actual RD$:</small></label><input type="number" id="costoProd" min="0" step="0.01" value="0"></div>
             <div><label><small>Precio RD$:</small></label><input type="number" id="preProd"></div>
-            <div><label><small>Margen mínimo %:</small></label><input type="number" id="margenProd" min="0" step="0.01" value="2"></div>
+            <div><label><small>Margen mínimo % (piso 2%):</small></label><input type="number" id="margenProd" min="2" step="0.01" value="2"></div>
+            <div><label><small>Motivo si queda bajo el margen:</small></label><input type="text" id="motivoMargen" maxlength="300" placeholder="Requerido para una excepción autorizada"></div>
             <div><label><small>Stock:</small></label><input type="number" id="stockProd"></div>
             <div><label><small>Unidad:</small></label>
                 <select id="unidadProd" style="padding:10px;border:1px solid #ddd;border-radius:8px;width:100%;font-size:1rem">

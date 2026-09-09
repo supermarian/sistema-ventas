@@ -41,6 +41,19 @@ const calcularCostosRecepcion = () => {
     });
 };
 
+const prepararAutorizacionMargen = (costo, precio, margen) => {
+    const minimo = costo > 0 ? costo * (1 + margen / 100) : 0;
+    if (costo <= 0 || precio >= minimo) return null;
+    const motivo = document.getElementById('motivoMargen').value.trim();
+    if (!motivo) throw new Error('Indica el motivo para autorizar un precio bajo el margen mínimo.');
+    return {
+        autorizadoPor: auth.currentUser?.uid || '',
+        autorizadoEmail: auth.currentUser?.email || '',
+        motivo,
+        autorizadoEn: new Date().toISOString()
+    };
+};
+
 const comprimirImagen = archivo => new Promise((resolve, reject) => {
     const imagen = new Image();
     const url = URL.createObjectURL(archivo);
@@ -617,6 +630,12 @@ document.getElementById('btnGuardar').onclick = async () => {
     // Validaciones de Duplicados
     if (await existeDuplicado(db, 'idSecuencial', idSec)) return alert("❌ Error: Este ID ya fue usado.");
     if (codBarra && codBarra !== "" && await existeDuplicado(db, 'codigo', codBarra)) return alert("❌ Error: Código de barras duplicado.");
+    let autorizacionMargen;
+    try {
+        autorizacionMargen = prepararAutorizacionMargen(costoActual, precio, margenMinimo);
+    } catch (error) {
+        return alert(error.message);
+    }
 
     const productoRef = await addDoc(collection(db, "productos"), {
         idSecuencial: idSec,
@@ -631,6 +650,7 @@ document.getElementById('btnGuardar').onclick = async () => {
         stock: Number(document.getElementById('stockProd').value) || 0,
         unidad: document.getElementById('unidadProd').value,
         estatus: "ACTIVO", // Siempre se crea activo
+        ...(autorizacionMargen ? { autorizacionMargen } : {}),
         timestamp: Date.now()
     });
     const imagenes = await subirImagenesProducto(productoRef.id);
@@ -647,6 +667,12 @@ window.actualizarProducto = async () => {
     const precioNuevo = Number(document.getElementById('preProd').value);
     const costoActual = Number(document.getElementById('costoProd').value) || 0;
     const margenMinimo = Number(document.getElementById('margenProd').value) || 0;
+    let autorizacionMargen;
+    try {
+        autorizacionMargen = prepararAutorizacionMargen(costoActual, precioNuevo, margenMinimo);
+    } catch (error) {
+        return alert(error.message);
+    }
 
     if (codBarra && codBarra !== "S/C") {
         const duplicado = await existeDuplicado(db, 'codigo', codBarra, idDocActual);
@@ -667,7 +693,8 @@ window.actualizarProducto = async () => {
         estatus: document.getElementById('estatusProd').value,
         imagenes,
         imagenUrl: imagenes[0]?.url || '',
-        imagenPath: imagenes[0]?.path || ''
+        imagenPath: imagenes[0]?.path || '',
+        ...(autorizacionMargen ? { autorizacionMargen } : {})
     });
     await Promise.all(imagenesEliminadas.filter(imagen => imagen.path).map(imagen => deleteObject(ref(storage, imagen.path)).catch(error => console.warn('No se pudo eliminar una foto anterior:', error))));
     const diferencia = precioNuevo - Number(productoAnterior?.precio || 0);
@@ -695,6 +722,7 @@ window.cargarEdicion = (id, idSec, cod, referencia, nom, pre, sto, unidad, est) 
     const producto = productosCache.find(item => item.idDoc === id);
     document.getElementById('costoProd').value = producto?.costoActual ?? 0;
     document.getElementById('margenProd').value = producto?.margenMinimo ?? 2;
+    document.getElementById('motivoMargen').value = '';
     document.getElementById('preProd').value = pre;
     document.getElementById('stockProd').value = sto;
     document.getElementById('stockProd').disabled = true;
@@ -730,6 +758,7 @@ function limpiarForm() {
     document.getElementById('costoProd').value = "0";
     document.getElementById('preProd').value = "";
     document.getElementById('margenProd').value = "2";
+    document.getElementById('motivoMargen').value = "";
     document.getElementById('stockProd').value = "";
     document.getElementById('unidadProd').value = "Und";
     document.getElementById('estatusProd').value = "ACTIVO";

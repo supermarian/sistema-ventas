@@ -111,6 +111,30 @@ service cloud.firestore {
       );
     }
 
+    function margenValido() {
+      return (!('costoActual' in request.resource.data)
+          || request.resource.data.costoActual is number)
+        && (!('precio' in request.resource.data)
+          || request.resource.data.precio is number)
+        && (!('margenMinimo' in request.resource.data)
+          || (request.resource.data.margenMinimo is number
+            && request.resource.data.margenMinimo >= 0))
+        && (
+          !('costoActual' in request.resource.data)
+          || !('precio' in request.resource.data)
+          || request.resource.data.costoActual <= 0
+          || request.resource.data.precio >= request.resource.data.costoActual
+            * (1 + ((('margenMinimo' in request.resource.data)
+              && request.resource.data.margenMinimo > 2)
+              ? request.resource.data.margenMinimo : 2) / 100)
+          || (administrador()
+            && 'autorizacionMargen' in request.resource.data
+            && request.resource.data.autorizacionMargen.autorizadoPor == request.auth.uid
+            && request.resource.data.autorizacionMargen.motivo is string
+            && request.resource.data.autorizacionMargen.motivo.size() > 0)
+        );
+    }
+
     match /usuarios/{usuarioId} {
       allow read: if gestorUsuarios() || (autenticado() && resource.data.email == request.auth.token.email);
       allow create, update, delete: if gestorUsuarios();
@@ -137,9 +161,12 @@ service cloud.firestore {
 
     match /productos/{productoId} {
       allow read: if autenticado();
-      allow create, update, delete: if administrador();
-      allow update: if gestorPrecios()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['precio', 'seguimientoPrecio']);
+      allow create: if administrador() && margenValido();
+      allow update: if (administrador()
+        || (gestorPrecios()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['precio', 'seguimientoPrecio'])))
+        && margenValido();
+      allow delete: if administrador();
     }
 
     match /clientes/{clienteId} {
