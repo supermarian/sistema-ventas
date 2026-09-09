@@ -37,3 +37,18 @@ firebase deploy --only functions,firestore
 Después de iniciar sesión, el administrador puede llamar a `asignarRol` para vincular los demás correos. Los claims se actualizan al renovar el token de sesión, por lo que el usuario debe cerrar sesión y entrar de nuevo después de cambiar su rol.
 
 No guardes claves de servicio dentro del repositorio ni en el frontend.
+
+## Eliminación opcional de fondo
+
+La callable `procesarFondoProducto` usa PhotoRoom y conserva la imagen original
+en Storage. El resultado se guarda en la misma entrada de `imagenes[]` como
+`procesadaUrl` y `procesadaPath`.
+
+Configura la clave únicamente con Firebase Secrets antes de desplegar:
+
+```bash
+firebase functions:secrets:set PHOTOROOM_API_KEY
+firebase deploy --only functions:procesarFondoProducto
+```
+
+La clave nunca debe guardarse en HTML, Markdown, Git ni en mensajes del chat.

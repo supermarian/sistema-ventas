@@ -83,7 +83,8 @@ const renderGaleriaProducto = () => {
         <div class="foto-producto">
             <img src="${imagen.url}" alt="${imagen.alt || 'Foto del producto'}">
             <button type="button" title="Quitar foto" onclick="window.quitarImagenProducto(${indice}, false)">×</button>
-            <small>${imagen.esPrincipal ? 'Principal' : 'Guardada'}</small>
+            <small>${imagen.procesadaUrl ? 'Fondo quitado' : (imagen.esPrincipal ? 'Principal' : 'Guardada')}</small>
+            ${document.getElementById('editId').value && imagen.path ? `<button type="button" title="Quitar fondo" style="top:auto;bottom:4px;right:4px;width:auto;border-radius:4px;background:#1a73e8" onclick="window.procesarFondoProducto(${indice})">${imagen.procesadaUrl ? 'Reprocesar' : 'Quitar fondo'}</button>` : ''}
         </div>`).join('');
     const nuevas = imagenesNuevas.map((imagen, indice) => `
         <div class="foto-producto">
@@ -131,6 +132,25 @@ window.quitarImagenProducto = async (indice, esNueva) => {
     } catch (error) {
         console.error(error);
         alert('No se pudo quitar la foto. Revisa la conexión y los permisos.');
+    }
+};
+
+window.procesarFondoProducto = async indice => {
+    const imagen = imagenesProductoActual[indice];
+    const productoId = document.getElementById('editId').value;
+    if (!imagen?.path || !productoId) return alert('Guarda el producto antes de procesar la imagen.');
+    const boton = document.querySelectorAll('.foto-producto button')[indice * 2 + 1];
+    if (boton) boton.disabled = true;
+    document.getElementById('estadoImagenesProducto').textContent = 'Procesando imagen...';
+    try {
+        const respuesta = await httpsCallable(functions, 'procesarFondoProducto')({ productoId, imagePath: imagen.path });
+        imagen.procesadaUrl = respuesta.data.processedUrl;
+        imagen.procesadaPath = respuesta.data.processedPath;
+        renderGaleriaProducto();
+        document.getElementById('estadoImagenesProducto').textContent = 'Fondo quitado. Se conservó la imagen original.';
+    } catch (error) {
+        console.error(error);
+        document.getElementById('estadoImagenesProducto').textContent = error.message || 'No se pudo quitar el fondo.';
     }
 };
 

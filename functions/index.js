@@ -19,6 +19,7 @@ const COLECCIONES_COPIA = [
 const TELEFONO_WHATSAPP_POR_DEFECTO = '809-573-7989';
 const WHATSAPP_TOKEN = defineSecret('WHATSAPP_TOKEN');
 const WHATSAPP_VERIFY_TOKEN = defineSecret('WHATSAPP_VERIFY_TOKEN');
+const PHOTOROOM_API_KEY = defineSecret('PHOTOROOM_API_KEY');
 const palabrasIgnoradas = new Set(['un', 'una', 'uno', 'unos', 'unas', 'de', 'del', 'el', 'la', 'los', 'las', 'me', 'mandame', 'mándame', 'por', 'favor', 'quiero', 'dame']);
 const cantidadesTexto = new Map([['un', 1], ['una', 1], ['uno', 1], ['dos', 2], ['tres', 3], ['cuatro', 4], ['cinco', 5], ['seis', 6], ['siete', 7], ['ocho', 8], ['nueve', 9], ['diez', 10]]);
 const normalizarTexto = texto => String(texto || '')
@@ -56,6 +57,13 @@ const puedeGestionarCopias = request => request.auth && (
 const limpiarPermisos = permisos => Object.fromEntries(
     [...PERMISOS].map(permiso => [permiso, permisos?.[permiso] === true])
 );
+
+const puedeGestionarImagenes = async request => {
+    if (!request.auth) return false;
+    if (request.auth.token.admin === true || ['Administrador', 'Jefe'].includes(request.auth.token.rol)) return true;
+    const perfil = await db.collection('usuarios').doc(request.auth.uid).get();
+    return perfil.exists && perfil.data().permisos?.productos === true;
+};
 
 const prepararDatoCopia = dato => {
     if (dato && typeof dato.toDate === 'function') return { tipo: 'timestamp', valor: dato.toDate().toISOString() };
@@ -218,6 +226,68 @@ exports.guardarConfiguracionWhatsApp = onCall(async request => {
         actualizadoEn: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     return { telefono, telefonoVisible, phoneNumberId, botActivo: request.data?.botActivo === true };
+});
+
+exports.procesarFondoProducto = onCall({ secrets: [PHOTOROOM_API_KEY] }, async request => {
+    if (!await puedeGestionarImagenes(request)) {
+        throw new HttpsError('permission-denied', 'No tienes permiso para procesar imágenes de productos.');
+    }
+
+    const productoId = String(request.data?.productoId || '').trim();
+    const imagePath = String(request.data?.imagePath || '').trim();
+    if (!productoId || !imagePath || !imagePath.startsWith(`productos/${productoId}/`)) {
+        throw new HttpsError('invalid-argument', 'El producto y la imagen no son válidos.');
+    }
+
+    const productoRef = db.collection('productos').doc(productoId);
+    const productoSnapshot = await productoRef.get();
+    if (!productoSnapshot.exists) throw new HttpsError('not-found', 'El producto no existe.');
+    const imagenes = Array.isArray(productoSnapshot.data().imagenes) ? productoSnapshot.data().imagenes : [];
+    const imagen = imagenes.find(item => item.path === imagePath);
+    if (!imagen) throw new HttpsError('not-found', 'La imagen no está asociada al producto.');
+
+    const bucket = admin.storage().bucket();
+    const archivoOriginal = bucket.file(imagePath);
+    const [metadata] = await archivoOriginal.getMetadata();
+    if (Number(metadata.size || 0) > 10 * 1024 * 1024) {
+        throw new HttpsError('invalid-argument', 'La imagen supera el límite de 10 MB.');
+    }
+    const [contenido] = await archivoOriginal.download();
+    const formulario = new FormData();
+    formulario.append('image_file', new Blob([contenido], { type: metadata.contentType || 'image/webp' }), 'producto.webp');
+
+    let respuesta;
+    try {
+        respuesta = await fetch('https://sdk.photoroom.com/v1/segment', {
+            method: 'POST',
+            headers: { 'x-api-key': PHOTOROOM_API_KEY.value() },
+            body: formulario
+        });
+    } catch (error) {
+        console.error('Error conectando con PhotoRoom:', error);
+        throw new HttpsError('unavailable', 'No se pudo conectar con el procesador de imágenes.');
+    }
+    if (!respuesta.ok) {
+        console.error('PhotoRoom rechazó la imagen:', respuesta.status, await respuesta.text());
+        throw new HttpsError('failed-precondition', 'El procesador no pudo quitar el fondo.');
+    }
+
+    const resultado = Buffer.from(await respuesta.arrayBuffer());
+    const processedPath = `productos/${productoId}/processed-${Date.now()}.png`;
+    const archivoProcesado = bucket.file(processedPath);
+    await archivoProcesado.save(resultado, { resumable: false, metadata: { contentType: 'image/png' } });
+    const [processedUrl] = await archivoProcesado.getSignedUrl({
+        action: 'read',
+        expires: '03-09-2491'
+    });
+    const imagenActualizada = {
+        ...imagen,
+        procesadaUrl: processedUrl,
+        procesadaPath: processedPath,
+        procesadaEn: new Date().toISOString()
+    };
+    await productoRef.update({ imagenes: imagenes.map(item => item.path === imagePath ? imagenActualizada : item) });
+    return { productoId, imagePath, processedPath, processedUrl };
 });
 
 exports.archivarCierreCaja = onCall(async request => {

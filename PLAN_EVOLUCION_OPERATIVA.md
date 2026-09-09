@@ -46,7 +46,7 @@
 - Ya se han realizado aproximadamente **25 a 35 horas** de implementacion y analisis en esta iteracion; esos tiempos no se suman al pendiente.
 - Con una dedicacion de 4 horas diarias, el trabajo restante equivale aproximadamente a **12-21 dias laborables** sin fondo avanzado o **13-24 dias** incluyendolo.
 
-La eliminacion de fondo debe mantenerse opcional hasta validar costo, privacidad, calidad y dependencia de un servicio externo. La captura de varias fotos, compresion WebP y almacenamiento seguro ya estan implementados; queda integrar el procesamiento de fondo y su aprobacion manual.
+La eliminacion de fondo debe mantenerse opcional hasta validar costo, privacidad, calidad y dependencia de un servicio externo. La captura de varias fotos, compresion WebP y almacenamiento seguro ya estan implementados; la integración con PhotoRoom queda lista en código y requiere configurar el secreto y probar calidad/costo antes de activarse en producción.
 
 ## Estado de lo ya implementado
 
