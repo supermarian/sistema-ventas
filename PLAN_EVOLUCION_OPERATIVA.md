@@ -29,6 +29,7 @@
 | Bloque | Pendiente principal | Estimacion |
 |---|---|---:|
 | Auditoria | Probar faltantes, sobrantes, doble confirmacion y doble archivo con cuentas reales | 3-5 h |
+| Consulta de ventas | Resumen por fecha y detalle cronologico de facturas, credito y presentaciones | 6-10 h |
 | Compras | Completar sucursales, impuestos, campos ampliados y permisos reales | 6-10 h |
 | Productos | Margenes, autorizacion bajo 2%, precio validado para clientes | 6-10 h |
 | Entrada rapida | Escaneo + confirmacion + captura de varias fotos, compresion y almacenamiento seguro | 3-5 h restantes |
@@ -41,10 +42,10 @@
 
 ### Total estimado
 
-- **Obligatorio para cerrar el MVP operativo, sin quitar fondo:** **46 a 81 horas**.
-- **Con eliminacion de fondo e IA avanzada:** **52 a 93 horas**.
+- **Obligatorio para cerrar el MVP operativo, sin quitar fondo:** **52 a 91 horas**.
+- **Con eliminacion de fondo e IA avanzada:** **58 a 103 horas**.
 - Ya se han realizado aproximadamente **25 a 35 horas** de implementacion y analisis en esta iteracion; esos tiempos no se suman al pendiente.
-- Con una dedicacion de 4 horas diarias, el trabajo restante equivale aproximadamente a **12-21 dias laborables** sin fondo avanzado o **13-24 dias** incluyendolo.
+- Con una dedicacion de 4 horas diarias, el trabajo restante equivale aproximadamente a **13-23 dias laborables** sin fondo avanzado o **15-26 dias** incluyendolo.
 
 La eliminacion de fondo debe mantenerse opcional hasta validar costo, privacidad, calidad y dependencia de un servicio externo. La captura de varias fotos, compresion WebP y almacenamiento seguro ya estan implementados; la integración web con PhotoRoom queda lista en código y requiere configurar el secreto y probar calidad/costo antes de activarse en producción.
 
@@ -84,6 +85,10 @@ enviara a PhotoRoom por defecto.
 - [x] Auditoria de cierres con detalle original y segundo registro del auditor.
 
 ## 1. Auditoria de cierres: doble registro
+
+> **Separacion obligatoria:** Consulta de Ventas no pertenece a Auditoria.
+> Consulta ventas y facturas; Auditoria consulta cierres de caja y revisiones.
+> Devoluciones es otro flujo independiente que modifica inventario.
 
 ### Problema actual
 
@@ -229,7 +234,43 @@ Los resultados deben mostrar, antes de seleccionar:
 
 La existencia y el costo son datos internos; el costo no debe aparecer en Caja ni en el portal de clientes.
 
-## 4. Devoluciones y correcciones
+## 4. Consulta de Ventas
+
+La **Consulta de Ventas** sera una pantalla independiente del menu. No debe
+abrir ni modificar `cierres_caja`, `revisiones_cierres` o `alertas_auditoria`.
+Su fuente principal sera `ventas_realizadas` y usara el permiso
+`consulta_ventas`.
+
+### Consultas disponibles
+
+- Consulta del dia y consulta por rango de fechas, con filtro opcional de hora.
+- Filtro por contado, credito, devolucion o todas las ventas.
+- Filtro por cliente, cajero, sucursal, caja, factura y metodo de pago.
+- Consulta de ventas a credito con numero de credito y saldo cuando exista.
+- Consulta de entradas de productos mediante un enlace separado hacia Almacen;
+	las recepciones de proveedores no se mezclan con las ventas.
+
+### Resumen y detalle
+
+La tabla principal mostrara una fila por factura con fecha, cliente, factura,
+tipo, costo neto, ventas netas, ITBIS, ventas brutas, estado y hora. Debajo
+mostrara totales del filtro activo: facturas, contado, credito, devoluciones,
+subtotal, ITBIS y total bruto.
+
+Al seleccionar una factura se abrira una tabla separada y **no se fusionaran
+lineas distintas**. Debe conservarse el orden original de la venta, incluyendo
+cuando el mismo producto se pasa por unidad y luego por caja:
+
+| Orden | Codigo | Presentacion | Nombre | Cantidad | Factor base | Precio unitario | Total |
+|---:|---|---|---|---:|---:|---:|---:|
+| 1 | 750001 | Unidad | Producto X | 1 | 1 | RD$ 60.00 | RD$ 60.00 |
+| 2 | 750099 | Caja | Producto X | 1 | 12 | RD$ 600.00 | RD$ 600.00 |
+
+El resumen puede agrupar para estadisticas, pero el detalle debe conservar
+codigo, presentacion, cantidad, precio, total y orden original. El modulo es
+de solo lectura: correcciones y devoluciones tienen sus propios flujos.
+
+## 5. Devoluciones y correcciones
 
 ### Devolucion de factura
 
@@ -241,7 +282,7 @@ La devolucion debe crear un documento propio enlazado a la factura original, aju
 
 Mantener separado el flujo administrativo de correccion de factura, nota de credito, anulacion o ajuste fiscal. No mezclarlo con devolucion de inventario porque sus permisos, documentos y consecuencias fiscales son distintos.
 
-## 5. Bot de WhatsApp
+## 6. Bot de WhatsApp
 
 ### Estado actual
 
@@ -259,7 +300,7 @@ El webhook y el procesador conversacional ya estan conectados en codigo. El nume
 
 No guardar tokens en HTML, Markdown, Git ni mensajes del chat.
 
-## 6. Orden de implementacion
+## 7. Orden de implementacion
 
 ### Fase 1: auditoria de cierres
 
@@ -317,6 +358,6 @@ No guardar tokens en HTML, Markdown, Git ni mensajes del chat.
 - [ ] Revisar errores, reintentos y mensajes duplicados.
 - [ ] Activar produccion solo despues de completar pruebas.
 
-## 6. Regla de trabajo
+## 8. Regla de trabajo
 
 No marcar una tarea como terminada por tener pantalla. Se marca terminada cuando tiene reglas/backend, prueba de permisos, prueba de reintento y registro auditable.

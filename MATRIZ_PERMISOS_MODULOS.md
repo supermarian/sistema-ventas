@@ -59,6 +59,7 @@ Eliminar nunca debe estar pegado a editar. Debe ser una accion separada, con sel
 | Reportes | `reportes` |
 | Creditos | `creditos` |
 | Auditoria | `auditoria` |
+| Consulta de ventas | `consulta_ventas` |
 | Cierres de caja | `cierres_caja` |
 | Configuracion del bot | `bot` |
 | Comprobantes y configuracion | `configuracion` |
