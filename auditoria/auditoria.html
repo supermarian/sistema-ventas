@@ -91,6 +91,14 @@
         .badge-sobrante { background: #d4edda; color: #155724; }
         .badge-faltante { background: #f8d7da; color: #721c24; }
         .badge-cuadrado { background: #e2e3e5; color: #383d41; }
+        .btn-detalle { border: 0; border-radius: 5px; background: var(--azul); color: white; padding: 7px 10px; cursor: pointer; font-weight: 600; }
+        .modal-detalle { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, .48); }
+        .modal-detalle[hidden] { display: none; }
+        .detalle-panel { width: min(820px, 100%); max-height: 90vh; overflow: auto; background: white; border-radius: 10px; padding: 22px; box-shadow: 0 18px 50px rgba(0,0,0,.25); }
+        .detalle-cerrar { float: right; border: 0; background: #eef2f7; border-radius: 5px; padding: 7px 10px; cursor: pointer; }
+        .detalle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 18px 0; }
+        .detalle-dato { background: #f7f9fb; border-left: 3px solid var(--azul); padding: 10px; }
+        .detalle-dato small { display: block; color: #64748b; margin-bottom: 4px; }
 
         .btn-regresar {
             text-decoration: none;
@@ -138,11 +146,34 @@
                     <th>Contado</th>
                     <th>Diferencia</th>
                     <th>Estado</th>
+                    <th>Acción</th>
                 </tr>
             </thead>
             <tbody id="tabla-auditoria-body">
                 </tbody>
         </table>
+    </div>
+    <div id="modalDetalleCierre" class="modal-detalle" hidden>
+        <section class="detalle-panel" role="dialog" aria-modal="true" aria-labelledby="detalleTitulo">
+            <button class="detalle-cerrar" type="button" onclick="window.cerrarDetalleCierre()">Cerrar</button>
+            <h2 id="detalleTitulo">Detalle del cierre</h2>
+            <p class="info-tag">Registro original del cajero. Solo lectura.</p>
+            <div id="detalleDatosCierre" class="detalle-grid"></div>
+            <h3>Desglose de efectivo declarado</h3>
+            <div id="detalleDesgloseCierre" class="detalle-grid"></div>
+            <hr>
+            <h3>Revisión física del auditor</h3>
+            <p class="info-tag">Estos datos se guardan aparte y no modifican el cierre del cajero.</p>
+            <div class="detalle-grid">
+                <label class="detalle-dato"><small>Efectivo contado por auditor</small><input id="montoContadoAuditor" type="number" min="0" step="0.01" placeholder="RD$ 0.00"></label>
+                <label class="detalle-dato"><small>Observación</small><input id="observacionRevision" type="text" placeholder="Ej. faltante verificado"></label>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn-detalle" id="btnConfirmarRevision" type="button">Confirmar revisión</button>
+                <button class="btn-detalle" id="btnArchivarRevision" type="button" disabled>Archivar revisión</button>
+            </div>
+            <p id="estadoRevision" class="info-tag"></p>
+        </section>
     </div>
     <h2 style="margin-top:30px">Alertas de cambios de precio</h2>
     <div style="overflow-x:auto">
@@ -157,7 +188,8 @@
     // IMPORTACIONES DE FIREBASE
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, query, orderBy, onSnapshot, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
     // TU CONFIGURACIÓN (La misma que usas en el POS)
     const firebaseConfig = {
@@ -172,7 +204,9 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const functions = getFunctions(app, 'us-central1');
     let accesoPermitido = false;
+    let cierreSeleccionado = null;
 
     // FUNCIÓN PARA CARGAR LOS DATOS
     const cargarAuditoria = () => {
@@ -214,6 +248,7 @@
                         <td>RD$ ${Number(data.montoRealContado ?? data.totalEnGaveta ?? 0).toLocaleString()}</td>
                         <td><span class="badge ${badgeClass}">RD$ ${Number(data.diferencia || 0).toLocaleString()}</span></td>
                         <td><small>${data.estado || 'CERRADO'}</small></td>
+                        <td><button class="btn-detalle" type="button" onclick="window.verDetalleCierre('${doc.id}')">Ver cierre</button></td>
                     </tr>
                 `;
                 tbody.innerHTML += fila;
@@ -228,6 +263,78 @@
     };
 
     cargarAuditoria();
+
+    window.verDetalleCierre = async cierreId => {
+        const snapshot = await getDoc(doc(db, 'cierres_caja', cierreId));
+        if (!snapshot.exists()) return alert('El cierre ya no está disponible.');
+        const data = snapshot.data();
+        cierreSeleccionado = cierreId;
+        const formato = valor => `RD$ ${Number(valor || 0).toLocaleString('es-DO', { minimumFractionDigits: 2 })}`;
+        const fecha = data.fechaCierre?.toDate ? data.fechaCierre.toDate().toLocaleString() : '---';
+        const datos = [
+            ['Turno', data.idTurno || '---'],
+            ['Fecha y hora', fecha],
+            ['Cajero', data.cajeroNombre || '---'],
+            ['Correo', data.cajeroEmail || '---'],
+            ['Fondo inicial', formato(data.fondoInicial ?? data.montoInicial)],
+            ['Ventas en efectivo', formato(data.ventasEfectivo)],
+            ['Ventas a crédito', formato(data.ventasCredito)],
+            ['Egresos', formato(data.egresos)],
+            ['Monto esperado', formato(data.montoEsperadoEnCaja ?? data.totalEnGaveta)],
+            ['Contado por cajero', formato(data.montoRealContado ?? data.totalEnGaveta)],
+            ['Diferencia', formato(data.diferencia)],
+            ['Total de facturas', data.totalFacturas ?? 0]
+        ];
+        document.getElementById('detalleDatosCierre').innerHTML = datos
+            .map(([etiqueta, valor]) => `<div class="detalle-dato"><small>${etiqueta}</small><strong>${valor}</strong></div>`)
+            .join('');
+        const desglose = data.desgloseEfectivo || {};
+        const entradas = Object.entries(desglose);
+        document.getElementById('detalleDesgloseCierre').innerHTML = entradas.length
+            ? entradas.map(([denominacion, cantidad]) => `<div class="detalle-dato"><small>RD$ ${denominacion}</small><strong>${cantidad}</strong></div>`).join('')
+            : '<p class="info-tag">No hay desglose guardado.</p>';
+        document.getElementById('montoContadoAuditor').value = '';
+        document.getElementById('observacionRevision').value = '';
+        document.getElementById('estadoRevision').textContent = 'Pendiente de revisión.';
+        document.getElementById('btnConfirmarRevision').disabled = false;
+        document.getElementById('btnArchivarRevision').disabled = true;
+        document.getElementById('modalDetalleCierre').hidden = false;
+    };
+
+    window.cerrarDetalleCierre = () => {
+        document.getElementById('modalDetalleCierre').hidden = true;
+    };
+
+    document.getElementById('btnConfirmarRevision').addEventListener('click', async () => {
+        const monto = Number(document.getElementById('montoContadoAuditor').value);
+        if (!cierreSeleccionado || !Number.isFinite(monto) || monto < 0) return alert('Indica el efectivo contado por el auditor.');
+        const boton = document.getElementById('btnConfirmarRevision');
+        boton.disabled = true;
+        try {
+            const respuesta = await httpsCallable(functions, 'confirmarRevisionCierre')({
+                cierreId: cierreSeleccionado,
+                montoContadoAuditor: monto,
+                observacion: document.getElementById('observacionRevision').value.trim(),
+                desgloseEfectivoAuditor: {}
+            });
+            document.getElementById('estadoRevision').textContent = `Revisión confirmada. Diferencia del auditor: RD$ ${Number(respuesta.data.diferenciaAuditoria || 0).toFixed(2)}`;
+            document.getElementById('btnArchivarRevision').disabled = false;
+        } catch (error) {
+            boton.disabled = false;
+            alert(error.message || 'No se pudo confirmar la revisión.');
+        }
+    });
+
+    document.getElementById('btnArchivarRevision').addEventListener('click', async () => {
+        if (!cierreSeleccionado) return;
+        try {
+            await httpsCallable(functions, 'archivarRevisionCierre')({ cierreId: cierreSeleccionado });
+            document.getElementById('estadoRevision').textContent = 'Revisión archivada correctamente.';
+            document.getElementById('btnArchivarRevision').disabled = true;
+        } catch (error) {
+            alert(error.message || 'No se pudo archivar la revisión.');
+        }
+    });
 
     onAuthStateChanged(auth, async user => {
         if (!user) return window.location.href = '../index.html';

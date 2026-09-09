@@ -1,6 +1,6 @@
 # 📊 ESTADO DEL PROYECTO - Súper Marian Sistema ERP
 
-**Última actualización:** 2026-09-07
+**Última actualización:** 2026-09-09
 **Versión:** v0.4 (MVP funcional en validación)
 
 ## 📌 ESTIMACIÓN GLOBAL
@@ -15,6 +15,8 @@ El 40% representa un MVP funcional en desarrollo, no un porcentaje de código ni
 - **Administración y reportes:** ⚠️ implementado parcialmente; faltan exportaciones y validación de métricas.
 - **Integraciones externas:** ⏳ preparadas técnicamente, pendientes de despliegue y credenciales.
 - **Producción:** 🔴 no recomendada todavía.
+
+El plan de siguientes fases está documentado en [PLAN_EVOLUCION_OPERATIVA.md](PLAN_EVOLUCION_OPERATIVA.md). La decisión principal es conservar el cierre original del cajero y crear una revisión independiente del auditor; no se modificará el total histórico de la caja.
 
 ## 🚀 ESTADO DE LANZAMIENTO
 
@@ -43,6 +45,8 @@ La aplicación cuenta con una versión funcional en desarrollo que integra porta
 - Auditoría de valores anteriores y nuevos; no se permite anular ni borrar facturas desde este flujo.
 - Gestión de facturas visible con permiso `correcciones`.
 - Cierres de caja visibles como acceso separado con permiso `cierres_caja`.
+- Recepción de compras transaccional básica con búsqueda de productos por nombre, código o ID.
+- Revisión de cierres, recepción por borrador, márgenes, imágenes, devoluciones y pruebas de WhatsApp pendientes según el plan operativo.
 - Autorización de dispositivos por combinación UID + dispositivo y solicitudes pendientes.
 
 ### Pendiente antes de producción
@@ -158,7 +162,10 @@ ESFUERZO: 3-4 horas
 - [x] Ver perfil personal
 - [x] Editar datos (nombre, teléfono, dirección, cédula, RNC)
 - [x] Ver historial de cotizaciones
-- [ ] Ver historial de compras/facturas
+- [x] Ver historial de compras/facturas desde Almacen
+- [x] Ver detalle de líneas, cantidades y costos de una entrada sin editarla
+- [x] Condición de pago y días de vencimiento por proveedor en entradas
+- [x] Alertas de entradas de crédito vencidas y próximas a vencer
 - [ ] Descargar recibos en PDF
 - [x] Mostrar información de crédito y deudas disponibles
 

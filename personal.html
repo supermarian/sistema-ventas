@@ -48,6 +48,13 @@
         
         .pin-style { font-family: monospace; color: #28a745; font-weight: bold; background: #e8f5e9; padding: 2px 6px; border-radius: 4px; }
         .editando { border: 2px solid #007bff !important; background: #f0f7ff; }
+        .permisos-grupos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 8px 0 15px; }
+        .permisos-grupo { min-width: 0; margin: 0; padding: 12px; border: 1px solid #d9e2ec; border-radius: 8px; background: #fbfcfe; }
+        .permisos-grupo legend { padding: 0 7px; color: #174ea6; font-size: .85rem; font-weight: 700; }
+        .permisos-grupo label { display: flex; align-items: center; gap: 8px; margin: 7px 0 0; padding: 7px 8px; border-radius: 5px; color: #3f4b5a; font-weight: 600; }
+        .permisos-grupo label:hover { background: #eaf2ff; }
+        .permisos-grupo input[type="checkbox"] { flex: 0 0 auto; width: 17px !important; height: 17px; margin: 0; }
+        @media(max-width:700px) { .permisos-grupos { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -82,25 +89,40 @@
             </select>
 
             <label>Accesos visibles:</label>
-            <div id="permisosEmp" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:5px 0 15px">
-                <label><input type="checkbox" data-permiso="almacen" style="width:auto"> Almacén</label>
-                <label><input type="checkbox" data-permiso="productos" style="width:auto"> Productos rápidos</label>
-                <label><input type="checkbox" data-permiso="precios" style="width:auto"> Control de precios</label>
-                <label style="grid-column:1/-1;background:#eef7ee;padding:7px;border-radius:6px"><input type="checkbox" data-permiso="facturacion" style="width:auto"> Caja / Facturación principal</label>
-                <label><input type="checkbox" data-permiso="caja_credito" style="width:auto"> Caja: cobrar crédito</label>
-                <label><input type="checkbox" data-permiso="caja_reimpresion" style="width:auto"> Caja: reimprimir factura</label>
-                <label><input type="checkbox" data-permiso="caja_egreso" style="width:auto"> Caja: registrar egreso</label>
-                <label><input type="checkbox" data-permiso="caja_cotizaciones" style="width:auto"> Caja: cotizaciones</label>
-                <label><input type="checkbox" data-permiso="caja_cierre" style="width:auto"> Caja: cerrar turno</label>
-                <label><input type="checkbox" data-permiso="dashboard" style="width:auto"> Dashboard</label>
-                <label><input type="checkbox" data-permiso="reportes" style="width:auto"> Reportes</label>
-                <label><input type="checkbox" data-permiso="personal" style="width:auto"> Personal</label>
-                <label><input type="checkbox" data-permiso="creditos" style="width:auto"> Créditos</label>
-                <label><input type="checkbox" data-permiso="auditoria" style="width:auto"> Auditoría</label>
-                <label><input type="checkbox" data-permiso="cierres_caja" style="width:auto"> Cierres de caja</label>
-                <label><input type="checkbox" data-permiso="correcciones" style="width:auto"> Gestión de facturas</label>
-                <label><input type="checkbox" data-permiso="bot" style="width:auto"> Configuración bot</label>
-                <label><input type="checkbox" data-permiso="configuracion" style="width:auto"> Comprobantes</label>
+            <div id="permisosEmp" class="permisos-grupos">
+                <fieldset class="permisos-grupo">
+                    <legend>Operación y caja</legend>
+                    <label><input type="checkbox" data-permiso="facturacion" style="width:auto"> Caja / Facturación principal</label>
+                    <label><input type="checkbox" data-permiso="caja_credito" style="width:auto"> Cobrar crédito</label>
+                    <label><input type="checkbox" data-permiso="caja_reimpresion" style="width:auto"> Reimprimir factura</label>
+                    <label><input type="checkbox" data-permiso="caja_egreso" style="width:auto"> Registrar egreso</label>
+                    <label><input type="checkbox" data-permiso="caja_cotizaciones" style="width:auto"> Cotizaciones</label>
+                    <label><input type="checkbox" data-permiso="caja_cierre" style="width:auto"> Cerrar turno</label>
+                </fieldset>
+                <fieldset class="permisos-grupo">
+                    <legend>Inventario y productos</legend>
+                    <label><input type="checkbox" data-permiso="almacen" style="width:auto"> Almacén</label>
+                    <label><input type="checkbox" data-permiso="productos" style="width:auto"> Productos rápidos</label>
+                    <label><input type="checkbox" data-permiso="precios" style="width:auto"> Control de precios</label>
+                </fieldset>
+                <fieldset class="permisos-grupo">
+                    <legend>Consultas y clientes</legend>
+                    <label><input type="checkbox" data-permiso="dashboard" style="width:auto"> Dashboard</label>
+                    <label><input type="checkbox" data-permiso="reportes" style="width:auto"> Reportes</label>
+                    <label><input type="checkbox" data-permiso="creditos" style="width:auto"> Créditos</label>
+                </fieldset>
+                <fieldset class="permisos-grupo">
+                    <legend>Auditoría y documentos</legend>
+                    <label><input type="checkbox" data-permiso="auditoria" style="width:auto"> Auditoría</label>
+                    <label><input type="checkbox" data-permiso="cierres_caja" style="width:auto"> Cierres de caja</label>
+                    <label><input type="checkbox" data-permiso="correcciones" style="width:auto"> Gestión de facturas</label>
+                </fieldset>
+                <fieldset class="permisos-grupo">
+                    <legend>Administración e integraciones</legend>
+                    <label><input type="checkbox" data-permiso="personal" style="width:auto"> Personal</label>
+                    <label><input type="checkbox" data-permiso="configuracion" style="width:auto"> Comprobantes</label>
+                    <label><input type="checkbox" data-permiso="bot" style="width:auto"> Configuración del bot</label>
+                </fieldset>
             </div>
             
             <button class="btn-save" id="btnGuardar">Registrar Empleado</button>

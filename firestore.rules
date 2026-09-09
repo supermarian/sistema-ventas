@@ -201,6 +201,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /proveedores/{proveedorId} {
+      allow read: if autenticado();
+      allow create, update, delete: if administradorOJefe();
+    }
+
+    match /almacenes/{almacenId} {
+      allow read: if autenticado();
+      allow create, update, delete: if administradorOJefe();
+    }
+
+    match /revisiones_cierres/{revisionId} {
+      allow read: if administradorOJefe()
+        || (autenticado() && request.auth.token.rol in ['Consultor', 'Contador']);
+      allow write: if false;
+    }
+
     match /cierres_caja/{cierreId} {
       allow read: if autenticado();
       allow create: if autenticado();

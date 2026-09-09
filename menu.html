@@ -74,6 +74,9 @@
     <div class="menu-card" id="btnAlmacen" data-acceso="almacen" onclick="navegar('Almacen/Almacen.html', ['Administrador','Jefe'])">
         <span>📦</span> <h3>Almacén</h3> <p>Stock y Precios</p>
     </div>
+    <div class="menu-card" id="btnEntradaRapida" data-acceso="almacen" onclick="navegar('Almacen/Almacen.html?modo=rapido', ['Administrador','Jefe'])">
+        <span>🧾</span> <h3>Entrada rápida</h3> <p>Registrar factura de compra</p>
+    </div>
 
 <div id="avisoCreditos" class="alerta-stock" style="background:#f8d7da;color:#721c24;border-color:#f5c6cb;display:none">
     <strong>⚠️ CRÉDITOS VENCIDOS:</strong> <span id="listaCreditosVencidos"></span>
@@ -135,6 +138,9 @@
             <div class="quick-grid">
                 <label>Código de barras
                     <input id="productoRapidoCodigo" type="text" maxlength="80">
+                </label>
+                <label>Referencia empresarial <span title="Identificador interno para diferenciar marca, proveedor o presentación">?</span>
+                    <input id="productoRapidoReferencia" type="text" maxlength="100" placeholder="Ej. JAB-ACME-500G">
                 </label>
                 <label>Nombre
                     <input id="productoRapidoNombre" type="text" maxlength="120" required>
@@ -417,7 +423,7 @@
         const contenedor = document.getElementById("resultadosProductosRapidos");
         contenedor.innerHTML = resultados.length ? resultados.map(producto => `
             <div class="quick-result" data-id="${escapeHtml(producto.id)}">
-                <span><b>${escapeHtml(producto.nombre)}</b><br><small>${escapeHtml(producto.codigo || "S/C")}</small></span>
+                <span><b>${escapeHtml(producto.nombre)}</b><br><small>${escapeHtml(producto.codigo || "S/C")} · Ref: ${escapeHtml(producto.referenciaEmpresa || "---")}</small></span>
                 <strong>RD$ ${Number(producto.precio || 0).toFixed(2)}</strong>
             </div>`).join("") : "<div style='padding:12px;color:#666'>No se encontró el producto.</div>";
         contenedor.querySelectorAll(".quick-result").forEach(elemento => {
@@ -429,6 +435,7 @@
         if (!producto) return;
         document.getElementById("productoRapidoId").value = producto.id;
         document.getElementById("productoRapidoCodigo").value = producto.codigo === "S/C" ? "" : producto.codigo || "";
+        document.getElementById("productoRapidoReferencia").value = producto.referenciaEmpresa || "";
         document.getElementById("productoRapidoNombre").value = producto.nombre || "";
         document.getElementById("productoRapidoPrecio").value = Number(producto.precio || 0).toFixed(2);
         document.getElementById("productoRapidoStock").value = Number(producto.stock || 0);
@@ -459,6 +466,7 @@
         event.preventDefault();
         const id = document.getElementById("productoRapidoId").value;
         const codigo = document.getElementById("productoRapidoCodigo").value.trim() || "S/C";
+        const referenciaEmpresa = document.getElementById("productoRapidoReferencia").value.trim();
         const nombre = document.getElementById("productoRapidoNombre").value.trim();
         const precio = Number(document.getElementById("productoRapidoPrecio").value);
         const stock = Number(document.getElementById("productoRapidoStock").value);
@@ -468,7 +476,7 @@
         const duplicado = productosCache.find(producto => producto.codigo === codigo && producto.id !== id && codigo !== "S/C");
         if (duplicado) return alert("Ese código de barras ya pertenece a otro producto.");
 
-        const datos = { codigo, nombre, precio, stock, estatus: "ACTIVO", timestamp: Date.now() };
+        const datos = { codigo, referenciaEmpresa, nombre, precio, stock, estatus: "ACTIVO", timestamp: Date.now() };
         try {
             const productoAnterior = id ? productosCache.find(producto => producto.id === id) : null;
             if (id) {

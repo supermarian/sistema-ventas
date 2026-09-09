@@ -27,6 +27,22 @@ const normalizarTexto = texto => String(texto || '')
     .replace(/[^a-z0-9\s]/g, ' ')
     .trim();
 
+const tienePermisoAuditoria = async request => {
+    if (!request.auth) return false;
+    const perfilSnapshot = await db.collection('usuarios').doc(request.auth.uid).get();
+    const perfil = perfilSnapshot.exists ? perfilSnapshot.data() : {};
+    const rol = request.auth.token.rol || perfil.rol;
+    return ['Administrador', 'Jefe', 'Consultor', 'Contador'].includes(rol);
+};
+
+const tienePermisoArchivoAuditoria = async request => {
+    if (!request.auth) return false;
+    const perfilSnapshot = await db.collection('usuarios').doc(request.auth.uid).get();
+    const perfil = perfilSnapshot.exists ? perfilSnapshot.data() : {};
+    const rol = request.auth.token.rol || perfil.rol;
+    return ['Administrador', 'Jefe'].includes(rol) || request.auth.token.admin === true;
+};
+
 const esAdministrador = async uid => {
     const token = await admin.auth().getUser(uid);
     return token.customClaims?.admin === true || token.customClaims?.rol === 'Administrador';
@@ -313,6 +329,18 @@ exports.registrarRecepcionCompra = onCall(async request => {
     const almacenId = String(datos.almacenId || '').trim();
     const numeroFactura = String(datos.numeroFactura || '').trim();
     const lineas = Array.isArray(datos.lineas) ? datos.lineas : [];
+    const proveedorSnapshot = await db.collection('proveedores').doc(proveedorId).get();
+    if (!proveedorSnapshot.exists || proveedorSnapshot.data().activo === false) {
+        throw new HttpsError('failed-precondition', 'El proveedor no existe o está inactivo.');
+    }
+    const proveedor = proveedorSnapshot.data();
+    const condicionPago = String(datos.condicionPago || proveedor.condicionPago || 'CONTADO');
+    const diasVencimiento = condicionPago === 'CREDITO'
+        ? Number(datos.diasVencimiento ?? proveedor.diasVencimiento ?? 0)
+        : 0;
+    if (!['CONTADO', 'CREDITO'].includes(condicionPago) || !Number.isInteger(diasVencimiento) || diasVencimiento < 0) {
+        throw new HttpsError('invalid-argument', 'La condición y los días de vencimiento no son válidos.');
+    }
     const perfilSnapshot = await db.collection('usuarios').doc(request.auth.uid).get();
     const perfil = perfilSnapshot.exists ? perfilSnapshot.data() : {};
     const rol = request.auth.token.rol || perfil.rol;
@@ -366,7 +394,7 @@ exports.registrarRecepcionCompra = onCall(async request => {
     try {
         return await db.runTransaction(async transaction => {
             const [recepcionSnapshot, ...productosSnapshots] = await transaction.getAll(recepcionRef, ...referencias);
-            if (recepcionSnapshot.exists) {
+            if (recepcionSnapshot.exists && recepcionSnapshot.data().estado !== 'BORRADOR') {
                 return {
                     estado: 'YA_APLICADA',
                     idRecepcion: recepcionSnapshot.id,
@@ -389,7 +417,8 @@ exports.registrarRecepcionCompra = onCall(async request => {
                 numeroFactura,
                 fechaFactura: datos.fechaFactura || null,
                 fechaRecepcion: datos.fechaRecepcion || null,
-                condicionPago: String(datos.condicionPago || 'CONTADO'),
+                condicionPago,
+                diasVencimiento,
                 subtotal,
                 descuentos: Number(datos.descuentos || 0),
                 itbis: Number(datos.itbis || 0),
@@ -444,6 +473,147 @@ exports.registrarRecepcionCompra = onCall(async request => {
         console.error('Error registrando recepción de compra:', error);
         throw new HttpsError('internal', 'No se pudo registrar la recepción de compra.');
     }
+});
+
+exports.guardarBorradorRecepcion = onCall(async request => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión para guardar una recepción.');
+    const perfilSnapshot = await db.collection('usuarios').doc(request.auth.uid).get();
+    const perfil = perfilSnapshot.exists ? perfilSnapshot.data() : {};
+    const rol = request.auth.token.rol || perfil.rol;
+    const permisos = perfil.permisos || {};
+    const puedeComprar = ['Administrador', 'Jefe'].includes(rol)
+        || permisos.compras === true
+        || (Array.isArray(permisos) && permisos.includes('compras'));
+    if (!puedeComprar) throw new HttpsError('permission-denied', 'El usuario no tiene permiso para guardar compras.');
+    const datos = request.data || {};
+    const proveedorId = String(datos.proveedorId || '').trim();
+    const proveedorNombre = String(datos.proveedorNombre || '').trim();
+    const almacenId = String(datos.almacenId || '').trim();
+    const numeroFactura = String(datos.numeroFactura || '').trim();
+    const lineas = Array.isArray(datos.lineas) ? datos.lineas : [];
+    const proveedorSnapshot = await db.collection('proveedores').doc(proveedorId).get();
+    if (!proveedorSnapshot.exists || proveedorSnapshot.data().activo === false) {
+        throw new HttpsError('failed-precondition', 'El proveedor no existe o está inactivo.');
+    }
+    const proveedor = proveedorSnapshot.data();
+    const condicionPago = String(datos.condicionPago || proveedor.condicionPago || 'CONTADO');
+    const diasVencimiento = condicionPago === 'CREDITO'
+        ? Number(datos.diasVencimiento ?? proveedor.diasVencimiento ?? 0)
+        : 0;
+    if (!['CONTADO', 'CREDITO'].includes(condicionPago) || !Number.isInteger(diasVencimiento) || diasVencimiento < 0) {
+        throw new HttpsError('invalid-argument', 'La condición y los días de vencimiento no son válidos.');
+    }
+    if (!proveedorId || !almacenId || !numeroFactura || !lineas.length) {
+        throw new HttpsError('invalid-argument', 'El borrador requiere proveedor, almacén, factura y al menos una línea.');
+    }
+    const ids = new Set();
+    for (const linea of lineas) {
+        const productoId = String(linea.productoId || '').trim();
+        const cantidad = Number(linea.cantidad);
+        const costo = Number(linea.costoUnitario);
+        if (!productoId || ids.has(productoId) || !Number.isFinite(cantidad) || cantidad <= 0 || !Number.isFinite(costo) || costo < 0) {
+            throw new HttpsError('invalid-argument', 'El borrador contiene una línea inválida o repetida.');
+        }
+        ids.add(productoId);
+    }
+    const clave = crypto.createHash('sha256')
+        .update(`${proveedorId}|${numeroFactura.toUpperCase()}|${almacenId}`)
+        .digest('hex');
+    const recepcionRef = db.collection('recepciones_compras').doc(clave);
+    const existente = await recepcionRef.get();
+    if (existente.exists && existente.data().estado !== 'BORRADOR') {
+        throw new HttpsError('already-exists', 'Esta factura ya fue aplicada.');
+    }
+    const ahora = admin.firestore.FieldValue.serverTimestamp();
+    const batch = db.batch();
+    batch.set(recepcionRef, {
+        idRecepcion: clave,
+        proveedorId,
+        proveedorNombre,
+        almacenId,
+        numeroFactura,
+        condicionPago,
+        diasVencimiento,
+        fechaFactura: datos.fechaFactura || null,
+        fechaVencimiento: datos.fechaVencimiento || null,
+        subtotal: lineas.reduce((total, linea) => total + Number(linea.cantidad) * Number(linea.costoUnitario) - Number(linea.descuento || 0), 0),
+        total: Number(datos.total || 0),
+        estado: 'BORRADOR',
+        usuarioId: request.auth.uid,
+        creadoEn: existente.exists ? existente.data().creadoEn : ahora,
+        actualizadoEn: ahora
+    }, { merge: true });
+    lineas.forEach((linea, indice) => batch.set(
+        recepcionRef.collection('lineas').doc(String(indice + 1).padStart(4, '0')),
+        { ...linea, actualizadoEn: ahora }
+    ));
+    await batch.commit();
+    return { estado: 'BORRADOR', idRecepcion: clave };
+});
+
+exports.confirmarRevisionCierre = onCall(async request => {
+    if (!(await tienePermisoAuditoria(request))) {
+        throw new HttpsError('permission-denied', 'No tienes permiso para revisar cierres.');
+    }
+    const cierreId = String(request.data?.cierreId || '').trim();
+    const montoContadoAuditor = Number(request.data?.montoContadoAuditor);
+    const observacion = String(request.data?.observacion || '').trim();
+    const desgloseEfectivoAuditor = request.data?.desgloseEfectivoAuditor || {};
+    if (!cierreId || !Number.isFinite(montoContadoAuditor) || montoContadoAuditor < 0) {
+        throw new HttpsError('invalid-argument', 'Indica un cierre y un monto contado válido.');
+    }
+
+    const cierreRef = db.collection('cierres_caja').doc(cierreId);
+    const revisionRef = db.collection('revisiones_cierres').doc(cierreId);
+    return db.runTransaction(async transaction => {
+        const [cierreSnapshot, revisionSnapshot] = await transaction.getAll(cierreRef, revisionRef);
+        if (!cierreSnapshot.exists) throw new HttpsError('not-found', 'El cierre no existe.');
+        if (revisionSnapshot.exists && ['CONFIRMADO', 'ARCHIVADO'].includes(revisionSnapshot.data().estado)) {
+            return { estado: revisionSnapshot.data().estado, revisionId: revisionRef.id, duplicado: true };
+        }
+
+        const cierre = cierreSnapshot.data();
+        const montoEsperado = Number(cierre.montoEsperadoEnCaja ?? cierre.totalEnGaveta ?? 0);
+        transaction.set(revisionRef, {
+            revisionId: revisionRef.id,
+            cierreId,
+            idTurno: cierre.idTurno || '',
+            auditorUid: request.auth.uid,
+            auditorEmail: request.auth.token.email || '',
+            montoEsperadoCajero: montoEsperado,
+            montoContadoCajero: Number(cierre.montoRealContado ?? cierre.totalEnGaveta ?? 0),
+            diferenciaCajero: Number(cierre.diferencia || 0),
+            montoContadoAuditor,
+            diferenciaAuditoria: montoContadoAuditor - montoEsperado,
+            desgloseEfectivoAuditor,
+            observacion,
+            estado: 'CONFIRMADO',
+            creadoEn: revisionSnapshot.exists ? revisionSnapshot.data().creadoEn : admin.firestore.FieldValue.serverTimestamp(),
+            confirmadoEn: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        return { estado: 'CONFIRMADO', revisionId: revisionRef.id, diferenciaAuditoria: montoContadoAuditor - montoEsperado };
+    });
+});
+
+exports.archivarRevisionCierre = onCall(async request => {
+    if (!(await tienePermisoArchivoAuditoria(request))) {
+        throw new HttpsError('permission-denied', 'No tienes permiso para archivar revisiones.');
+    }
+    const cierreId = String(request.data?.cierreId || '').trim();
+    if (!cierreId) throw new HttpsError('invalid-argument', 'Falta el cierre.');
+    const revisionRef = db.collection('revisiones_cierres').doc(cierreId);
+    const revisionSnapshot = await revisionRef.get();
+    if (!revisionSnapshot.exists) throw new HttpsError('failed-precondition', 'Primero debes confirmar la revisión.');
+    if (revisionSnapshot.data().estado === 'ARCHIVADO') return { estado: 'ARCHIVADO', duplicado: true };
+    if (revisionSnapshot.data().estado !== 'CONFIRMADO') {
+        throw new HttpsError('failed-precondition', 'La revisión todavía no está confirmada.');
+    }
+    await revisionRef.update({
+        estado: 'ARCHIVADO',
+        archivadoPor: request.auth.uid,
+        archivadoEn: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return { estado: 'ARCHIVADO', revisionId: revisionRef.id };
 });
 
 exports.crearCotizacion = onCall(async request => {
@@ -547,7 +717,7 @@ exports.buscarProductosChat = onCall(async request => {
     return encontrarProductos(request.data?.texto);
 });
 
-exports.procesarMensajeChat = onCall(async request => {
+const procesarMensajeChatInterno = async request => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión para usar el chatbot.');
     const texto = String(request.data?.texto || '').trim();
     if (!texto) throw new HttpsError('invalid-argument', 'El mensaje no puede estar vacío.');
@@ -651,7 +821,9 @@ exports.procesarMensajeChat = onCall(async request => {
     });
 
     return { conversacionId, estado, respuesta, busqueda };
-});
+};
+
+exports.procesarMensajeChat = onCall(procesarMensajeChatInterno);
 
 const enviarMensajeWhatsApp = async (telefono, texto) => {
     const configuracion = await db.collection('configuracion-sistema').doc('whatsapp').get();
@@ -681,6 +853,9 @@ exports.whatsappWebhook = onRequest({ secrets: [WHATSAPP_TOKEN, WHATSAPP_VERIFY_
     if (request.method !== 'POST') return response.sendStatus(405);
 
     try {
+          const contactos = (request.body?.entry || []).flatMap(entrada =>
+              (entrada.changes || []).flatMap(cambio => cambio.value?.contacts || []))
+              .reduce((mapa, contacto) => mapa.set(String(contacto.wa_id), contacto.profile?.name || ''), new Map());
         const mensajes = (request.body?.entry || []).flatMap(entrada =>
             (entrada.changes || []).flatMap(cambio => cambio.value?.messages || []));
         for (const mensaje of mensajes) {
@@ -700,8 +875,27 @@ exports.whatsappWebhook = onRequest({ secrets: [WHATSAPP_TOKEN, WHATSAPP_VERIFY_
             }
 
             const configuracion = await db.collection('configuracion-sistema').doc('whatsapp').get();
-            if (configuracion.data()?.botActivo === true && mensaje.type === 'text') {
-                await enviarMensajeWhatsApp(mensaje.from, 'Recibimos tu mensaje. Estamos preparando tu cotización.');
+            if (configuracion.data()?.botActivo === true && mensaje.type === 'text' && mensaje.text?.body) {
+                const resultado = await procesarMensajeChatInterno({
+                    auth: {
+                        uid: `whatsapp_${mensaje.from}`,
+                        token: { email: '' }
+                    },
+                    data: {
+                        texto: mensaje.text.body,
+                        conversacionId: `wa_${mensaje.from}`,
+                        nombre: contactos.get(String(mensaje.from)) || 'Cliente WhatsApp',
+                        telefono: mensaje.from
+                    }
+                });
+                await enviarMensajeWhatsApp(mensaje.from, resultado.respuesta);
+                await db.collection('whatsapp_mensajes').add({
+                    direccion: 'SALIENTE',
+                    telefono: String(mensaje.from),
+                    texto: resultado.respuesta,
+                    estado: resultado.estado,
+                    creadoEn: admin.firestore.FieldValue.serverTimestamp()
+                });
             }
         }
         return response.sendStatus(200);

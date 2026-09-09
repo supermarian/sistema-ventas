@@ -3,6 +3,28 @@
 **Última actualización:** 2026-09-09
 **Avance estimado:** 40% del proyecto completo. El MVP ya tiene varias áreas funcionales, pero aún no está listo para producción.
 
+## ESTIMACION ACTUALIZADA
+
+El trabajo pendiente estimado es de **50 a 87 horas** para cerrar el MVP operativo sin eliminacion de fondo, o **56 a 99 horas** si se incluye procesamiento avanzado de imagen e IA. A 4 horas diarias representa aproximadamente **13 a 22 dias laborables**, o **14 a 25 dias** con fondo avanzado.
+
+El detalle por bloque y los supuestos estan en [PLAN_EVOLUCION_OPERATIVA.md](PLAN_EVOLUCION_OPERATIVA.md). Estas cifras no incluyen trabajo ya realizado.
+
+## DECISIONES NUEVAS
+
+El plan detallado para auditoria de cierres, recepcion validada, margenes, imagenes, devoluciones y WhatsApp queda en [PLAN_EVOLUCION_OPERATIVA.md](PLAN_EVOLUCION_OPERATIVA.md).
+
+Prioridad inmediata: implementar la revision de cierres como un segundo registro (`revisiones_cierres`) sin modificar el cierre original del cajero. Despues se completa el flujo borrador -> validacion -> aplicacion de recepciones.
+
+La carga inicial de productos desde PDF queda definida como importacion asistida. No se crearan productos automaticamente ni se copiaran codigos del sistema externo como codigos de barras; primero se revisaran nombre, costo, unidad, duplicados e imagen.
+
+El historial de entradas de Almacen ya esta visible en modo consulta. Ya existen catalogos basicos de proveedores y almacenes, con condicion y dias de pago, y alertas locales de vencimiento; faltan campos ampliados y pruebas con permisos reales.
+
+Los productos ya pueden guardar una referencia empresarial independiente del codigo de barras. La futura IA debe usarla como señal de coincidencia, no como una decisión automática.
+
+En la entrada de factura el usuario puede elegir Con/Sin ITBIS y la tasa antes de agregar productos. Al comenzar las líneas, el sistema conserva esa elección y avisa si se intenta cambiarla para no mezclar cálculos fiscales.
+
+El historial tambien permite abrir el detalle de cada entrada y consultar sus lineas sin modificar facturas aplicadas.
+
 ## 🔴 BLOQUEADORES (HACER PRIMERO)
 
 ### Diagnóstico actualizado: 2026-09-07
