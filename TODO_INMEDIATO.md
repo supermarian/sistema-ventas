@@ -52,7 +52,7 @@ Antes de agregar nuevas funciones, validar en este orden:
 |-------|-----------|----------|--------|
 | Notificaciones por email | 🟡 ALTA | 4h | ⏳ No iniciado |
 | Gestión de inventario | 🟡 ALTA | 6h | ⚠️ Básica implementada; falta recepción |
-| Consulta de ventas | 🟡 ALTA | 6-10h | ⏳ Pendiente: resumen y detalle cronológico |
+| Consulta de ventas | 🟡 ALTA | 6-10h | ✅ Implementada: resumen y detalle cronológico |
 | Módulo de empleados | 🟡 ALTA | 4h | ⚠️ CRUD y roles implementados; falta auditoría |
 | Historial de cotizaciones | 🟡 ALTA | 2h | ✅ Implementado en perfil |
 

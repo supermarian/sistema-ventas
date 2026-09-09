@@ -78,6 +78,7 @@ enviara a PhotoRoom por defecto.
 - [x] Referencias `imagenes[]` con URL, ruta, orden e imagen principal.
 - [x] Presentaciones múltiples por producto con código, nombre, precio y factor de unidad base.
 - [x] Factura impresa y reimpresa con presentación, código y equivalencia de unidades base.
+- [x] Consulta de ventas independiente con resumen por filtros y detalle cronológico por línea.
 - [x] Guardar costo actual, margen mínimo y margen calculado en la ficha de producto.
 - [x] Callable `registrarRecepcionCompra` con transaccion, duplicado determinista y movimientos.
 - [x] Conexion inicial del webhook de WhatsApp con el procesador conversacional.
