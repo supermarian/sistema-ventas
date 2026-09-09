@@ -258,13 +258,36 @@ mostrara totales del filtro activo: facturas, contado, credito, devoluciones,
 subtotal, ITBIS y total bruto.
 
 Al seleccionar una factura se abrira una tabla separada y **no se fusionaran
-lineas distintas**. Debe conservarse el orden original de la venta, incluyendo
-cuando el mismo producto se pasa por unidad y luego por caja:
+lineas distintas**. Cada vez que el cajero agregue una linea al carrito, esa
+linea se guardara dentro de `ventas_realizadas.items` en ese mismo momento y
+conservara su posicion original. No se debe sumar automaticamente el mismo
+producto ni convertir varias pasadas en una sola linea.
+
+Debe conservarse el orden original de la venta, incluyendo cuando el mismo
+producto se pasa varias veces por unidad y luego por caja:
 
 | Orden | Codigo | Presentacion | Nombre | Cantidad | Factor base | Precio unitario | Total |
 |---:|---|---|---|---:|---:|---:|---:|
 | 1 | 750001 | Unidad | Producto X | 1 | 1 | RD$ 60.00 | RD$ 60.00 |
-| 2 | 750099 | Caja | Producto X | 1 | 12 | RD$ 600.00 | RD$ 600.00 |
+| 2 | 750001 | Unidad | Producto X | 2 | 1 | RD$ 60.00 | RD$ 120.00 |
+| 3 | 750099 | Caja | Producto X | 1 | 12 | RD$ 600.00 | RD$ 600.00 |
+
+El registro guardado debe verse conceptualmente asi:
+
+```json
+{
+	"items": [
+		{ "orden": 1, "codigo": "750001", "presentacionNombre": "Unidad", "cantidad": 1, "factorConversion": 1, "precio": 60, "subtotal": 60 },
+		{ "orden": 2, "codigo": "750001", "presentacionNombre": "Unidad", "cantidad": 2, "factorConversion": 1, "precio": 60, "subtotal": 120 },
+		{ "orden": 3, "codigo": "750099", "presentacionNombre": "Caja", "cantidad": 1, "factorConversion": 12, "precio": 600, "subtotal": 600 }
+	]
+}
+```
+
+Aunque el resumen general pueda mostrar que se vendieron 3 unidades y 1 caja,
+el detalle de la factura debe mostrar las tres lineas originales. El orden no
+se reconstruye por nombre, codigo ni producto; se respeta el orden del arreglo
+`items` guardado en la factura.
 
 El resumen puede agrupar para estadisticas, pero el detalle debe conservar
 codigo, presentacion, cantidad, precio, total y orden original. El modulo es
