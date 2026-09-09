@@ -288,8 +288,8 @@ No guardar tokens en HTML, Markdown, Git ni mensajes del chat.
 - [x] Agregar costo y precio con margen calculado en Almacen.
 - [x] Bloquear margen menor al 2% salvo autorizacion auditada.
 - [x] Agregar imagen y vista previa.
-- [ ] Mostrar existencia/unidad/precio en busqueda de Caja.
-- [ ] Validar precio antes de publicarlo al catalogo de clientes.
+- [x] Mostrar existencia/unidad/precio e imagen en busqueda de Caja.
+- [x] Validar precio antes de publicarlo al catalogo de clientes y cotizaciones.
 
 ### Fase 4: importacion asistida
 

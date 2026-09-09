@@ -29,6 +29,14 @@ const normalizarTexto = texto => String(texto || '')
     .replace(/[^a-z0-9\s]/g, ' ')
     .trim();
 
+const precioPublicadoValido = producto => {
+    const precio = Number(producto.precio);
+    const costo = Number(producto.costoActual);
+    const margen = Number(producto.margenMinimo) > 2 ? Number(producto.margenMinimo) : 2;
+    return Number.isFinite(precio) && precio > 0
+        && (!Number.isFinite(costo) || costo <= 0 || precio >= costo * (1 + margen / 100));
+};
+
 const tienePermisoAuditoria = async request => {
     if (!request.auth) return false;
     const perfilSnapshot = await db.collection('usuarios').doc(request.auth.uid).get();
@@ -362,6 +370,9 @@ exports.registrarVentaOffline = onCall(async request => {
                 const cantidad = Number(venta.items[indice].cantidad) || 0;
                 const precioActual = Number(snapshot.data().precio) || 0;
                 const precioVenta = Number(venta.items[indice].precio) || 0;
+                if (!precioPublicadoValido({ ...snapshot.data(), precio: precioVenta })) {
+                    throw new HttpsError('failed-precondition', `El precio de ${venta.items[indice].nombre || 'el producto'} no está validado para publicación.`);
+                }
                 if (Math.abs(precioVenta - precioActual) > 0.009) {
                     if (!puedeEditarPrecios) throw new HttpsError('permission-denied', 'El usuario no puede modificar precios.');
                     cambiosPrecio.push({
@@ -738,6 +749,9 @@ exports.crearCotizacion = onCall(async request => {
     const itemsValidados = productos.map((producto, indice) => {
         if (!producto.exists || producto.data().estatus === 'INACTIVO') {
             throw new HttpsError('failed-precondition', `El producto ${items[indice].nombre || 'seleccionado'} no está disponible.`);
+        }
+        if (!precioPublicadoValido(producto.data())) {
+            throw new HttpsError('failed-precondition', `El producto ${producto.data().nombre || 'seleccionado'} no tiene un precio publicado válido.`);
         }
         const cantidad = Number(items[indice].cantidad);
         if (!Number.isFinite(cantidad) || cantidad <= 0) {

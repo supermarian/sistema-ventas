@@ -126,10 +126,14 @@ export const POSUI = {
                 const div = document.createElement('div');
                 div.className = 'res-item';
                 div.setAttribute('data-index', index);
+                const imagen = Array.isArray(prod.imagenes) && prod.imagenes.length
+                    ? prod.imagenes.find(item => item.esPrincipal) || prod.imagenes[0]
+                    : prod.imagenUrl ? { url: prod.imagenUrl } : null;
                 div.innerHTML = `
+                    ${imagen?.url ? `<img src="${imagen.url}" alt="">` : ''}
                     <div style="flex:1; pointer-events:none;">
                         <b style="display:block; color:black;">${prod.nombre}</b>
-                        <small style="color:#666;">${prod.codigo || 'Sin código'} · Stock: ${Number(prod.stock ?? 0)}</small>
+                        <small style="color:#666;">${prod.codigo || 'Sin código'} · ${prod.unidad || 'Und'} · Stock: ${Number(prod.stock ?? 0)}</small>
                     </div>
                     <div style="text-align:right; pointer-events:none;">
                         <span style="color:green; font-weight:bold; font-size:1.1rem;">
