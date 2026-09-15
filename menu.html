@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Súper Marian - Menú Principal</title>
+    <link rel="stylesheet" href="assets/sistema-theme.css">
+    <script src="assets/sistema-theme.js"></script>
     <style>
         /* --- ESTILOS GENERALES --- */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
@@ -56,6 +58,7 @@
 <header>
     🛒 Súper Marian - Panel Principal
     <div class="header-actions">
+        <button class="header-action theme-toggle" type="button" data-theme-toggle aria-label="Cambiar tema" aria-pressed="false"><span class="theme-icon">🌙</span><span class="theme-label">Modo oscuro</span></button>
         <button id="configuracionSuperior" class="header-action" type="button" title="Abrir configuracion">⚙️ Configuración</button>
     </div>
 </header>
@@ -216,6 +219,7 @@
         window.location.href = "index.html";
         throw new Error('Sesión no disponible');
     }
+    window.SistemaTema?.setUsuario(usuarioAutenticado.uid);
     const tokenActual = await usuarioAutenticado.getIdTokenResult(true);
     const userRol = tokenActual.claims.rol || userRolGuardado;
     const userName = usuarioAutenticado.displayName || userNameGuardado || usuarioAutenticado.email;

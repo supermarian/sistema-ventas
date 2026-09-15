@@ -1,9 +1,10 @@
-const CACHE_NAME = 'supermarian-app-v4';
+const CACHE_NAME = 'supermarian-app-v5';
 const APP_FILES = [
     './', './index.html', './menu.html', './facturacion/facturacion.html',
     './facturacion/pos-core.js', './facturacion/pos-ui.js',
     './facturacion/pos-events.js', './facturacion/pos-pagos.js', './facturacion/ticket-system.js',
-    './offline-status.js'
+    './offline-status.js', './assets/sistema-theme.css', './assets/sistema-theme.js',
+    './Almacen/Almacen.html', './Almacen/almacen.js'
 ];
 
 self.addEventListener('install', event => {

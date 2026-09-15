@@ -37,6 +37,21 @@ Flujo esperado:
 
 La venta de contado y la apertura son parte del uso principal de Caja. No deben esconderse mediante cinco casillas obligatorias al cajero.
 
+### Navegación visual de Caja
+
+La pantalla de Facturación muestra una barra de pestañas siempre visible. Las pestañas representan acciones existentes y se ocultan automáticamente cuando el usuario no tiene el subpermiso correspondiente:
+
+| Pestaña | Permiso | Acción actual |
+|---|---|---|
+| Venta | `facturacion` | Productos, carrito y cobro |
+| Reimpresión | `caja_reimpresion` | Enfoca la búsqueda de factura y conserva el ticket como copia |
+| Cotizaciones | `caja_cotizaciones` | Abre las cotizaciones pendientes |
+| Créditos | `caja_credito` | Abre el cobro de deudas |
+| Egresos | `caja_egreso` | Abre el registro de salida de caja |
+| Cierre | `caja_cierre` | Inicia el cierre del turno |
+
+Las pestañas no crean permisos nuevos ni duplican lógica: llaman a los modales y controles existentes. La reimpresión permanece separada de Gestión de facturas (`correcciones`) para no confundir una copia de ticket con una corrección o devolución.
+
 ## Personal
 
 | Permiso | Funcion |

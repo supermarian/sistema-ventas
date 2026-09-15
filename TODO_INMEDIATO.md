@@ -1,6 +1,6 @@
 # 🎯 CHECKLIST RÁPIDO - ESTADO DEL PROYECTO
 
-**Última actualización:** 2026-09-09
+**Última actualización:** 2026-09-15
 **Avance estimado:** 40% del proyecto completo. El MVP ya tiene varias áreas funcionales, pero aún no está listo para producción.
 
 ## ESTIMACION ACTUALIZADA
@@ -24,6 +24,104 @@ Los productos ya pueden guardar una referencia empresarial independiente del cod
 En la entrada de factura el usuario puede elegir Con/Sin ITBIS y la tasa antes de agregar productos. Al comenzar las líneas, el sistema conserva esa elección y avisa si se intenta cambiarla para no mezclar cálculos fiscales.
 
 El historial tambien permite abrir el detalle de cada entrada y consultar sus lineas sin modificar facturas aplicadas.
+
+## ESTADO DEL BOT DE WHATSAPP
+
+La base del bot ya está implementada en `functions/index.js` mediante Firebase Cloud Functions. El webhook verifica solicitudes de Meta, recibe mensajes, busca productos, mantiene la conversación y crea cotizaciones.
+
+- [x] Procesamiento del mismo mensaje con control de duplicados.
+- [x] Estados `PROCESANDO`, `PROCESADO` y `ERROR_REINTENTABLE`.
+- [x] Recuperación de trabajos abandonados durante más de dos minutos.
+- [x] Ejecutar Firebase CLI mediante `npx`.
+- [x] Autenticar Firebase y seleccionar `supermercado-marian`.
+- [x] Desplegar `whatsappWebhook` en `us-central1`.
+- [x] Verificar el challenge del webhook con token correcto: respuesta HTTP 200.
+- [x] Generar PDF de cotización desde la respuesta del bot.
+- [ ] Confirmar el número de negocio real de WhatsApp en Meta y asegurar que el Access Token vigente sea el correcto.
+- [ ] Configurar y mantener `WHATSAPP_TOKEN` y `WHATSAPP_VERIFY_TOKEN` como secretos operativos en Firebase.
+- [ ] Verificar el webhook en Meta con el número real del negocio.
+- [ ] Probar producto encontrado, no encontrado, selección y confirmación.
+- [ ] Confirmar que la cotización aparezca en el POS.
+
+La guía principal y el orden de implementación están en [BOT Y DEMAS .MD](BOT%20Y%20DEMAS%20.MD).
+
+## ESTADO DE IMPORTACIÓN DESDE PDF
+
+Se dejó documentado el flujo operativo para importar productos desde PDF sin crear registros a ciegas.
+
+- [x] Revisar columnas del PDF y decidir qué campos son relevantes para inventario.
+- [x] Definir código como clave principal para actualizar o crear productos.
+- [x] Mantener lote activo e inactivo por código; evitar duplicados por nombre sin validación.
+- [x] Cargar revisión antes de confirmar la importación final.
+- [x] Bloquear filas con columnas faltantes o datos inconsistentes.
+- [ ] Validar con el PDF real del catálogo antes de cerrar la carga masiva.
+- [ ] Definir la política final de margen y precio de venta para cada producto importado.
+- [ ] Confirmar el ajuste de unidades y nombres según el catálogo maestro real.
+
+## ACTUALIZACIÓN DE TRABAJO DEL 2026-09-15
+
+Se registran aquí las decisiones tomadas recientemente para continuidad del proyecto:
+
+- El bot ya responde con datos de producto y cotización; el siguiente freno operativo es la configuración real del número y token de Meta.
+- La importación desde PDF ya no se hace automática; sigue un proceso asistido con revisión manual antes de escribir en Firestore.
+- La clave de negocio para la carga masiva es el código del producto; si un lote inactivo reutiliza un código existente, se actualiza en lugar de duplicarse.
+- La documentación del proyecto debe mantenerse actualizada con cada cambio funcional importante para evitar perder contexto entre ciclos de trabajo.
+- La caché del navegador puede seguir mostrando el menú antiguo y la vista vieja de Almacén aunque el código ya esté actualizado: la corrección es recargar con Ctrl+F5, borrar el service worker o hacer un deploy nuevo con el cache invalidado.
+
+## SIGUIENTE PRIORIDAD: DISEÑO GENERAL Y AUTO LAYOUT
+
+Después de completar la configuración y prueba básica de WhatsApp, la siguiente prioridad visual será mejorar todo el sistema, no únicamente Facturación. El auto layout debe aplicarse a escritorio, tablet y móvil, conservando permisos, funciones y datos actuales.
+
+### Alcance visual
+
+- [x] Crear primera base visual común para encabezados, navegación, superficies, controles, tablas, tarjetas y modo oscuro.
+- [x] Publicar la primera versión visual en Firebase Hosting para revisión.
+- [ ] Extender la base visual al resto de módulos y revisar cada pantalla.
+- [ ] Reorganizar el menú principal y sus accesos para que sea claro, responsive y consistente.
+- [ ] Mejorar Facturación/POS: búsqueda, resultados, carrito, cobro, cotizaciones, crédito, egreso, cierre, offline y modales.
+- [ ] Mejorar Gestión de facturas: correcciones, devoluciones, notas, búsqueda, tablas y formularios auditados.
+- [ ] Mejorar Almacén y Compras: productos, recepción, tablas, imágenes, escáner, borradores y detalle de entradas.
+- [ ] Mejorar Créditos, Personal, Auditoría, Cierres de caja, Dashboard, Reportes y Consulta de ventas.
+- [ ] Mejorar Configuración, incluyendo comprobantes, copias, bot y catálogo offline.
+- [ ] Revisar portal de clientes, perfil, catálogo, cotizaciones y pantallas de acceso cuando termine el núcleo administrativo.
+- [x] Reorganizar Almacén en vistas internas: Productos, Recepción, Historial y Catálogos.
+- [x] Cambiar el menú desplegable de Almacén por pestañas visibles tipo sistema de inventario.
+- [x] Aplicar pestañas visibles a Facturación según subpermisos de Caja.
+- [x] Separar el acceso al historial de ventas mediante Consulta de ventas.
+- [x] Integrar modo claro/oscuro por usuario en Almacén.
+- [ ] Eliminar progresivamente estilos inline repetidos y unificar variables, espaciado y breakpoints.
+- [ ] Evitar desbordamiento horizontal en tablas, formularios, tarjetas y acciones.
+- [ ] Revisar estados vacío, cargando, error, sin permisos, offline y modal en cada módulo.
+- [ ] Probar resoluciones de escritorio, tablet y móvil después de cada grupo de pantallas.
+
+### Primera entrega desplegada
+
+- URL: `https://supermercado-marian.web.app`
+- Tema probado inicialmente en `menu.html` y `configuracion.html`.
+- Cada usuario puede elegir modo claro u oscuro; la preferencia se guarda asociada a su UID en el navegador.
+- La primera revisión visual debe comprobar contraste, tablas, formularios, modales y navegación antes de extenderlo a Almacén, Facturación y los demás módulos.
+
+En Almacén la primera entrega ya está desplegada con el menú `Secciones de Almacén`. La pantalla inicial prioriza productos e inventario; recepción, historial y catálogos se abren bajo demanda. Categorías y unidades quedan pendientes de definir como catálogos maestros antes de habilitar su creación.
+
+La navegación de Almacén ahora mantiene arriba las pestañas `Inventario`, `Recepción`, `Historial compras`, `Historial ventas`, `Catálogos` y `Categorías y unidades`. En pantallas pequeñas la barra se desplaza horizontalmente, pero las secciones siguen visibles.
+
+Facturación ya tiene la misma estructura visual: `Venta`, `Reimpresión`, `Cotizaciones`, `Créditos`, `Egresos` y `Cierre`. Cada pestaña reutiliza la acción existente y solo aparece si el usuario posee el subpermiso correspondiente.
+
+Se corrigió la caché del navegador y del service worker: las páginas HTML y `sw.js` se publican con `Cache-Control: no-cache, no-store, must-revalidate`, y la caché offline pasó a `supermarian-app-v5`. Si un dispositivo aún muestra la captura anterior, debe recargar la página una vez con Ctrl+F5 o cerrar y abrir nuevamente la pestaña.
+
+### Orden de implementación
+
+1. Base visual y shell compartido.
+2. Menú principal y navegación.
+3. Facturación/POS y Gestión de facturas.
+4. Almacén, Compras y Créditos.
+5. Dashboard, Reportes, Consulta de ventas, Auditoría y Cierres.
+6. Personal y Configuración.
+7. Portal de clientes, perfil y acceso.
+
+El rediseño no debe cambiar reglas de negocio, permisos, cálculos de ventas, inventario ni datos de Firestore.
+
+La guía central de este trabajo está en [GUIA_DISENO_SISTEMA.md](GUIA_DISENO_SISTEMA.md). Debe actualizarse después de cada módulo visual.
 
 ## 🔴 BLOQUEADORES (HACER PRIMERO)
 

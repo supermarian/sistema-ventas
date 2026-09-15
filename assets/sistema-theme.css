@@ -1,0 +1,99 @@
+:root {
+    color-scheme: light;
+    --app-bg: #eef3f5;
+    --app-surface: #ffffff;
+    --app-surface-raised: #f7fafb;
+    --app-text: #20313a;
+    --app-muted: #64747d;
+    --app-border: #d9e2e6;
+    --app-primary: #176b67;
+    --app-primary-strong: #0d4f4c;
+    --app-shadow: 0 12px 30px rgba(24, 48, 59, .10);
+}
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --app-bg: #11191d;
+    --app-surface: #1c282d;
+    --app-surface-raised: #243238;
+    --app-text: #edf5f3;
+    --app-muted: #a7b9bd;
+    --app-border: #3a4b51;
+    --app-primary: #54c2ae;
+    --app-primary-strong: #8de0ce;
+    --app-shadow: 0 14px 34px rgba(0, 0, 0, .28);
+}
+
+html[data-theme="dark"] body {
+    background: var(--app-bg) !important;
+    color: var(--app-text) !important;
+}
+
+html[data-theme="dark"] header,
+html[data-theme="dark"] nav,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .menu-card,
+html[data-theme="dark"] .form-card,
+html[data-theme="dark"] .modal-content,
+html[data-theme="dark"] .detalle-recepcion-panel,
+html[data-theme="dark"] .metric,
+html[data-theme="dark"] section {
+    background-color: var(--app-surface) !important;
+    color: var(--app-text) !important;
+}
+
+html[data-theme="dark"] .menu-card:hover,
+html[data-theme="dark"] .form-card:hover,
+html[data-theme="dark"] tr:hover {
+    background-color: var(--app-surface-raised) !important;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] table,
+html[data-theme="dark"] th,
+html[data-theme="dark"] td {
+    background-color: var(--app-surface-raised) !important;
+    color: var(--app-text) !important;
+    border-color: var(--app-border) !important;
+}
+
+html[data-theme="dark"] .muted,
+html[data-theme="dark"] small,
+html[data-theme="dark"] .session-email,
+html[data-theme="dark"] .info-tag {
+    color: var(--app-muted) !important;
+}
+
+html[data-theme="dark"] a,
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4 {
+    color: var(--app-primary-strong);
+}
+
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 1px solid currentColor;
+    border-radius: 9px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, .14);
+}
+
+@media (max-width: 640px) {
+    .theme-toggle .theme-label { display: none; }
+    .theme-toggle { min-width: 40px; justify-content: center; padding-inline: 9px; }
+}

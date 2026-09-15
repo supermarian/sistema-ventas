@@ -1,6 +1,6 @@
 # 📊 ESTADO DEL PROYECTO - Súper Marian Sistema ERP
 
-**Última actualización:** 2026-09-09
+**Última actualización:** 2026-09-15
 **Versión:** v0.4 (MVP funcional en validación)
 
 ## 📌 ESTIMACIÓN GLOBAL
@@ -22,6 +22,10 @@ El plan de siguientes fases está documentado en [PLAN_EVOLUCION_OPERATIVA.md](P
 
 La aplicación cuenta con una versión funcional en desarrollo que integra portal de clientes, POS, inventario, créditos, cotizaciones y controles administrativos. También se incorporó una base de funcionamiento offline para ventas de contado y una primera integración técnica para chatbot y WhatsApp Business.
 
+### Actualización operativa reciente - 2026-09-15
+
+Se consolidó la parte técnica del bot de WhatsApp y la importación asistida de productos desde PDF. La decisión principal del momento es mantener dos líneas de trabajo separadas: la validación real del número Meta y la carga masiva de inventario con revisión humana antes de confirmar cada lote.
+
 ### Implementado en código
 - Modo offline con persistencia local de ventas de contado.
 - Sincronización idempotente con validación de stock, total y precios.
@@ -34,7 +38,12 @@ La aplicación cuenta con una versión funcional en desarrollo que integra porta
 - Memoria básica de conversación y confirmación de cotizaciones.
 - Alertas de cotizaciones nuevas en el POS con contador, parpadeo y timbre periódico.
 - Configuración del teléfono público y activación del bot.
-- Webhook técnico de WhatsApp Business preparado.
+- Webhook de WhatsApp Business implementado en Cloud Functions, con verificación Meta, recepción de mensajes, respuestas y control de reintentos.
+- Verificación de webhook con token correcto y respuesta HTTP 200 al challenge de Meta.
+- Generación de PDF de cotización desde la función de creación de cotización.
+- Importación asistida de producto desde PDF con revisión antes de confirmar y sin creación masiva automática.
+- Importación por clave de código para distinguir lote activo e inactivo del catálogo.
+- Validación de columnas obligatorias y control de duplicados al importar productos desde PDF.
 - Login de empleados y clientes, recuperación de contraseña y cierre real de sesión.
 - Control de acceso por rol en menú, dashboard, configuración y módulos administrativos.
 - Dashboard y reportes básicos de ventas, caja, créditos e inventario.
@@ -46,13 +55,28 @@ La aplicación cuenta con una versión funcional en desarrollo que integra porta
 - Gestión de facturas visible con permiso `correcciones`.
 - Cierres de caja visibles como acceso separado con permiso `cierres_caja`.
 - Recepción de compras transaccional básica con búsqueda de productos por nombre, código o ID.
-- Revisión de cierres, recepción por borrador, márgenes, imágenes, devoluciones y pruebas de WhatsApp pendientes según el plan operativo.
+- Revisión de cierres, recepción por borrador, márgenes, imágenes y devoluciones pendientes; el bot de WhatsApp queda pendiente de configuración Meta y pruebas reales.
 - Autorización de dispositivos por combinación UID + dispositivo y solicitudes pendientes.
 
+### Decisiones productivas documentadas
+- Para la importación desde PDF, el código del producto se toma como clave principal y no como simple texto auxiliar.
+- El primer lote del catálogo se mantiene como activo y el segundo lote se usa para actualizar o incorporar productos con el mismo código cuando corresponda.
+- Se ignora la columna total en la lectura inicial, porque el costo y la unidad del PDF se consideran la fuente operativa.
+- La importación sigue siendo asistida: el usuario revisa cada fila antes de confirmar y se bloquea si faltan columnas críticas.
+- El bot de WhatsApp aún requiere confirmación real del número de negocio y del token de acceso de Meta para pasar a validación de producción.
+- La vista de Almacén y el menú principal pueden seguir mostrando una versión antigua cuando el navegador conserva la caché del service worker; en ese caso no significa que la nueva pantalla no exista, sino que la app está sirviendo la versión previa hasta hacer un refresh fuerte o redeploy.
+
 ### Pendiente antes de producción
-- Autenticar Firebase CLI y desplegar Cloud Functions.
+- Firebase CLI autenticada y `whatsappWebhook` desplegado en `us-central1`.
 - Configurar `phone_number_id` y credenciales secretas de Meta.
 - Verificar el webhook desde Meta WhatsApp Business.
+- Probar el bot con el número de prueba y confirmar que las cotizaciones llegan al POS.
+- Rediseñar todo el sistema con una base visual común y auto layout responsive para escritorio, tablet y móvil: menú, Facturación, Gestión de facturas, Almacén, Compras, Créditos, Personal, Dashboard, Reportes, Auditoría, Configuración y portales.
+- Primera base visual compartida y modo claro/oscuro desplegados en Menú y Configuración para revisión.
+- Almacén reorganizado con navegación interna desplegable y modo claro/oscuro por usuario; recepción, historiales y catálogos ya no ocupan la pantalla principal.
+- Almacén actualizado con pestañas visibles tipo sistema de inventario; el contenido se cambia debajo sin perder las secciones principales.
+- Facturación actualizada con pestañas visibles por subpermiso: venta, reimpresión, cotizaciones, créditos, egresos y cierre.
+- Caché de HTML y service worker corregida para que los despliegues visuales nuevos se descarguen sin conservar la versión anterior.
 - Probar con dos o más equipos y usuarios reales.
 - Proteger completamente las reglas de Firestore y los PIN de empleados.
 - Migrar la cola local de `localStorage` a IndexedDB.

@@ -4,6 +4,26 @@
 **Fecha:** 2026-09-09
 **Regla:** documentar, implementar una fase pequena, probarla y actualizar este plan antes de avanzar.
 
+## Prioridad transversal de diseño
+
+La siguiente fase visual aplica a todo el sistema y no solo a Facturación. Se debe crear una base común de auto layout responsive para menú, Facturación/POS, Gestión de facturas, Almacén, Compras, Créditos, Personal, Dashboard, Reportes, Auditoría, Cierres, Configuración y portal de clientes.
+
+El objetivo es mejorar apariencia, lectura y uso en escritorio, tablet y móvil sin modificar reglas de negocio, permisos, cálculos ni datos de Firestore. El orden será: base visual compartida, menú, módulos operativos, módulos administrativos y finalmente portales.
+
+Cada grupo debe validarse en estados normal, vacío, cargando, error, sin permisos y sin conexión. Las tablas y formularios deben adaptarse sin desbordamiento horizontal, y los estilos inline repetidos se eliminarán progresivamente.
+
+Las reglas detalladas de navegación, pestañas, modo oscuro, auto layout y validación están en [GUIA_DISENO_SISTEMA.md](GUIA_DISENO_SISTEMA.md).
+
+La primera entrega visual se publicó en `https://supermercado-marian.web.app` con la base compartida aplicada a Menú y Configuración. El modo claro/oscuro se guarda por UID en el navegador. Antes de extenderlo a los demás módulos se debe revisar contraste y legibilidad en escritorio, tablet y móvil.
+
+Almacén ya cuenta con una primera navegación interna desplegable. La vista principal queda dedicada a productos e inventario; recepción, historial de recepciones, historial de ventas y catálogos se separan para reducir desplazamiento. Las categorías y unidades deben definirse como catálogos maestros antes de implementar su alta.
+
+La navegación evolucionó a pestañas visibles permanentes, inspiradas en la pantalla de referencia del sistema de inventario. Este será el patrón para los demás módulos: las funciones principales quedan accesibles arriba y el panel de trabajo cambia debajo.
+
+Facturación adopta el mismo patrón con pestañas vinculadas a permisos existentes. No se crean permisos nuevos ni se mezclan reimpresiones con correcciones, devoluciones o notas.
+
+La publicación visual actualiza el service worker a `supermarian-app-v5` y evita cachear HTML para que los cambios sean visibles después del despliegue.
+
 ## Estado y estimacion consolidada
 
 ### Ya implementado

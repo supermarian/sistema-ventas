@@ -1,6 +1,6 @@
 # Guia de Recepcion de Facturas y Actualizacion de Inventario
 
-**Estado:** Parcial: recepcion aplicada transaccional implementada; faltan borradores y catalogos
+**Estado:** Parcial: recepción aplicada transaccional e importación asistida de catálogo implementadas; faltan OCR y revisión de extremo a extremo
 **Prioridad sugerida:** Alta  
 **Referencia:** Flujo de recepcion de compras y mantenimiento de inventario mostrado en las pantallas de referencia.
 
@@ -9,6 +9,8 @@
 Ya existe un inventario basico para consultar y mantener productos, precios, stock, estatus y codigos de barras desde el modulo de Almacen. Tambien existen alertas de bajo stock y consumo de existencias desde facturacion.
 
 Ya existe una primera recepcion aplicada desde Almacen. La callable `registrarRecepcionCompra` valida permisos, evita duplicados por proveedor + factura + almacen, actualiza stock y costo dentro de una transaccion y registra lineas y movimientos. Aun faltan borradores, catalogos formales de proveedores y almacenes, impuestos, devoluciones y pruebas de extremo a extremo.
+
+También existe una importación asistida desde PDF en Almacén. El alcance autorizado son dos lotes: el PDF de productos `ACTIVO` y el PDF posterior de productos `INACTIVO`. El código leído del PDF es obligatorio y es la clave estable del producto. El primer lote crea los productos; si el segundo lote contiene el mismo código, actualiza ese producto y conserva su stock e imágenes existentes. Se revisan y editan las filas antes de confirmar, y las imágenes se asocian por nombre abreviado, código o ID. Esta primera versión requiere un PDF con texto seleccionable; los PDFs escaneados necesitan OCR antes de importarse.
 
 ## Objetivo
 

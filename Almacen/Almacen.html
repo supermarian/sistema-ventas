@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Súper Marian - Almacén Pro</title>
+    <link rel="stylesheet" href="../assets/sistema-theme.css">
+    <script src="../assets/sistema-theme.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
 
@@ -55,17 +57,45 @@
         .foto-producto img { width: 100%; height: 110px; object-fit: contain; display: block; }
         .foto-producto button { position: absolute; top: 4px; right: 4px; border: 0; border-radius: 50%; width: 26px; height: 26px; background: #d93025; color: white; cursor: pointer; }
         .foto-producto small { display: block; padding: 4px; color: #667085; text-align: center; }
+        .almacen-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+        .almacen-menu { display:flex; align-items:center; gap:6px; overflow-x:auto; padding:7px; background:#fff; border:1px solid #d9e2ec; border-radius:9px; box-shadow:0 4px 10px rgba(25,60,110,.08); scrollbar-width:thin; }
+        .almacen-tab { flex:0 0 auto; border:1px solid transparent; border-radius:6px; background:transparent; color:#263238; padding:10px 13px; font:inherit; font-weight:700; white-space:nowrap; cursor:pointer; }
+        .almacen-tab:hover, .almacen-tab.active { background:#e8f0fe; border-color:#b9d0ee; color:#174ea6; }
+        .almacen-tab.active { box-shadow:inset 0 -3px 0 #174ea6; }
+        .almacen-tab.external { text-decoration:none; }
+        .almacen-vista[hidden] { display:none !important; }
+        .almacen-vista-title { display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+        .almacen-vista-title h2 { margin:0; color:#174ea6; }
+        .almacen-vista-title p { margin:4px 0 0; color:#667085; }
+        .historial-accesos { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:16px; }
+        .historial-acceso { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px; border:1px solid #d9e2ec; border-radius:9px; background:#f7fbff; color:#174ea6; text-decoration:none; font-weight:700; }
+        .historial-acceso:hover { background:#e8f0fe; }
+        @media(max-width:640px) { .container{padding:12px} .form-card{padding:14px} .almacen-toolbar{align-items:stretch} .almacen-menu{width:100%; order:3} }
+        html[data-theme="dark"] .almacen-menu { background:var(--app-surface); border-color:var(--app-border); }
+        html[data-theme="dark"] .almacen-tab { color:var(--app-text); }
+        html[data-theme="dark"] .almacen-tab:hover, html[data-theme="dark"] .almacen-tab.active { background:var(--app-surface-raised); border-color:var(--app-border); color:var(--app-primary-strong); }
+        html[data-theme="dark"] .historial-acceso { background: var(--app-surface-raised); color: var(--app-primary-strong); border-color: var(--app-border); }
         
     </style>
 </head>
 <body>
 
-<header id="tituloModulo">📦 Control de Inventario - Súper Marian</header>
+<header id="tituloModulo" style="position:relative">📦 Control de Inventario - Súper Marian <button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambiar tema" aria-pressed="false" style="position:absolute;right:18px;top:50%;transform:translateY(-50%)"><span class="theme-icon">🌙</span><span class="theme-label">Modo oscuro</span></button></header>
 
 <div class="container">
-    <button style="background:#666; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; margin-bottom:20px;" onclick="location.href='../menu.html'">⬅ Volver al menú</button>
+    <div class="almacen-toolbar">
+        <button style="background:#666; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;" onclick="location.href='../menu.html'">⬅ Volver al menú</button>
+        <nav class="almacen-menu" id="menuAlmacen" aria-label="Secciones de Almacén">
+            <button class="almacen-tab active" type="button" data-almacen-vista="productos">📦 Inventario</button>
+            <button class="almacen-tab" type="button" data-almacen-vista="recepcion">🧾 Recepción</button>
+            <button class="almacen-tab" type="button" data-almacen-vista="historial">🕘 Historial compras</button>
+            <a class="almacen-tab external" href="../consulta-ventas.html">📊 Historial ventas</a>
+            <button class="almacen-tab" type="button" data-almacen-vista="catalogos">⚙️ Catálogos</button>
+            <button class="almacen-tab" type="button" disabled title="Se habilitará con el catálogo maestro">🏷️ Categorías y unidades</button>
+        </nav>
+    </div>
 
-    <div class="form-card" id="gestionProductosCard">
+    <div class="form-card" id="gestionProductosCard" data-almacen-vista-card="productos">
         <h3 id="formTitulo">+ Registrar Nuevo Producto</h3>
         <div id="reader"></div>
         <button class="btn-scan" onclick="iniciarEscaner()">📷 Escanear Código</button>
@@ -107,6 +137,19 @@
             <div id="galeriaProducto" class="galeria-producto"></div>
             <span id="estadoImagenesProducto" class="info-tag"></span>
         </div>
+        <div class="form-card" style="margin-top:15px;margin-bottom:0;background:#f5f9ff;border:1px solid #c9d7ee">
+            <h4 style="margin:0 0 8px">Importar productos desde PDF</h4>
+            <p class="info-tag">Carga uno de los dos PDFs autorizados y revisa las filas antes de guardarlas. El código del PDF es obligatorio y sirve para actualizar el mismo producto en el segundo lote.</p>
+            <div class="grid-inputs">
+                <label><small>PDF del catálogo</small><input id="importarProductosPdf" type="file" accept="application/pdf"></label>
+                <label><small>Estado de este lote</small><select id="importarProductosEstatus"><option value="ACTIVO">ACTIVO</option><option value="INACTIVO">INACTIVO</option></select></label>
+                <label><small>Carpeta de imágenes (opcional)</small><input id="importarProductosImagenes" type="file" accept="image/*" multiple webkitdirectory directory></label>
+            </div>
+            <span class="info-tag">Solo se importan los productos de estos dos PDFs. Ejemplos de imagen: código del producto o abreviatura de dos letras por palabra: <strong>ar_se.jpg</strong> para “Arroz Selecto”.</span>
+            <div class="acciones-importacion"><button class="btn-add" type="button" id="prepararImportacionProductos">Leer PDF y preparar revisión</button><button class="btn-add" type="button" id="guardarImportacionProductos" disabled>Confirmar importación</button></div>
+            <span id="estadoImportacionProductos" class="info-tag"></span>
+            <div class="recepcion-table-wrap"><table><thead><tr><th>Incluir</th><th>Código</th><th>Nombre</th><th>Costo</th><th>Precio</th><th>Unidad</th><th>Estado</th><th>Imagen</th></tr></thead><tbody id="importacionProductosFilas"></tbody></table></div>
+        </div>
         <div>
 
                <label><small>Estatus:</small></label>
@@ -129,7 +172,7 @@
        <button id="btnCancelar" style="display:none; width:100%; margin-top:5px; padding:12px; border-radius:8px; border:none; background:#eee; cursor:pointer; font-weight:bold;" onclick="window.cancelarEdicion()">⬅ Volver / Cancelar</button>
     </div>
 
-    <div class="form-card recepcion-card" id="recepcionCard">
+    <div class="form-card recepcion-card" id="recepcionCard" data-almacen-vista-card="recepcion" hidden>
         <h3>Recepción de compra</h3>
         <span class="info-tag">La recepción actualiza stock y costo dentro de una transacción.</span>
         <div class="grid-inputs">
@@ -167,7 +210,7 @@
         <button class="btn-add" id="btnAplicarRecepcion" type="button" onclick="window.aplicarRecepcion()" disabled>Aplicar al inventario</button>
     </div>
 
-    <div class="form-card" id="consultaInventarioCard">
+    <div class="form-card" id="consultaInventarioCard" data-almacen-vista-card="productos">
         <input type="text" id="busqueda" style="width:100%; padding:10px; border-radius:8px; border:2px solid #1a73e8;"  placeholder="🔍 Escribe y presiona Enter para buscar..." onkeydown="if(event.key === 'Enter') window.ejecutarBusqueda()">
         <span id="txtInfo" class="info-tag"></span>
         <table>
@@ -186,7 +229,7 @@
         </table>
     </div>
 
-    <div class="form-card" id="historialRecepcionesCard">
+    <div class="form-card" id="historialRecepcionesCard" data-almacen-vista-card="historial" hidden>
         <h3>Historial de entradas de mercancía</h3>
         <span class="info-tag">Consulta de facturas recibidas, suplidor, costo, usuario y estado.</span>
         <div class="vencimientos-resumen">
@@ -199,7 +242,7 @@
             <tbody id="historialRecepcionesBody"></tbody>
         </table></div>
     </div>
-    <div class="form-card" id="catalogosComprasCard">
+    <div class="form-card" id="catalogosComprasCard" data-almacen-vista-card="catalogos" hidden>
         <h3>Catálogos de compras</h3>
         <span class="info-tag">Administra proveedores y almacenes disponibles para las entradas.</span>
         <div class="catalogo-grid">
@@ -233,6 +276,23 @@
 </div>
 
 <script type="module" src="almacen.js"></script>
+
+<script>
+(() => {
+    const modoRapido = new URLSearchParams(window.location.search).get('modo') === 'rapido';
+    const menu = document.getElementById('menuAlmacen');
+    const cards = [...document.querySelectorAll('[data-almacen-vista-card]')];
+    const tabs = [...document.querySelectorAll('[data-almacen-vista]')];
+    const mostrarVista = vista => {
+        cards.forEach(card => { card.hidden = card.dataset.almacenVistaCard !== vista; });
+        tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.almacenVista === vista));
+        if (vista === 'recepcion') document.getElementById('recepcionCard')?.scrollIntoView({ block: 'start' });
+    };
+    tabs.filter(tab => tab.tagName === 'BUTTON' && !tab.disabled).forEach(button => button.addEventListener('click', () => mostrarVista(button.dataset.almacenVista)));
+    if (modoRapido) menu?.setAttribute('hidden', '');
+    mostrarVista(modoRapido ? 'recepcion' : 'productos');
+})();
+</script>
 
 <script src="../offline-status.js"></script>
 </body>

@@ -4,6 +4,7 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, getDoc, getDocs, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { existeDuplicado } from './validaciones.js';
+import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAy4En1r4frGng-tWFtA68FGLf0vupJ0AY",
@@ -28,6 +29,134 @@ let lineasRecepcion = [];
 let recepcionValidada = false;
 let modoItbisBloqueado = null;
 let tasaItbisBloqueada = null;
+let importacionProductos = [];
+let imagenesImportacion = [];
+
+const normalizarImportacion = valor => String(valor || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+const palabrasImportacionIgnoradas = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'y', 'con', 'sin', 'para']);
+const tokensImportacion = valor => normalizarImportacion(valor)
+    .split(/\s+/)
+    .filter(token => token.length > 1 && !palabrasImportacionIgnoradas.has(token));
+const clavePrefijosImportacion = valor => tokensImportacion(valor).map(token => token.slice(0, 2)).join(' ');
+
+const puntuarImagenImportacion = (producto, archivo) => {
+    const nombreImagen = archivo.name.replace(/\.[^.]+$/, '');
+    const textoImagen = normalizarImportacion(nombreImagen);
+    const tokensProducto = tokensImportacion(producto.nombre);
+    const tokensImagen = tokensImportacion(nombreImagen);
+    if (producto.codigo && textoImagen.includes(normalizarImportacion(producto.codigo))) return 100;
+    if (!tokensProducto.length || !tokensImagen.length) return 0;
+
+    const claveProducto = clavePrefijosImportacion(producto.nombre);
+    const claveImagen = clavePrefijosImportacion(nombreImagen);
+    if (claveImagen === claveProducto) return 95;
+    if (textoImagen.includes(normalizarImportacion(producto.nombre))) return 90;
+
+    const prefijosCoincidentes = tokensImagen.filter(tokenImagen =>
+        tokensProducto.some(tokenProducto => tokenProducto.startsWith(tokenImagen) || tokenImagen.startsWith(tokenProducto))
+    ).length;
+    const cobertura = prefijosCoincidentes / Math.max(tokensProducto.length, tokensImagen.length);
+    return cobertura >= 0.75 && prefijosCoincidentes >= Math.min(2, tokensProducto.length) ? 60 + cobertura * 20 : 0;
+};
+
+const buscarImagenImportacion = (producto, imagenes, usadas) => {
+    const candidatas = imagenes
+        .filter(imagen => !usadas.has(imagen.name))
+        .map(imagen => ({ imagen, puntuacion: puntuarImagenImportacion(producto, imagen) }))
+        .filter(item => item.puntuacion > 0)
+        .sort((a, b) => b.puntuacion - a.puntuacion);
+    if (!candidatas.length) return null;
+    const mejor = candidatas[0];
+    const segunda = candidatas[1];
+    if (segunda && mejor.puntuacion < 90 && mejor.puntuacion - segunda.puntuacion < 8) return null;
+    usadas.add(mejor.imagen.name);
+    return mejor.imagen;
+};
+
+const numeroImportacion = valor => Number(String(valor || '').replace(/[^0-9,.-]/g, '').replace(/,(?=\d{3}(?:\D|$))/g, '').replace(',', '.')) || 0;
+
+const analizarLineaPdf = linea => {
+    const texto = linea.replace(/\s+/g, ' ').trim();
+    if (!texto || texto.length < 12) return null;
+    if (/producto|descripcion|precio|codigo|total|pagina/i.test(texto) && texto.length < 90) return null;
+
+    const tokens = texto.split(/\s+/).filter(Boolean);
+    const valoresNumericos = tokens
+        .map((token, indice) => {
+            const limpio = token.replace(/[^0-9,.-]/g, '');
+            if (!limpio || limpio === '-' || limpio === '.') return null;
+            const numero = Number(limpio.replace(',', '.'));
+            if (!Number.isFinite(numero)) return null;
+            return { indice, numero };
+        })
+        .filter(Boolean);
+
+    if (valoresNumericos.length < 3) return null;
+
+    const costoToken = valoresNumericos[valoresNumericos.length - 3];
+    const existenciaToken = valoresNumericos[valoresNumericos.length - 2];
+    const totalToken = valoresNumericos[valoresNumericos.length - 1];
+
+    const codigo = /^\d{4,14}$/.test(tokens[0]) ? tokens[0] : '';
+    const unidad = codigo ? (tokens[1] || 'Und') : 'Und';
+    const inicioNombre = codigo ? 2 : 0;
+    const finNombre = costoToken.indice;
+    const nombre = tokens.slice(inicioNombre, finNombre).join(' ').replace(/[|;:-]+$/, '').trim();
+
+    if (!nombre || nombre.length < 2) return null;
+
+    return {
+        codigo,
+        nombre,
+        costoActual: Number(costoToken.numero || 0),
+        precio: Number(costoToken.numero || 0),
+        unidad,
+        stock: Number(existenciaToken.numero || 0),
+        total: Number(totalToken.numero || 0)
+    };
+};
+
+const renderImportacionProductos = () => {
+    const cuerpo = document.getElementById('importacionProductosFilas');
+    if (!cuerpo) return;
+    cuerpo.innerHTML = importacionProductos.map((producto, indice) => `<tr>
+        <td><input type="checkbox" data-importar-incluir="${indice}" ${producto.incluir !== false ? 'checked' : ''}></td>
+        <td><input data-importar-campo="codigo" data-importar-indice="${indice}" value="${escaparHtml(producto.codigo)}"></td>
+        <td><input data-importar-campo="nombre" data-importar-indice="${indice}" value="${escaparHtml(producto.nombre)}"></td>
+        <td><input type="number" min="0" step="0.01" data-importar-campo="costoActual" data-importar-indice="${indice}" value="${producto.costoActual}"></td>
+        <td><input type="number" min="0" step="0.01" data-importar-campo="precio" data-importar-indice="${indice}" value="${producto.precio}"></td>
+        <td><select data-importar-campo="unidad" data-importar-indice="${indice}">${['Und','Lb','Kg','Caja','Paq'].map(unidad => `<option ${unidad === producto.unidad ? 'selected' : ''}>${unidad}</option>`).join('')}</select></td>
+        <td>${document.getElementById('importarProductosEstatus')?.value || 'ACTIVO'}</td>
+        <td>${producto.imagen ? escaparHtml(producto.imagen.name) : 'Sin coincidencia'}</td>
+    </tr>`).join('');
+    document.getElementById('guardarImportacionProductos').disabled = !importacionProductos.length;
+};
+
+const extraerTextoPdf = async archivo => {
+    const pdf = await pdfjsLib.getDocument({ data: await archivo.arrayBuffer() }).promise;
+    const lineas = [];
+    for (let pagina = 1; pagina <= pdf.numPages; pagina += 1) {
+        const contenido = await (await pdf.getPage(pagina)).getTextContent();
+        const grupos = new Map();
+        contenido.items.forEach(item => {
+            const posicionY = Math.round(Number(item.transform?.[5] || 0));
+            const grupo = grupos.get(posicionY) || [];
+            grupo.push(item);
+            grupos.set(posicionY, grupo);
+        });
+        [...grupos.entries()].sort((a, b) => b[0] - a[0]).forEach(([, items]) => {
+            items.sort((a, b) => Number(a.transform?.[4] || 0) - Number(b.transform?.[4] || 0));
+            lineas.push(items.map(item => item.str).join(' '));
+        });
+    }
+    return lineas;
+};
 
 const calcularCostosRecepcion = () => {
     const tasa = Number(document.getElementById('recepcionTasaItbis')?.value || 0) / 100;
@@ -319,6 +448,7 @@ window.guardarAlmacenCatalogo = async () => {
 
 auth.onAuthStateChanged(async user => {
     if (!user) return;
+    window.SistemaTema?.setUsuario(user.uid);
     const token = await user.getIdTokenResult();
     const esAdministrador = token.claims.admin === true || token.claims.rol === 'Administrador';
     const control = document.getElementById('permitirStockNegativo');
@@ -688,6 +818,118 @@ window.aplicarRecepcion = async () => {
         boton.disabled = false;
     }
 };
+
+document.getElementById('importarProductosImagenes')?.addEventListener('change', event => {
+    imagenesImportacion = [...event.target.files].filter(file => file.type.startsWith('image/'));
+    document.getElementById('estadoImportacionProductos').textContent = `${imagenesImportacion.length} imagen(es) preparadas para asociar por nombre, código o ID.`;
+    renderImportacionProductos();
+});
+
+document.getElementById('importarProductosEstatus')?.addEventListener('change', renderImportacionProductos);
+document.getElementById('importacionProductosFilas')?.addEventListener('input', event => {
+    const indice = Number(event.target.dataset.importarIndice);
+    const campo = event.target.dataset.importarCampo;
+    if (Number.isInteger(indice) && campo) importacionProductos[indice][campo] = ['costoActual', 'precio'].includes(campo) ? numeroImportacion(event.target.value) : event.target.value.trim();
+});
+document.getElementById('importacionProductosFilas')?.addEventListener('change', event => {
+    const indice = Number(event.target.dataset.importarIndice);
+    if (event.target.dataset.importarIncluir !== undefined) importacionProductos[indice].incluir = event.target.checked;
+});
+
+document.getElementById('prepararImportacionProductos')?.addEventListener('click', async () => {
+    const archivo = document.getElementById('importarProductosPdf').files[0];
+    const estado = document.getElementById('estadoImportacionProductos');
+    if (!archivo) return alert('Selecciona primero el PDF de productos.');
+    estado.textContent = 'Leyendo PDF...';
+    try {
+        const lineas = await extraerTextoPdf(archivo);
+        const vistos = new Set();
+        const imagenesUsadas = new Set();
+        importacionProductos = lineas.map(analizarLineaPdf).filter(Boolean).filter(producto => {
+            const clave = `${normalizarImportacion(producto.codigo)}|${normalizarImportacion(producto.nombre)}`;
+            if (vistos.has(clave)) return false;
+            vistos.add(clave);
+            producto.imagen = buscarImagenImportacion(producto, imagenesImportacion, imagenesUsadas);
+            return true;
+        });
+
+        if (!importacionProductos.length) {
+            const mensaje = `El archivo "${archivo.name}" no se pudo integrar automáticamente porque no tiene texto seleccionable o no coincide con el formato esperado. Puedes continuar con carga manual o probar otro PDF.`;
+            estado.textContent = mensaje;
+            alert(mensaje);
+            renderImportacionProductos();
+            return;
+        }
+
+        renderImportacionProductos();
+        estado.textContent = `${importacionProductos.length} fila(s) preparadas. Corrige nombres, códigos y precios antes de confirmar.`;
+    } catch (error) {
+        console.error(error);
+        const mensaje = `No se pudo leer el PDF "${archivo.name}". Verifica que contenga texto seleccionable y no solo imágenes escaneadas. También puedes continuar con carga manual.`;
+        estado.textContent = mensaje;
+        alert(mensaje);
+    }
+});
+
+document.getElementById('guardarImportacionProductos')?.addEventListener('click', async () => {
+    const filas = importacionProductos.filter(producto => producto.incluir !== false);
+    const estado = document.getElementById('estadoImportacionProductos');
+    if (!filas.length) return alert('Selecciona al menos un producto para importar.');
+    if (filas.some(producto => !producto.nombre || !producto.codigo || producto.precio < 0 || producto.costoActual < 0)) return alert('Cada producto importado debe tener nombre, código, costo y precio válidos.');
+    const codigos = filas.map(producto => normalizarImportacion(producto.codigo));
+    if (new Set(codigos).size !== codigos.length) return alert('Hay códigos repetidos dentro de la importación. Corrígelos antes de continuar.');
+    const estadoProducto = document.getElementById('importarProductosEstatus').value;
+    const boton = document.getElementById('guardarImportacionProductos');
+    boton.disabled = true;
+    try {
+        let siguienteId = Math.max(0, ...productosCache.map(producto => Number(producto.idSecuencial) || 0)) + 1;
+        for (const producto of filas) {
+            const codigoNormalizado = normalizarImportacion(producto.codigo);
+            const existente = productosCache.find(actual => normalizarImportacion(actual.codigo) === codigoNormalizado);
+            const datosProducto = {
+                codigo: producto.codigo,
+                nombre: producto.nombre,
+                costoAnterior: Number(existente?.costoActual || 0),
+                costoActual: Number(producto.costoActual || 0),
+                margenMinimo: Number(existente?.margenMinimo || 2),
+                margenPorcentaje: producto.costoActual > 0 ? ((producto.precio - producto.costoActual) / producto.costoActual) * 100 : 0,
+                precio: Number(producto.precio || 0),
+                presentaciones: [{ id: 'base', nombre: producto.unidad || 'Und', codigo: producto.codigo, factorConversion: 1, precio: Number(producto.precio || 0) }],
+                unidad: producto.unidad || 'Und',
+                estatus: estadoProducto,
+                origenImportacion: 'PDF',
+                archivoOrigen: document.getElementById('importarProductosPdf').files[0]?.name || '',
+                importadoPor: auth.currentUser?.uid || '',
+                actualizadoEn: serverTimestamp()
+            };
+            const referencia = existente
+                ? doc(db, 'productos', existente.idDoc)
+                : await addDoc(collection(db, 'productos'), {
+                idSecuencial: String(siguienteId++).padStart(7, '0'),
+                referenciaEmpresa: '',
+                stock: Number(producto.stock || 0),
+                timestamp: Date.now()
+            });
+            await updateDoc(referencia, datosProducto);
+            const imagenesExistentes = Array.isArray(existente?.imagenes) ? existente.imagenes : [];
+            if (producto.imagen && !imagenesExistentes.length) {
+                const imagenRef = ref(storage, `productos/${referencia.id}/${Date.now()}-${producto.imagen.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`);
+                const blob = await comprimirImagen(producto.imagen);
+                await uploadBytes(imagenRef, blob, { contentType: 'image/webp' });
+                const imagen = { url: await getDownloadURL(imagenRef), path: imagenRef.fullPath, alt: producto.nombre, esPrincipal: true, orden: 1 };
+                await updateDoc(referencia, { imagenes: [imagen], imagenUrl: imagen.url, imagenPath: imagen.path });
+            }
+        }
+        estado.textContent = 'Importación completada. Revisa el inventario y corrige manualmente las filas omitidas o duplicadas.';
+        importacionProductos = [];
+        renderImportacionProductos();
+    } catch (error) {
+        console.error(error);
+        estado.textContent = error.message || 'No se pudo completar la importación.';
+    } finally {
+        boton.disabled = false;
+    }
+});
 
 // --- GUARDAR NUEVO PRODUCTO ---
 document.getElementById('btnGuardar').onclick = async () => {

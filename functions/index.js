@@ -4,6 +4,7 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
+const PDFDocument = require('pdfkit');
 
 admin.initializeApp();
 setGlobalOptions({ region: 'us-central1' });
@@ -880,14 +881,21 @@ const procesarMensajeChatInterno = async request => {
     let respuesta = 'Indícame el producto y la cantidad que deseas.';
     let opciones = busqueda?.resultados || conversacionAnterior.opciones || [];
     let itemsPendientes = Array.isArray(conversacionAnterior.itemsPendientes) ? conversacionAnterior.itemsPendientes : [];
+    let cotizacionId = null;
+    let pdfUrl = null;
     if (opcionSeleccionada) {
         estado = 'REVISION_COTIZACION';
         opciones = [];
         itemsPendientes = [...itemsPendientes, { ...opcionSeleccionada, cantidad: conversacionAnterior.cantidadSolicitada || 1 }];
-        respuesta = `Elegiste ${opcionSeleccionada.nombre}. ¿Deseas agregarlo a la cotización? Responde CONFIRMAR.`;
+        const subtotal = Number(opcionSeleccionada.precio || 0) * (conversacionAnterior.cantidadSolicitada || 1);
+        respuesta = `Elegiste ${opcionSeleccionada.nombre}. Precio unitario: RD$ ${Number(opcionSeleccionada.precio || 0).toFixed(2)}. Subtotal: RD$ ${subtotal.toFixed(2)}. Responde CONFIRMAR para agregarlo.`;
     } else if (busqueda?.estado === 'ENCONTRADO') {
         estado = 'REVISION_COTIZACION';
-        respuesta = `Encontré ${busqueda.cantidadSolicitada} unidad(es) de ${busqueda.resultados[0].nombre}. ¿Deseas agregarlo a la cotización?`;
+        const productoEncontrado = busqueda.resultados[0];
+        const cantidad = busqueda.cantidadSolicitada;
+        const subtotal = Number(productoEncontrado.precio || 0) * cantidad;
+        itemsPendientes = [...itemsPendientes, { ...productoEncontrado, cantidad }];
+        respuesta = `Encontré ${cantidad} unidad(es) de ${productoEncontrado.nombre}. Precio unitario: RD$ ${Number(productoEncontrado.precio || 0).toFixed(2)}. Subtotal: RD$ ${subtotal.toFixed(2)}. Responde CONFIRMAR para crear la cotización.`;
     } else if (busqueda?.estado === 'REQUIERE_SELECCION') {
         estado = 'ESPERANDO_OPCION';
         respuesta = 'Encontré varias opciones. Responde con el número del producto que deseas.';
@@ -933,8 +941,16 @@ const procesarMensajeChatInterno = async request => {
                     fecha: admin.firestore.FieldValue.serverTimestamp(),
                     actualizadoEn: admin.firestore.FieldValue.serverTimestamp()
                 });
+                cotizacionId = cotizacionRef.id;
+                pdfUrl = await generarPdfCotizacion({
+                    id: cotizacionId,
+                    nombre: nombreCliente,
+                    telefono: telefonoCliente,
+                    items: itemsValidados,
+                    total
+                });
                 estado = 'COTIZACION_CREADA';
-                respuesta = `Cotización creada correctamente. Número: ${cotizacionRef.id}. Total: RD$ ${total.toFixed(2)}.`;
+                respuesta = `Cotización creada correctamente. Número: ${cotizacionId}. Total: RD$ ${total.toFixed(2)}. Te enviaré el PDF ahora.`;
                 itemsPendientes = [];
                 opciones = [];
             }
@@ -959,7 +975,7 @@ const procesarMensajeChatInterno = async request => {
         });
     });
 
-    return { conversacionId, estado, respuesta, busqueda };
+    return { conversacionId, estado, respuesta, busqueda, cotizacionId, pdfUrl };
 };
 
 exports.procesarMensajeChat = onCall(procesarMensajeChatInterno);
@@ -981,6 +997,60 @@ const enviarMensajeWhatsApp = async (telefono, texto) => {
     if (!respuesta.ok) throw new Error(`Meta rechazó el mensaje: ${respuesta.status}`);
 };
 
+const generarPdfCotizacion = async ({ id, nombre, telefono, items, total }) => {
+    const documento = new PDFDocument({ size: 'LETTER', margin: 48 });
+    const partes = [];
+    documento.on('data', parte => partes.push(parte));
+    const terminado = new Promise((resolve, reject) => {
+        documento.on('end', () => resolve(Buffer.concat(partes)));
+        documento.on('error', reject);
+    });
+
+    documento.fontSize(18).text('SUPER MARIAN', { align: 'center' });
+    documento.fontSize(14).text('COTIZACION', { align: 'center' });
+    documento.moveDown();
+    documento.fontSize(10).text(`Numero: ${id}`);
+    documento.text(`Fecha: ${new Date().toLocaleString('es-DO')}`);
+    documento.text(`Cliente: ${nombre}`);
+    documento.text(`Telefono: ${telefono}`);
+    documento.moveDown();
+    documento.fontSize(11).text('Detalle', { underline: true });
+    items.forEach(item => {
+        const cantidad = Number(item.cantidad) || 1;
+        const precio = Number(item.precio) || 0;
+        const subtotal = Number(item.subtotal) || precio * cantidad;
+        documento.fontSize(10).text(`${cantidad} x ${item.nombre || 'Producto'}  |  RD$ ${precio.toFixed(2)}  |  RD$ ${subtotal.toFixed(2)}`);
+    });
+    documento.moveDown();
+    documento.fontSize(13).text(`TOTAL: RD$ ${Number(total || 0).toFixed(2)}`, { align: 'right' });
+    documento.fontSize(9).text('Cotizacion informativa. Sujeta a disponibilidad y confirmacion.', { align: 'center' });
+    documento.end();
+
+    const contenido = await terminado;
+    const ruta = `cotizaciones/${id}.pdf`;
+    const archivo = admin.storage().bucket().file(ruta);
+    await archivo.save(contenido, { resumable: false, metadata: { contentType: 'application/pdf' } });
+    const [url] = await archivo.getSignedUrl({ action: 'read', expires: Date.now() + 60 * 60 * 1000 });
+    return url;
+};
+
+const enviarDocumentoWhatsApp = async (telefono, url, nombreArchivo, texto) => {
+    const configuracion = await db.collection('configuracion-sistema').doc('whatsapp').get();
+    const phoneNumberId = String(configuracion.data()?.phoneNumberId || '').trim();
+    if (!phoneNumberId || !WHATSAPP_TOKEN.value()) throw new Error('WhatsApp no está configurado completamente.');
+    const respuesta = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${WHATSAPP_TOKEN.value()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: telefono,
+            type: 'document',
+            document: { link: url, filename: nombreArchivo, caption: texto }
+        })
+    });
+    if (!respuesta.ok) throw new Error(`Meta rechazó el documento: ${respuesta.status}`);
+};
+
 exports.whatsappWebhook = onRequest({ secrets: [WHATSAPP_TOKEN, WHATSAPP_VERIFY_TOKEN] }, async (request, response) => {
     if (request.method === 'GET') {
         const modo = request.query['hub.mode'];
@@ -1000,34 +1070,62 @@ exports.whatsappWebhook = onRequest({ secrets: [WHATSAPP_TOKEN, WHATSAPP_VERIFY_
         for (const mensaje of mensajes) {
             if (!mensaje.id || !mensaje.from) continue;
             const mensajeRef = db.collection('whatsapp_mensajes').doc(String(mensaje.id));
-            try {
-                await mensajeRef.create({
-                    direccion: 'ENTRANTE',
-                    telefono: String(mensaje.from),
-                    tipo: mensaje.type || 'desconocido',
-                    texto: mensaje.text?.body || '',
-                    creadoEn: admin.firestore.FieldValue.serverTimestamp()
-                });
-            } catch (error) {
-                if (error.code === 6 || error.code === 'already-exists') continue;
-                throw error;
-            }
-
             const configuracion = await db.collection('configuracion-sistema').doc('whatsapp').get();
-            if (configuracion.data()?.botActivo === true && mensaje.type === 'text' && mensaje.text?.body) {
+            if (configuracion.data()?.botActivo !== true) continue;
+
+            let debeProcesar = false;
+            await db.runTransaction(async transaction => {
+                const existente = await transaction.get(mensajeRef);
+                const estado = existente.exists ? existente.data()?.estado : null;
+                const ultimoIntento = existente.data()?.ultimoIntentoEn?.toMillis?.() || 0;
+                const intentoAbandonado = estado === 'PROCESANDO'
+                    && Date.now() - ultimoIntento > 2 * 60 * 1000;
+                if (estado === 'PROCESADO' || (estado === 'PROCESANDO' && !intentoAbandonado)) return;
+
+                if (existente.exists) {
+                    transaction.update(mensajeRef, {
+                        estado: 'PROCESANDO',
+                        ultimoIntentoEn: admin.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    transaction.set(mensajeRef, {
+                        direccion: 'ENTRANTE',
+                        telefono: String(mensaje.from),
+                        tipo: mensaje.type || 'desconocido',
+                        texto: mensaje.text?.body || '',
+                        estado: 'PROCESANDO',
+                        creadoEn: admin.firestore.FieldValue.serverTimestamp(),
+                        ultimoIntentoEn: admin.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                debeProcesar = true;
+            });
+
+            if (!debeProcesar) continue;
+
+            try {
+                const texto = mensaje.text?.body || '';
                 const resultado = await procesarMensajeChatInterno({
                     auth: {
                         uid: `whatsapp_${mensaje.from}`,
                         token: { email: '' }
                     },
                     data: {
-                        texto: mensaje.text.body,
+                        texto: texto || 'tipo de mensaje no compatible',
                         conversacionId: `wa_${mensaje.from}`,
                         nombre: contactos.get(String(mensaje.from)) || 'Cliente WhatsApp',
                         telefono: mensaje.from
                     }
                 });
                 await enviarMensajeWhatsApp(mensaje.from, resultado.respuesta);
+                if (resultado.pdfUrl) {
+                    await enviarDocumentoWhatsApp(
+                        mensaje.from,
+                        resultado.pdfUrl,
+                        `cotizacion-${resultado.cotizacionId}.pdf`,
+                        'Adjunto encontrarás tu cotización en PDF.'
+                    );
+                }
                 await db.collection('whatsapp_mensajes').add({
                     direccion: 'SALIENTE',
                     telefono: String(mensaje.from),
@@ -1035,6 +1133,17 @@ exports.whatsappWebhook = onRequest({ secrets: [WHATSAPP_TOKEN, WHATSAPP_VERIFY_
                     estado: resultado.estado,
                     creadoEn: admin.firestore.FieldValue.serverTimestamp()
                 });
+                await mensajeRef.update({
+                    estado: 'PROCESADO',
+                    procesadoEn: admin.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (error) {
+                await mensajeRef.update({
+                    estado: 'ERROR_REINTENTABLE',
+                    ultimoError: String(error.message || error),
+                    errorEn: admin.firestore.FieldValue.serverTimestamp()
+                });
+                throw error;
             }
         }
         return response.sendStatus(200);

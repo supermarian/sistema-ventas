@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Súper Marian - POS Premium v6.1</title>
+<link rel="stylesheet" href="../assets/sistema-theme.css">
+<script src="../assets/sistema-theme.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   
@@ -120,6 +122,16 @@ header {
 @media(max-width:720px){ header { padding: 10px 12px; gap: 8px; } header > div { max-width:100%; flex-wrap:wrap; } header .reimprimir-container { order:3; width:100%; } header .reimprimir-container input { flex:1; min-width:0; } .main-container { padding:12px; gap:12px; } .card { padding:13px; } .card > div[style*="display:flex"] { flex-wrap:wrap; } }
 @media(max-width:720px){ .pago-grid { grid-template-columns: 1fr 1fr; padding:12px; } .pago-grid > div:first-child { grid-column:1 / -1; } .pago-grid > div:last-child { grid-column:1 / -1; } }
 
+.caja-secciones { display:flex; gap:6px; overflow-x:auto; padding:7px 12px; background:#fff; border-bottom:1px solid #d8e1e5; scrollbar-width:thin; }
+.caja-tab { flex:0 0 auto; border:1px solid transparent; border-radius:7px; background:transparent; color:#33434b; padding:9px 12px; font-weight:800; cursor:pointer; white-space:nowrap; }
+.caja-tab:hover, .caja-tab.active { background:#e7f3ff; border-color:#b9d8f5; color:#075e9b; }
+.caja-tab.active { box-shadow:inset 0 -3px 0 #007bff; }
+.caja-tab[hidden] { display:none; }
+html[data-theme="dark"] .caja-secciones { background:var(--app-surface); border-color:var(--app-border); }
+html[data-theme="dark"] .caja-tab { color:var(--app-text); }
+html[data-theme="dark"] .caja-tab:hover, html[data-theme="dark"] .caja-tab.active { background:var(--app-surface-raised); border-color:var(--app-border); color:var(--app-primary-strong); }
+@media(max-width:720px){ .caja-secciones { padding:6px 8px; } .caja-tab { padding:9px 10px; } }
+
 /* Estilo Premium para el Resumen de Cierre */
 #resumenCierre {
     background: #fdfdfd;
@@ -180,6 +192,15 @@ header {
   </div>
   
 </header>
+
+<nav class="caja-secciones" aria-label="Secciones de Caja">
+    <button class="caja-tab active" type="button" data-caja-accion="venta">🛒 Venta</button>
+    <button class="caja-tab" type="button" data-caja-accion="reimpresion" data-permiso-caja="caja_reimpresion">🖨️ Reimpresión</button>
+    <button class="caja-tab" type="button" data-caja-accion="cotizaciones" data-permiso-caja="caja_cotizaciones">📋 Cotizaciones <span id="badgeCotizacionesTab" class="cotizaciones-badge" style="display:none">0</span></button>
+    <button class="caja-tab" type="button" data-caja-accion="credito" data-permiso-caja="caja_credito">💳 Créditos</button>
+    <button class="caja-tab" type="button" data-caja-accion="egreso" data-permiso-caja="caja_egreso">💸 Egresos</button>
+    <button class="caja-tab" type="button" data-caja-accion="cierre" data-permiso-caja="caja_cierre">🔒 Cierre</button>
+</nav>
 
 <div id="capa-bloqueo" style="position:absolute;left:0;top:60px;width:100%;height:calc(100% - 60px);background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;z-index:900">
   <div style="background:#fff;padding:36px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.1);text-align:center">
@@ -651,7 +672,33 @@ header {
         });
         const reimpresion = document.querySelector('.reimprimir-container');
         if (reimpresion && !puedeUsarCaja('caja_reimpresion')) reimpresion.style.display = 'none';
+        window.actualizarPestanasCaja?.();
     };
+    const actualizarPestanasCaja = () => {
+        const acciones = {
+            caja_reimpresion: 'btnReimprimir',
+            caja_cotizaciones: 'btn-cotizaciones',
+            caja_credito: 'btn-cobrar-credito',
+            caja_egreso: 'btn-egreso-caja',
+            caja_cierre: 'btn-cerrar-turno'
+        };
+        document.querySelectorAll('[data-permiso-caja]').forEach(tab => {
+            const control = document.getElementById(acciones[tab.dataset.permisoCaja]);
+            tab.hidden = !control || control.style.display === 'none';
+        });
+    };
+    window.actualizarPestanasCaja = actualizarPestanasCaja;
+    document.querySelectorAll('[data-caja-accion]').forEach(tab => tab.addEventListener('click', () => {
+        document.querySelectorAll('[data-caja-accion]').forEach(item => item.classList.remove('active'));
+        tab.classList.add('active');
+        const accion = tab.dataset.cajaAccion;
+        if (accion === 'reimpresion') document.getElementById('inputReimprimir')?.focus();
+        if (accion === 'cotizaciones') window.abrirCotizaciones?.();
+        if (accion === 'credito') window.abrirModuloCreditos?.();
+        if (accion === 'egreso') window.abrirModalEgreso?.();
+        if (accion === 'cierre') window.cerrarCaja?.();
+    }));
+    actualizarPestanasCaja();
     const comprobantesBase = [
         { codigo: 'B02', descripcion: 'Factura de consumidor final', grupo: 'Caja', activo: true, siguienteNumero: 1 },
         { codigo: 'B01', descripcion: 'Factura de credito fiscal', grupo: 'Caja', activo: false, siguienteNumero: 1 },
@@ -2081,6 +2128,7 @@ document.addEventListener('keydown', (e) => {
  // --- MANEJO DE SESIÓN ---
     onAuthStateChanged(auth, async (user) => {
         if (user) {
+            window.SistemaTema?.setUsuario(user.uid);
             document.getElementById('emailCajeroApertura').innerText = user.email;
             state.userDB = await POSCore.obtenerUsuario(db, user.email, user.uid);
             aplicarPermisosCaja();
